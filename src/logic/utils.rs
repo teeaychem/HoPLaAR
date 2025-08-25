@@ -52,7 +52,7 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    pub fn atom_union(&self) -> HashSet<A> {
+    pub fn atoms(&self) -> HashSet<A> {
         self.atoms_d().cloned().collect()
     }
 }
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn union() {
         let expr = parse_propositional_formula("(a | (c & d)) & b");
-        let atom_union = expr.atom_union();
+        let atom_union = expr.atoms();
         let atom_set = HashSet::from([
             Prop::new("b"),
             Prop::new("c"),
