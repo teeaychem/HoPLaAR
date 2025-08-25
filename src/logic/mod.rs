@@ -23,7 +23,7 @@ pub enum Quantifier {
     Exists,
 }
 
-pub trait Atomic: std::fmt::Debug + std::fmt::Display + Clone {}
+pub trait Atomic: std::fmt::Debug + std::fmt::Display + Clone + std::hash::Hash + Eq {}
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Formula<T: Atomic> {

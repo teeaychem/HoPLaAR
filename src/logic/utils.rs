@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::logic::{Atomic, Formula};
 
 pub fn on_atoms<F, A>(f: &F, fm: &Formula<A>) -> Formula<A>
@@ -50,15 +52,18 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    // pub fn atom_union(&self) -> HashSet<A> {
-    //     self.atoms_d().cloned().collect()
-    // }
+    pub fn atom_union(&self) -> HashSet<A> {
+        self.atoms_d().cloned().collect()
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use crate::logic::{
         Formula,
+        parsing::parse_propositional_formula,
         propositional::{Prop, PropFormula},
         utils::on_atoms,
     };
@@ -107,5 +112,18 @@ mod tests {
 
         expr_lower.on_atoms_mut(&uppercase_mut);
         assert_eq!(expr_lower, expr_upper);
+    }
+
+    #[test]
+    fn union() {
+        let expr = parse_propositional_formula("(a | (c & d)) & b");
+        let atom_union = expr.atom_union();
+        let atom_set = HashSet::from([
+            Prop::new("b"),
+            Prop::new("c"),
+            Prop::new("a"),
+            Prop::new("d"),
+        ]);
+        assert_eq!(atom_union, atom_set);
     }
 }
