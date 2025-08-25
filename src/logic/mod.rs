@@ -2,6 +2,7 @@ mod display;
 mod parsing;
 mod propositional;
 mod utils;
+mod iterators;
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum OpUnary {
