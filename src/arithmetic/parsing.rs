@@ -2,12 +2,6 @@ use std::iter::Peekable;
 
 use crate::arithmetic::Expr;
 
-#[derive(Clone, Copy, Debug)]
-enum OpBinary {
-    Add,
-    Mul,
-}
-
 #[derive(Clone, Debug)]
 enum Token {
     BraceL,
@@ -17,7 +11,8 @@ enum Token {
     ParenL,
     ParenR,
     Number(i64),
-    OpBinary(OpBinary),
+    Add,
+    Mul,
     Var(String),
 }
 
@@ -36,8 +31,8 @@ fn lex(expr: &str) -> Vec<Token> {
             ']' => tokens.push(Token::BracketR),
             '{' => tokens.push(Token::BraceL),
             '}' => tokens.push(Token::BraceR),
-            '+' => tokens.push(Token::OpBinary(OpBinary::Add)),
-            '*' => tokens.push(Token::OpBinary(OpBinary::Mul)),
+            '+' => tokens.push(Token::Add),
+            '*' => tokens.push(Token::Mul),
 
             digit if digit.is_ascii_digit() => {
                 let mut digits = String::from(digit);
@@ -86,7 +81,7 @@ fn parse_expression<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Expr
     let expression = parse_product(tokens);
 
     match tokens.peek() {
-        Some(Token::OpBinary(OpBinary::Add)) => {
+        Some(Token::Add) => {
             tokens.next();
             let rhs = parse_expression(tokens);
 
@@ -104,7 +99,7 @@ fn parse_product<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Expr {
     let expression = parse_atom(tokens);
 
     match tokens.peek() {
-        Some(Token::OpBinary(OpBinary::Mul)) => {
+        Some(Token::Mul) => {
             tokens.next();
             let rhs = parse_product(tokens);
 
