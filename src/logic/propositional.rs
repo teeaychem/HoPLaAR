@@ -1,6 +1,6 @@
 use crate::logic::Formula;
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Prop {
     name: String,
 }
@@ -14,6 +14,10 @@ impl Prop {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn name_set(&mut self, name: String) {
+        self.name = name
     }
 }
 

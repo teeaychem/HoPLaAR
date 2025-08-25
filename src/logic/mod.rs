@@ -3,12 +3,12 @@ mod parsing;
 mod propositional;
 mod utils;
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum OpUnary {
     Not,
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum OpBinary {
     And,
     Or,
@@ -16,14 +16,14 @@ pub enum OpBinary {
     Iff,
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Quantifier {
     ForAll,
     Exists,
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
-pub enum Formula<T: std::fmt::Debug + std::fmt::Display> {
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum Formula<T: std::fmt::Debug + std::fmt::Display + Clone> {
     True,
     False,
 
@@ -50,7 +50,7 @@ pub enum Formula<T: std::fmt::Debug + std::fmt::Display> {
 }
 
 #[allow(non_snake_case)]
-impl<T: std::fmt::Display + std::fmt::Debug> Formula<T> {
+impl<T: std::fmt::Display + std::fmt::Debug + Clone> Formula<T> {
     pub fn Unary(op: OpUnary, expr: Formula<T>) -> Self {
         Self::OpUnary {
             op,
@@ -76,7 +76,7 @@ impl<T: std::fmt::Display + std::fmt::Debug> Formula<T> {
 }
 
 #[allow(non_snake_case)]
-impl<T: std::fmt::Display + std::fmt::Debug> Formula<T> {
+impl<T: std::fmt::Display + std::fmt::Debug + Clone> Formula<T> {
     pub fn Not(expr: Formula<T>) -> Self {
         Self::Unary(OpUnary::Not, expr)
     }

@@ -28,7 +28,7 @@ impl std::fmt::Display for Quantifier {
     }
 }
 
-impl<T: std::fmt::Debug + std::fmt::Display> std::fmt::Display for Formula<T> {
+impl<T: std::fmt::Debug + std::fmt::Display + Clone> std::fmt::Display for Formula<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Formula::True => write!(f, "⊤"),
