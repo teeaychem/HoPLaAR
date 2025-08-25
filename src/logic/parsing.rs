@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 
-use crate::logic::{Prop, PropFormula};
+use crate::logic::propositional::{Prop, PropFormula};
 
 #[derive(Clone, Debug)]
 enum Token {
@@ -213,7 +213,7 @@ fn parse_atom<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormul
             PropFormula::Not(expr)
         }
 
-        Some(Token::Var(name)) => PropFormula::Atom(Prop { name }),
+        Some(Token::Var(name)) => PropFormula::Atom(Prop::new(name.as_str())),
 
         None => panic!("Expected an expression at end of input"),
 
@@ -223,7 +223,10 @@ fn parse_atom<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormul
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Prop, PropFormula, parsing::parse_propositional_formula};
+    use crate::logic::{
+        parsing::parse_propositional_formula,
+        propositional::{Prop, PropFormula},
+    };
 
     #[test]
     fn simple() {

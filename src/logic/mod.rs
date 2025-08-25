@@ -1,5 +1,7 @@
 mod display;
 mod parsing;
+mod propositional;
+mod utils;
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum OpUnary {
@@ -47,62 +49,55 @@ pub enum Formula<T: std::fmt::Debug + std::fmt::Display> {
     },
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
-pub struct Prop {
-    name: String,
-}
-
-impl Prop {
-    pub fn new(name: &str) -> Self {
-        Self { name: name.to_owned() }
-    }
-}
-
-// Propositional formula
-pub type PropFormula = Formula<Prop>;
-
 #[allow(non_snake_case)]
-impl PropFormula {
-    pub fn Not(expr: PropFormula) -> Self {
+impl<T: std::fmt::Display + std::fmt::Debug> Formula<T> {
+    pub fn Unary(op: OpUnary, expr: Formula<T>) -> Self {
         Self::OpUnary {
-            op: OpUnary::Not,
+            op,
             expr: Box::new(expr),
         }
     }
 
-    pub fn And(lhs: PropFormula, rhs: PropFormula) -> Self {
+    pub fn Binary(op: OpBinary, lhs: Formula<T>, rhs: Formula<T>) -> Self {
         Self::OpBinary {
-            op: OpBinary::And,
+            op,
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
         }
     }
 
-    pub fn Or(lhs: PropFormula, rhs: PropFormula) -> Self {
-        Self::OpBinary {
-            op: OpBinary::Or,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
+    pub fn Quantifier(q: Quantifier, var: T, expr: Formula<T>) -> Self {
+        Self::Quantifier {
+            q,
+            var,
+            expr: Box::new(expr),
         }
     }
+}
 
-    pub fn Imp(lhs: PropFormula, rhs: PropFormula) -> Self {
-        Self::OpBinary {
-            op: OpBinary::Imp,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-        }
+#[allow(non_snake_case)]
+impl<T: std::fmt::Display + std::fmt::Debug> Formula<T> {
+    pub fn Not(expr: Formula<T>) -> Self {
+        Self::Unary(OpUnary::Not, expr)
     }
 
-    pub fn Iff(lhs: PropFormula, rhs: PropFormula) -> Self {
-        Self::OpBinary {
-            op: OpBinary::Iff,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-        }
+    pub fn And(lhs: Formula<T>, rhs: Formula<T>) -> Self {
+        Self::Binary(OpBinary::And, lhs, rhs)
     }
 
-    pub fn Atom(prop: Prop) -> Self {
-        Self::Atom { var: prop }
+    pub fn Or(lhs: Formula<T>, rhs: Formula<T>) -> Self {
+        Self::Binary(OpBinary::Or, lhs, rhs)
+    }
+
+    pub fn Imp(lhs: Formula<T>, rhs: Formula<T>) -> Self {
+        Self::Binary(OpBinary::Imp, lhs, rhs)
+    }
+
+    pub fn Iff(lhs: Formula<T>, rhs: Formula<T>) -> Self {
+        Self::Binary(OpBinary::Iff, lhs, rhs)
+    }
+
+    pub fn Atom(var: T) -> Self {
+        Self::Atom { var }
     }
 }
