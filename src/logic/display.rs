@@ -1,4 +1,4 @@
-use crate::logic::{Formula, OpBinary, OpUnary, Quantifier, propositional::Prop};
+use crate::logic::{propositional::Prop, Formula, Atomic, OpBinary, OpUnary, Quantifier};
 
 impl std::fmt::Display for OpUnary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -28,7 +28,7 @@ impl std::fmt::Display for Quantifier {
     }
 }
 
-impl<T: std::fmt::Debug + std::fmt::Display + Clone> std::fmt::Display for Formula<T> {
+impl<A: Atomic> std::fmt::Display for Formula<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Formula::True => write!(f, "⊤"),

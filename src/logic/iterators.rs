@@ -1,14 +1,14 @@
 use std::collections::VecDeque;
 
-use crate::logic::Formula;
+use crate::logic::{Formula, Atomic};
 
-pub struct AtomIteratorD<'a, T: std::fmt::Display + std::fmt::Debug + Clone> {
+pub struct AtomIteratorD<'a, T: Atomic> {
     stack: Vec<&'a Formula<T>>,
     expr: Option<&'a Formula<T>>,
 }
 
-impl<'a, T: std::fmt::Display + std::fmt::Debug + Clone> Iterator for AtomIteratorD<'a, T> {
-    type Item = &'a T;
+impl<'a, A: Atomic> Iterator for AtomIteratorD<'a, A> {
+    type Item = &'a A;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.expr {
@@ -43,12 +43,12 @@ impl<'a, T: std::fmt::Display + std::fmt::Debug + Clone> Iterator for AtomIterat
     }
 }
 
-pub struct AtomIteratorB<'a, T: std::fmt::Display + std::fmt::Debug + Clone> {
-    stack: VecDeque<&'a Formula<T>>,
-    expr: Option<&'a Formula<T>>,
+pub struct AtomIteratorB<'a, A: Atomic> {
+    stack: VecDeque<&'a Formula<A>>,
+    expr: Option<&'a Formula<A>>,
 }
 
-impl<'a, T: std::fmt::Display + std::fmt::Debug + Clone> Iterator for AtomIteratorB<'a, T> {
+impl<'a, T: Atomic> Iterator for AtomIteratorB<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -103,7 +103,7 @@ impl<'a, T: std::fmt::Display + std::fmt::Debug + Clone> Iterator for AtomIterat
     }
 }
 
-impl<T: std::fmt::Display + std::fmt::Debug + Clone> Formula<T> {
+impl<T: Atomic> Formula<T> {
     pub fn atoms_d(&'_ self) -> AtomIteratorD<'_, T> {
         AtomIteratorD {
             stack: Vec::default(),

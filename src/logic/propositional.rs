@@ -1,9 +1,11 @@
-use crate::logic::Formula;
+use crate::logic::{Atomic, Formula};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Prop {
     name: String,
 }
+
+impl Atomic for Prop {}
 
 impl Prop {
     pub fn new(name: &str) -> Self {

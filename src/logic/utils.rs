@@ -1,15 +1,15 @@
-use crate::logic::Formula;
+use crate::logic::{Atomic, Formula};
 
-pub fn on_atoms<F, T>(f: &F, fm: &Formula<T>) -> Formula<T>
+pub fn on_atoms<F, A>(f: &F, fm: &Formula<A>) -> Formula<A>
 where
-    F: Fn(&Formula<T>) -> Formula<T>,
-    T: std::fmt::Display + std::fmt::Debug + Clone,
+    F: Fn(&Formula<A>) -> Formula<A>,
+    A: Atomic,
 {
     fm.on_atoms(f)
 }
 
-impl<T: std::fmt::Display + std::fmt::Debug + Clone> Formula<T> {
-    pub fn on_atoms<F: Fn(&Formula<T>) -> Formula<T>>(&self, f: &F) -> Formula<T> {
+impl<A: Atomic> Formula<A> {
+    pub fn on_atoms<F: Fn(&Formula<A>) -> Formula<A>>(&self, f: &F) -> Formula<A> {
         match self {
             Formula::True => Formula::True,
 
@@ -29,7 +29,7 @@ impl<T: std::fmt::Display + std::fmt::Debug + Clone> Formula<T> {
         }
     }
 
-    pub fn on_atoms_mut<F: Fn(&mut Formula<T>)>(&mut self, f: &F) {
+    pub fn on_atoms_mut<F: Fn(&mut Formula<A>)>(&mut self, f: &F) {
         match self {
             Formula::True | Formula::False => {}
 
@@ -49,6 +49,10 @@ impl<T: std::fmt::Display + std::fmt::Debug + Clone> Formula<T> {
             }
         }
     }
+
+    // pub fn atom_union(&self) -> HashSet<A> {
+    //     self.atoms_d().cloned().collect()
+    // }
 }
 
 #[cfg(test)]

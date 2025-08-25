@@ -1,8 +1,8 @@
 mod display;
+mod iterators;
 mod parsing;
 mod propositional;
 mod utils;
-mod iterators;
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum OpUnary {
@@ -23,8 +23,10 @@ pub enum Quantifier {
     Exists,
 }
 
+pub trait Atomic: std::fmt::Debug + std::fmt::Display + Clone {}
+
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum Formula<T: std::fmt::Debug + std::fmt::Display + Clone> {
+pub enum Formula<T: Atomic> {
     True,
     False,
 
@@ -51,7 +53,7 @@ pub enum Formula<T: std::fmt::Debug + std::fmt::Display + Clone> {
 }
 
 #[allow(non_snake_case)]
-impl<T: std::fmt::Display + std::fmt::Debug + Clone> Formula<T> {
+impl<T: Atomic> Formula<T> {
     pub fn Unary(op: OpUnary, expr: Formula<T>) -> Self {
         Self::OpUnary {
             op,
@@ -77,7 +79,7 @@ impl<T: std::fmt::Display + std::fmt::Debug + Clone> Formula<T> {
 }
 
 #[allow(non_snake_case)]
-impl<T: std::fmt::Display + std::fmt::Debug + Clone> Formula<T> {
+impl<T: Atomic> Formula<T> {
     pub fn Not(expr: Formula<T>) -> Self {
         Self::Unary(OpUnary::Not, expr)
     }
