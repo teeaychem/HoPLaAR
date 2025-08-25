@@ -77,6 +77,12 @@ fn lex(expr: &str) -> Vec<Token> {
     tokens
 }
 
+pub fn parse_arithmetic(str: &str) -> Expr {
+    let lex = lex(str);
+    let mut tokens = lex.into_iter().peekable();
+    parse_expression(&mut tokens)
+}
+
 fn parse_expression<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Expr {
     let expression = parse_product(tokens);
 
@@ -151,16 +157,12 @@ fn parse_atom<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Expr {
 
 #[cfg(test)]
 mod tests {
-    use crate::arithmetic::parsing::{lex, parse_expression};
+    use crate::arithmetic::parsing::parse_arithmetic;
 
     #[test]
     fn debug() {
-        let string = "2*((var_1 + x’) + 11)";
-        let lex = lex(string);
-        println!("{:?}", lex);
-
-        let mut tokens = lex.into_iter().peekable();
-
-        println!("{}", parse_expression(&mut tokens));
+        let expr = "2 * ((var_1 + x’) + 11)";
+        let parse = parse_arithmetic(expr);
+        assert_eq!(format!("{parse}"), format!("({expr})"));
     }
 }
