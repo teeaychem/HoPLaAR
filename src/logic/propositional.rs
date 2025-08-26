@@ -96,6 +96,14 @@ impl Valuation {
                 .expect("Permutation count exceeds usize"),
         )
     }
+
+    pub fn atoms(&self) -> impl Iterator<Item = &Prop> {
+        self.map.keys()
+    }
+
+    pub fn map(&self) -> &HashMap<Prop, usize> {
+        &self.map
+    }
 }
 
 pub fn eval(formula: &PropFormula, valuation: &Valuation) -> bool {
@@ -136,6 +144,40 @@ impl PropFormula {
             valuation.next_permutation_mut();
         }
         true
+    }
+
+    pub fn print_truth_table(&self) {
+        let mut valuation = Valuation::from_prop_set(self.atoms());
+
+        let spacing = 2 + valuation
+            .atoms()
+            .fold(7, |a, n| std::cmp::max(a, n.name().len()));
+        let total_width = spacing * (valuation.size() + 1);
+
+        let mut atoms = valuation.map().iter().collect::<Vec<_>>();
+        atoms.sort_by(|(_, a), (_, b)| a.cmp(b));
+
+        println!("{self}");
+
+        for (atom, _) in atoms {
+            print!("{name:width$}", width = spacing, name = atom.name());
+        }
+
+        println!("| {eval:width$}", width = spacing, eval = "formula");
+        println!("{:-<total_width$}", "");
+
+        for _ in 0..valuation.permutation_count() {
+            for value in &valuation.values {
+                print!("{value:width$}", width = spacing);
+            }
+            println!(
+                "| {eval:width$}",
+                width = spacing,
+                eval = self.eval(&valuation)
+            );
+            valuation.next_permutation_mut();
+        }
+        println!("{:-<total_width$}", "");
     }
 }
 

@@ -1,8 +1,8 @@
-mod display;
-mod iterators;
-mod parsing;
-mod propositional;
-mod utils;
+pub mod display;
+pub mod iterators;
+pub mod parsing;
+pub mod propositional;
+pub mod utils;
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum OpUnary {
