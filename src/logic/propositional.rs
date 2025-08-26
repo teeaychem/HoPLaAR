@@ -28,7 +28,7 @@ impl Prop {
 // Propositional formula
 pub type PropFormula = Formula<Prop>;
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Valuation {
     values: Vec<bool>,
     map: HashMap<Prop, usize>,
@@ -57,6 +57,16 @@ impl Valuation {
             valuation.extend(prop, false);
         }
         valuation
+    }
+
+    pub fn inverted(&self) -> Valuation {
+        let mut inverted = self.to_owned();
+
+        for value in inverted.values.iter_mut() {
+            *value = !*value;
+        }
+
+        inverted
     }
 }
 

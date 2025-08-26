@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::logic::{Atomic, Formula};
+use crate::logic::{Atomic, Formula, OpBinary, OpUnary, Quantifier};
 
 pub fn on_atoms<F, A>(f: &F, fm: &Formula<A>) -> Formula<A>
 where
@@ -77,6 +77,27 @@ impl<A: Atomic> Formula<A> {
             }
         }
     }
+
+    pub fn dual(&self) -> Formula<A> {
+        match self {
+            Formula::True => Formula::False,
+            Formula::False => Formula::True,
+            Formula::Atom { .. } => self.to_owned(),
+            Formula::OpUnary { op, expr } => match op {
+                OpUnary::Not => Formula::Not(expr.dual()),
+            },
+            Formula::OpBinary { op, lhs, rhs } => match op {
+                OpBinary::And => Formula::Or(lhs.dual(), rhs.dual()),
+                OpBinary::Or => Formula::And(lhs.dual(), rhs.dual()),
+                OpBinary::Imp => panic!("Dual of Imp"),
+                OpBinary::Iff => panic!("Dual of Iff"),
+            },
+            Formula::Quantifier { q, var, expr } => match q {
+                Quantifier::ForAll => Formula::Exists(var.to_owned(), expr.dual()),
+                Quantifier::Exists => Formula::ForAll(var.to_owned(), expr.dual()),
+            },
+        }
+    }
 }
 
 #[cfg(test)]
@@ -86,7 +107,7 @@ mod tests {
     use crate::logic::{
         Formula,
         parsing::parse_propositional_formula,
-        propositional::{Prop, PropFormula},
+        propositional::{Prop, PropFormula, Valuation},
         utils::on_atoms,
     };
 
@@ -158,5 +179,17 @@ mod tests {
         let expected = parse_propositional_formula("(p & q) & q & (p & q) & q");
 
         assert_eq!(expected, expr_s);
+    }
+
+    #[test]
+    fn duals() {
+        let expr = parse_propositional_formula("p | ~ p");
+        let expected = parse_propositional_formula("p & ~ p");
+        assert_eq!(expr.dual(), expected);
+
+        let v_a = Valuation::from_prop_set(expr.atoms());
+
+        let expr = parse_propositional_formula("p & q");
+        assert_eq!(expr.eval(&v_a), !expr.dual().eval(&v_a.inverted()))
     }
 }

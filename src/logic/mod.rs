@@ -103,4 +103,12 @@ impl<T: Atomic> Formula<T> {
     pub fn Atom(var: T) -> Self {
         Self::Atom { var }
     }
+
+    pub fn Exists(var: T, expr: Formula<T>) -> Self {
+        Self::Quantifier(Quantifier::Exists, var, expr)
+    }
+
+    pub fn ForAll(var: T, expr: Formula<T>) -> Self {
+        Self::Quantifier(Quantifier::ForAll, var, expr)
+    }
 }
