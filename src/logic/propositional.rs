@@ -10,7 +10,7 @@ pub struct Prop {
 impl Atomic for Prop {}
 
 impl Prop {
-    pub fn new(name: &str) -> Self {
+    pub fn from(name: &str) -> Self {
         Self {
             name: name.to_owned(),
         }
@@ -46,7 +46,7 @@ impl Valuation {
     pub fn from_names<const N: usize>(names: [&str; N]) -> Self {
         let mut valuation = Valuation::default();
         for name in names {
-            valuation.extend(Prop::new(name), false);
+            valuation.extend(Prop::from(name), false);
         }
         valuation
     }
@@ -230,8 +230,8 @@ mod tests {
     #[test]
     fn eval_small() {
         let mut v = Valuation::default();
-        v.extend(Prop::new("a"), true);
-        v.extend(Prop::new("b"), false);
+        v.extend(Prop::from("a"), true);
+        v.extend(Prop::from("b"), false);
 
         let expr = parse_propositional_formula("a or b");
         assert!(expr.eval(&v));

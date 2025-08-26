@@ -128,10 +128,10 @@ mod tests {
         let expr = parse_propositional_formula("(a | (c & d)) & b");
         let atoms = expr.atoms_d().cloned().collect::<Vec<_>>();
         let expected_atoms = vec![
-            Prop::new("a"),
-            Prop::new("c"),
-            Prop::new("d"),
-            Prop::new("b"),
+            Prop::from("a"),
+            Prop::from("c"),
+            Prop::from("d"),
+            Prop::from("b"),
         ];
         assert_eq!(atoms, expected_atoms);
     }
@@ -141,10 +141,10 @@ mod tests {
         let expr = parse_propositional_formula("((a => d) | c) & b");
         let atoms = expr.atoms_b().cloned().collect::<Vec<_>>();
         let expected_atoms = vec![
-            Prop::new("b"),
-            Prop::new("c"),
-            Prop::new("a"),
-            Prop::new("d"),
+            Prop::from("b"),
+            Prop::from("c"),
+            Prop::from("a"),
+            Prop::from("d"),
         ];
         assert_eq!(atoms, expected_atoms);
     }

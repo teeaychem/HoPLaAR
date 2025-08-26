@@ -213,7 +213,7 @@ fn parse_atom<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormul
             PropFormula::Not(expr)
         }
 
-        Some(Token::Var(name)) => PropFormula::Atom(Prop::new(name.as_str())),
+        Some(Token::Var(name)) => PropFormula::Atom(Prop::from(name.as_str())),
 
         None => panic!("Expected an expression at end of input"),
 
@@ -232,7 +232,7 @@ mod tests {
     fn simple() {
         let name = "a";
         let formula = parse_propositional_formula(name);
-        assert_eq!(formula, PropFormula::Atom(Prop::new(name)));
+        assert_eq!(formula, PropFormula::Atom(Prop::from(name)));
 
         let expr = "true & false";
         let parse = parse_propositional_formula(expr);

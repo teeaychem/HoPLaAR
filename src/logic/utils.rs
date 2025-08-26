@@ -55,6 +55,28 @@ impl<A: Atomic> Formula<A> {
     pub fn atoms(&self) -> HashSet<A> {
         self.atoms_d().cloned().collect()
     }
+
+    pub fn substitute(&self, atom: &A, formula: &Formula<A>) -> Formula<A> {
+        match self {
+            Formula::True | Formula::False => self.clone(),
+            Formula::Atom { var } => {
+                if var == atom {
+                    formula.to_owned()
+                } else {
+                    self.clone()
+                }
+            }
+            Formula::OpUnary { op, expr } => Formula::Unary(*op, expr.substitute(atom, formula)),
+            Formula::OpBinary { op, lhs, rhs } => Formula::Binary(
+                *op,
+                lhs.substitute(atom, formula),
+                rhs.substitute(atom, formula),
+            ),
+            Formula::Quantifier { q, var, expr } => {
+                Formula::Quantifier(*q, var.to_owned(), expr.substitute(atom, formula))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -71,8 +93,8 @@ mod tests {
     #[test]
     fn all_true() {
         let mut expr = PropFormula::And(
-            PropFormula::Atom(Prop::new("p")),
-            PropFormula::Atom(Prop::new("q")),
+            PropFormula::Atom(Prop::from("p")),
+            PropFormula::Atom(Prop::from("q")),
         );
         let atom_true = |_: &PropFormula| PropFormula::True;
         expr = on_atoms(&atom_true, &expr);
@@ -82,18 +104,18 @@ mod tests {
     #[test]
     fn uppercase() {
         let mut expr_lower = PropFormula::And(
-            PropFormula::Atom(Prop::new("p")),
-            PropFormula::Atom(Prop::new("q")),
+            PropFormula::Atom(Prop::from("p")),
+            PropFormula::Atom(Prop::from("q")),
         );
 
         let expr_upper = PropFormula::And(
-            PropFormula::Atom(Prop::new("P")),
-            PropFormula::Atom(Prop::new("Q")),
+            PropFormula::Atom(Prop::from("P")),
+            PropFormula::Atom(Prop::from("Q")),
         );
 
         let uppercase_pure = |fm: &PropFormula| -> Formula<Prop> {
             if let Formula::Atom { var } = &fm {
-                let prop = Prop::new(var.name().to_uppercase().as_str());
+                let prop = Prop::from(var.name().to_uppercase().as_str());
                 Formula::Atom(prop)
             } else {
                 fm.clone()
@@ -105,7 +127,7 @@ mod tests {
 
         let uppercase_mut = |fm: &mut PropFormula| {
             if let Formula::Atom { var } = fm {
-                let prop = Prop::new(var.name().to_uppercase().as_str());
+                let prop = Prop::from(var.name().to_uppercase().as_str());
                 *var = prop;
             }
         };
@@ -119,11 +141,22 @@ mod tests {
         let expr = parse_propositional_formula("(a | (c & d)) & b");
         let atom_union = expr.atoms();
         let atom_set = HashSet::from([
-            Prop::new("b"),
-            Prop::new("c"),
-            Prop::new("a"),
-            Prop::new("d"),
+            Prop::from("b"),
+            Prop::from("c"),
+            Prop::from("a"),
+            Prop::from("d"),
         ]);
         assert_eq!(atom_union, atom_set);
+    }
+
+    #[test]
+    fn substitution() {
+        let expr = parse_propositional_formula("p & q & p & q");
+        let s = parse_propositional_formula("p & q");
+        let expr_s = expr.substitute(&Prop::from("p"), &s);
+
+        let expected = parse_propositional_formula("(p & q) & q & (p & q) & q");
+
+        assert_eq!(expected, expr_s);
     }
 }
