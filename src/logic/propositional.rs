@@ -179,6 +179,33 @@ impl PropFormula {
         }
         println!("{:-<total_width$}", "");
     }
+
+    pub fn tautology(&self) -> bool {
+        let mut valuation = Valuation::from_prop_set(self.atoms());
+        for _ in 0..valuation.permutation_count() {
+            if !self.eval(&valuation) {
+                return false;
+            }
+            valuation.next_permutation_mut();
+        }
+        true
+    }
+
+    pub fn unsatisfiable(&self) -> bool {
+        let negated = PropFormula::Not(self.clone());
+        negated.tautology()
+    }
+
+    pub fn satisfiable(&self) -> bool {
+        let mut valuation = Valuation::from_prop_set(self.atoms());
+        for _ in 0..valuation.permutation_count() {
+            if self.eval(&valuation) {
+                return true;
+            }
+            valuation.next_permutation_mut();
+        }
+        false
+    }
 }
 
 #[cfg(test)]
@@ -229,5 +256,34 @@ mod tests {
 
         let expr = parse_propositional_formula("p and (q or r) iff (p or q) and (p or r)");
         assert!(!expr.on_all_valuations(&eval));
+    }
+
+    #[test]
+    fn tautologies() {
+        let a = parse_propositional_formula("p | ~p");
+        assert!(a.tautology());
+
+        let b = parse_propositional_formula("p | q ==> p");
+        assert!(!b.tautology());
+
+        let c = parse_propositional_formula("p | q => q | (p <=> q)");
+        assert!(!c.tautology());
+
+        let d = parse_propositional_formula("(p | q) & ~(p & q) ==> (~p <=> q)");
+        assert!(d.tautology());
+    }
+
+    #[test]
+    fn satisfiability() {
+        let a = parse_propositional_formula("p | ~p");
+        assert!(a.satisfiable());
+        assert!(!a.unsatisfiable());
+
+        let b = parse_propositional_formula("p | q ==> p");
+        assert!(b.satisfiable());
+        assert!(!b.unsatisfiable());
+
+        let c = parse_propositional_formula("p & ~p");
+        assert!(c.unsatisfiable())
     }
 }

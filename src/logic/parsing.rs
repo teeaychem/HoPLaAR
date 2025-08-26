@@ -209,7 +209,7 @@ fn parse_atom<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormul
         Some(Token::False) => PropFormula::False,
 
         Some(Token::Not) => {
-            let expr = parse_formula(tokens);
+            let expr = parse_atom(tokens);
             PropFormula::Not(expr)
         }
 
@@ -240,5 +240,28 @@ mod tests {
             parse,
             PropFormula::And(PropFormula::True, PropFormula::False)
         );
+    }
+
+    #[test]
+    fn less_simple() {
+        let expr = "p & q | r";
+        let parse = parse_propositional_formula(expr);
+        let expected = "((p ∧ q) ∨ r)";
+        assert_eq!(format!("{parse}"), expected);
+
+        let expr = "p & q <=> r";
+        let parse = parse_propositional_formula(expr);
+        let expected = "((p ∧ q) ↔ r)";
+        assert_eq!(format!("{parse}"), expected);
+
+        let expr = "~p & q <=> r";
+        let parse = parse_propositional_formula(expr);
+        let expected = "((¬(p) ∧ q) ↔ r)";
+        assert_eq!(format!("{parse}"), expected);
+
+        let expr = "~(p & q) <=> r";
+        let parse = parse_propositional_formula(expr);
+        let expected = "(¬((p ∧ q)) ↔ r)";
+        assert_eq!(format!("{parse}"), expected);
     }
 }
