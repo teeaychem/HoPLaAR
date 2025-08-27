@@ -1,7 +1,14 @@
-pub mod display;
+mod atoms;
+pub use atoms::on_atoms;
+
+mod display;
 pub mod iterators;
-pub mod parsing;
+
+mod parsing;
+pub use parsing::parse_propositional_formula;
+
 pub mod propositional;
+
 pub mod utils;
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
@@ -34,12 +41,12 @@ pub enum Formula<T: Atomic> {
         var: T,
     },
 
-    OpUnary {
+    Unary {
         op: OpUnary,
         expr: Box<Formula<T>>,
     },
 
-    OpBinary {
+    Binary {
         op: OpBinary,
         lhs: Box<Formula<T>>,
         rhs: Box<Formula<T>>,
@@ -55,14 +62,14 @@ pub enum Formula<T: Atomic> {
 #[allow(non_snake_case)]
 impl<T: Atomic> Formula<T> {
     pub fn Unary(op: OpUnary, expr: Formula<T>) -> Self {
-        Self::OpUnary {
+        Self::Unary {
             op,
             expr: Box::new(expr),
         }
     }
 
     pub fn Binary(op: OpBinary, lhs: Formula<T>, rhs: Formula<T>) -> Self {
-        Self::OpBinary {
+        Self::Binary {
             op,
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),

@@ -22,12 +22,12 @@ impl<'a, A: Atomic> Iterator for AtomIteratorD<'a, A> {
                 Some(var)
             }
 
-            Some(Formula::OpUnary { expr, .. }) => {
+            Some(Formula::Unary { expr, .. }) => {
                 self.expr = Some(expr);
                 self.next()
             }
 
-            Some(Formula::OpBinary { lhs, rhs, .. }) => {
+            Some(Formula::Binary { lhs, rhs, .. }) => {
                 self.stack.push(rhs);
                 self.expr = Some(lhs);
                 self.next()
@@ -63,7 +63,7 @@ impl<'a, T: Atomic> Iterator for AtomIteratorB<'a, T> {
                 Some(var)
             }
 
-            Some(Formula::OpUnary { expr, .. }) => match &**expr {
+            Some(Formula::Unary { expr, .. }) => match &**expr {
                 Formula::Atom { var } => {
                     self.expr = self.stack.pop_front();
                     Some(var)
@@ -74,7 +74,7 @@ impl<'a, T: Atomic> Iterator for AtomIteratorB<'a, T> {
                 }
             },
 
-            Some(Formula::OpBinary { lhs, rhs, .. }) => match (&**lhs, &**rhs) {
+            Some(Formula::Binary { lhs, rhs, .. }) => match (&**lhs, &**rhs) {
                 (Formula::Atom { var }, _) => {
                     self.expr = Some(rhs);
                     Some(var)

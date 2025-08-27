@@ -34,8 +34,8 @@ impl<A: Atomic> std::fmt::Display for Formula<A> {
             Formula::True => write!(f, "⊤"),
             Formula::False => write!(f, "⊥"),
             Formula::Atom { var } => write!(f, "{var}"),
-            Formula::OpUnary { op, expr } => write!(f, "{op}({expr})"),
-            Formula::OpBinary { op, lhs, rhs } => write!(f, "({lhs} {op} {rhs})"),
+            Formula::Unary { op, expr } => write!(f, "{op}({expr})"),
+            Formula::Binary { op, lhs, rhs } => write!(f, "({lhs} {op} {rhs})"),
             Formula::Quantifier { q, var: atom, expr } => write!(f, "{q}{atom}({expr})"),
         }
     }

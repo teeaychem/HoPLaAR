@@ -17,6 +17,7 @@ impl Expr {
                     _ => Add { lhs, rhs },
                 }
             }
+
             Mul { lhs, rhs } => {
                 //
                 match (lhs.as_ref(), rhs.as_ref()) {

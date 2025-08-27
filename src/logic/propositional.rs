@@ -124,11 +124,11 @@ pub fn eval(formula: &PropFormula, valuation: &Valuation) -> bool {
 
         Formula::Atom { var } => valuation.get(var),
 
-        Formula::OpUnary { op, expr } => match op {
+        Formula::Unary { op, expr } => match op {
             crate::logic::OpUnary::Not => !eval(expr, valuation),
         },
 
-        Formula::OpBinary { op, lhs, rhs } => match op {
+        Formula::Binary { op, lhs, rhs } => match op {
             crate::logic::OpBinary::And => lhs.eval(valuation) && rhs.eval(valuation),
             crate::logic::OpBinary::Or => lhs.eval(valuation) || rhs.eval(valuation),
             crate::logic::OpBinary::Imp => !lhs.eval(valuation) || rhs.eval(valuation),

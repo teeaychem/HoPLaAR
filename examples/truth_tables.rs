@@ -1,4 +1,4 @@
-use hoplaar::logic::parsing::parse_propositional_formula;
+use hoplaar::logic::parse_propositional_formula;
 
 fn main() {
     let expr = parse_propositional_formula("p /\\ q ==> q /\\ r");
@@ -11,7 +11,4 @@ fn main() {
 
     let expr = parse_propositional_formula("p /\\ ~p");
     expr.print_truth_table();
-
-
-
 }
