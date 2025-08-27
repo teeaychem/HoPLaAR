@@ -86,6 +86,49 @@ impl<A: Atomic> Formula<A> {
     }
 }
 
+impl<A: Atomic> Formula<A> {
+    pub fn is_literal(&self) -> bool {
+        match self {
+            Formula::Atom { .. } => true,
+
+            Formula::Unary { op, expr } => {
+                op == &OpUnary::Not && matches!(expr.as_ref(), Formula::Atom { .. })
+            }
+
+            _ => false,
+        }
+    }
+
+    pub fn is_positive_literal(&self) -> bool {
+        matches!(self, Formula::Atom { .. })
+    }
+
+    pub fn is_negative_literal(&self) -> bool {
+        match &self {
+            Formula::Unary { op, expr } => op == &OpUnary::Not && expr.is_positive_literal(),
+
+            _ => false,
+        }
+    }
+
+    pub fn negate(self) -> Self {
+        match self {
+            Formula::True => Formula::False,
+            Formula::False => Formula::True,
+
+            Formula::Atom { .. } => Formula::Not(self),
+
+            Formula::Unary { op, expr } => match op {
+                OpUnary::Not => *expr,
+            },
+
+            Formula::Binary { .. } => Formula::Not(self),
+
+            Formula::Quantifier { .. } => todo!(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::logic::{parsing::parse_propositional_formula, propositional::Valuation};
@@ -115,5 +158,32 @@ mod tests {
         let expected = parse_propositional_formula("true");
 
         assert_eq!(expr.simplify(), expected);
+    }
+
+    #[test]
+    fn literals() {
+        let p = parse_propositional_formula("p");
+
+        assert!(p.is_literal());
+        assert!(p.is_positive_literal());
+        assert!(!p.is_negative_literal());
+
+        let pq = parse_propositional_formula("p & q");
+        assert!(!pq.is_literal());
+        assert!(!pq.is_positive_literal());
+        assert!(!pq.is_negative_literal());
+    }
+
+    #[test]
+    fn negate() {
+        let p = parse_propositional_formula("p");
+        let n = parse_propositional_formula("~p");
+
+        assert_eq!(n.negate(), p);
+
+        let p = parse_propositional_formula("p & q");
+        let n = parse_propositional_formula("~(p & q)");
+
+        assert_eq!(n.negate(), p);
     }
 }
