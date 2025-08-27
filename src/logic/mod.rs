@@ -4,6 +4,8 @@ pub use atoms::on_atoms;
 mod display;
 pub mod iterators;
 
+mod normal_form;
+
 mod parsing;
 pub use parsing::parse_propositional_formula;
 
