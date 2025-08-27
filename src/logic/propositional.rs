@@ -33,7 +33,7 @@ pub type PropFormula = Formula<Prop>;
 
 #[derive(Clone, Default, Debug)]
 pub struct Valuation {
-    values: Vec<bool>,
+    assignment: Vec<(Prop, bool)>,
     map: HashMap<Prop, usize>,
 }
 
@@ -61,33 +61,23 @@ impl Valuation {
         }
         valuation
     }
-
-    pub fn inverted(&self) -> Valuation {
-        let mut inverted = self.to_owned();
-
-        for value in inverted.values.iter_mut() {
-            *value = !*value;
-        }
-
-        inverted
-    }
 }
 
 impl Valuation {
     pub fn extend(&mut self, prop: Prop, val: bool) {
-        self.map.insert(prop, self.values.len());
-        self.values.push(val);
+        self.map.insert(prop.clone(), self.assignment.len());
+        self.assignment.push((prop.clone(), val));
     }
 
     pub fn get(&self, prop: &Prop) -> bool {
-        self.values[self.map[prop]]
+        self.assignment[self.map[prop]].1
     }
 
     // Views the valuation as a base two int and increments by one.
     //
     // Strictly, as a reversed base two int, as the bits are bumped from the left.
     pub fn next_permutation_mut(&mut self) {
-        for val in self.values.iter_mut() {
+        for (_, val) in self.assignment.iter_mut() {
             match val {
                 true => *val = false,
                 false => {
@@ -99,7 +89,7 @@ impl Valuation {
     }
 
     pub fn size(&self) -> usize {
-        self.values.len()
+        self.assignment.len()
     }
 
     pub fn permutation_count(&self) -> usize {
@@ -110,12 +100,23 @@ impl Valuation {
         )
     }
 
-    pub fn atoms(&self) -> impl Iterator<Item = &Prop> {
-        self.map.keys()
+    pub fn assignment(&self) -> &[(Prop, bool)] {
+        &self.assignment
     }
 
     pub fn map(&self) -> &HashMap<Prop, usize> {
         &self.map
+    }
+
+    pub fn invert(mut self) -> Valuation {
+        for (_, value) in self.assignment.iter_mut() {
+            *value = !*value;
+        }
+        self
+    }
+
+    pub fn inverted(&self) -> Valuation {
+        self.clone().invert()
     }
 }
 
@@ -164,23 +165,21 @@ impl PropFormula {
 
         let mut valuation = Valuation::from_prop_set(self.atoms());
 
-        let spacing = 2 + valuation
-            .atoms()
-            .fold(7, |a, n| std::cmp::max(a, n.name().len()));
+        let spacing = 1 + valuation
+            .assignment()
+            .iter()
+            .fold(7, |a, (n, _)| std::cmp::max(a, n.name().len()));
         let total_width = spacing * (valuation.size() + 1);
 
-        let mut atoms = valuation.map().iter().collect::<Vec<_>>();
-        atoms.sort_by(|(_, a), (_, b)| a.cmp(b));
-
-        for (atom, _) in atoms {
-            let _ = write!(table, "{name:width$}", width = spacing, name = atom.name());
+        for (prop, _) in valuation.assignment() {
+            let _ = write!(table, "{name:width$}", width = spacing, name = prop.name());
         }
 
         let _ = writeln!(table, "| {eval:width$}", width = spacing, eval = "formula");
         let _ = writeln!(table, "{:-<total_width$}", "");
 
         for _ in 0..valuation.permutation_count() {
-            for value in &valuation.values {
+            for (_, value) in &valuation.assignment {
                 let _ = write!(table, "{value:width$}", width = spacing);
             }
             let _ = writeln!(
