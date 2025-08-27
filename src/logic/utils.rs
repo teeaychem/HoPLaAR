@@ -24,7 +24,7 @@ impl<A: Atomic> Formula<A> {
 
     // Applies a single instance of simplification to `self`
     pub fn simplify_once(mut self) -> Self {
-        use {Formula::*, OpBinary::*, OpUnary::*};
+        use {Formula::*, OpBinary::*, OpUnary::*, std::mem::take};
         // The internals are a little complex as the formula should only be changed when simplification occurs
         // So, the formula is borrowed for initial matches.
         // And, when some simplification occurs the enclosed expression is taken and the outer expression discarded.
@@ -37,7 +37,7 @@ impl<A: Atomic> Formula<A> {
                     False => True,
 
                     Unary { op, expr } => match op {
-                        Not => std::mem::take(expr),
+                        Not => take(expr),
                     },
 
                     _ => self,
@@ -47,27 +47,27 @@ impl<A: Atomic> Formula<A> {
             Binary { op, lhs, rhs } => match op {
                 And => match (lhs.as_mut(), rhs.as_mut()) {
                     (False, _) | (_, False) => False,
-                    (True, expr) | (expr, True) => std::mem::take(expr),
+                    (True, expr) | (expr, True) => take(expr),
                     _ => self,
                 },
 
                 Or => match (lhs.as_mut(), rhs.as_mut()) {
                     (True, _) | (_, True) => True,
-                    (False, expr) | (expr, False) => std::mem::take(expr),
+                    (False, expr) | (expr, False) => take(expr),
                     _ => self,
                 },
 
                 Imp => match (lhs.as_mut(), rhs.as_mut()) {
                     (False, _) | (_, True) => True,
-                    (True, expr) => std::mem::take(expr),
+                    (True, expr) => take(expr),
                     (expr, False) => Formula::Not(expr.clone()),
 
                     _ => self,
                 },
 
                 Iff => match (lhs.as_mut(), rhs.as_mut()) {
-                    (expr, True) | (True, expr) => std::mem::take(expr),
-                    (expr, False) | (False, expr) => Formula::Not(std::mem::take(expr)),
+                    (expr, True) | (True, expr) => take(expr),
+                    (expr, False) | (False, expr) => Formula::Not(take(expr)),
                     _ => self,
                 },
             },
@@ -145,7 +145,7 @@ impl<A: Atomic> std::ops::Not for Formula<A> {
 
 impl<A: Atomic> Formula<A> {
     pub fn distribute(mut self) -> Self {
-        use {Formula::*, OpBinary::*};
+        use {Formula::*, OpBinary::*, std::mem::take};
 
         match &mut self {
             Binary {
@@ -154,25 +154,39 @@ impl<A: Atomic> Formula<A> {
                 rhs: b,
             } => match (a.as_mut(), b.as_mut()) {
                 (_, Binary { op: Or, lhs, rhs }) => {
-                    let a = *std::mem::take(a);
+                    let a = *take(a);
 
-                    let lhs = Formula::And(a.clone(), *std::mem::take(lhs));
-                    let rhs = Formula::And(a, *std::mem::take(rhs));
+                    let lhs = Formula::And(a.clone(), *take(lhs));
+                    let rhs = Formula::And(a, *take(rhs));
 
                     Formula::Or(lhs.distribute(), rhs.distribute())
                 }
 
                 (Binary { op: Or, lhs, rhs }, _) => {
-                    let b = *std::mem::take(b);
+                    let b = *take(b);
 
-                    let lhs = Formula::And(*std::mem::take(lhs), b.clone());
-                    let rhs = Formula::And(*std::mem::take(rhs), b);
+                    let lhs = Formula::And(*take(lhs), b.clone());
+                    let rhs = Formula::And(*take(rhs), b);
 
                     Formula::Or(lhs.distribute(), rhs.distribute())
                 }
 
-                _ => todo!(),
+                _ => self,
             },
+
+            _ => self,
+        }
+    }
+
+    pub fn raw_dnf(mut self) -> Self {
+        use {Formula::*, OpBinary::*, std::mem::take};
+
+        match &mut self {
+            Binary { op: And, lhs, rhs } => {
+                Formula::And(take(lhs).raw_dnf(), take(rhs).raw_dnf()).distribute()
+            }
+
+            Binary { op: Or, lhs, rhs } => Formula::Or(take(lhs).raw_dnf(), take(rhs).raw_dnf()),
 
             _ => self,
         }
@@ -181,7 +195,7 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{parsing::parse_propositional_formula, propositional::Valuation};
+    use crate::logic::{Formula, parsing::parse_propositional_formula, propositional::Valuation};
 
     #[test]
     fn duals() {
@@ -246,5 +260,13 @@ mod tests {
         let pqr = parse_propositional_formula("(p | q) & r");
         let expected = parse_propositional_formula("(p & r) | (q & r)");
         assert_eq!(pqr.distribute(), expected);
+    }
+
+    #[test]
+    fn raw_dnf() {
+        let expr = parse_propositional_formula("(p | q & r) & (~p | ~r)");
+        let expected =
+            parse_propositional_formula("(p & ~p | (q & r) & ~p) | p & ~r | (q & r) & ~r");
+        assert!(Formula::Iff(expr.raw_dnf(), expected).tautology());
     }
 }
