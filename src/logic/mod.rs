@@ -61,6 +61,7 @@ pub enum Formula<T: Atomic> {
     },
 }
 
+#[allow(clippy::derivable_impls)]
 impl<A: Atomic> Default for Formula<A> {
     fn default() -> Self {
         Formula::False

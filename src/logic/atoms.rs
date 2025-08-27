@@ -2,51 +2,34 @@ use std::collections::HashSet;
 
 use crate::logic::{Atomic, Formula};
 
-pub fn on_atoms<F, A>(f: &F, fm: &Formula<A>) -> Formula<A>
+pub fn on_atoms<F, A>(f: &F, fm: Formula<A>) -> Formula<A>
 where
-    F: Fn(&Formula<A>) -> Formula<A>,
+    F: Fn(Formula<A>) -> Formula<A>,
     A: Atomic,
 {
     fm.on_atoms(f)
 }
-impl<A: Atomic> Formula<A> {
-    pub fn on_atoms<F: Fn(&Formula<A>) -> Formula<A>>(&self, f: &F) -> Formula<A> {
-        match self {
-            Formula::True => Formula::True,
 
-            Formula::False => Formula::False,
+impl<A: Atomic> Formula<A> {
+    pub fn on_atoms<F>(mut self, f: &F) -> Self
+    where
+        F: Fn(Formula<A>) -> Formula<A>,
+    {
+        match &mut self {
+            Formula::True | Formula::False => self,
 
             Formula::Atom { .. } => f(self),
 
-            Formula::Unary { op, expr } => Formula::Unary(*op, expr.on_atoms(f)),
+            Formula::Unary { op, expr } => Formula::Unary(*op, std::mem::take(expr).on_atoms(f)),
 
-            Formula::Binary { op, lhs, rhs } => {
-                Formula::Binary(*op, lhs.on_atoms(f), rhs.on_atoms(f))
-            }
+            Formula::Binary { op, lhs, rhs } => Formula::Binary(
+                *op,
+                std::mem::take(lhs).on_atoms(f),
+                std::mem::take(rhs).on_atoms(f),
+            ),
 
             Formula::Quantifier { q, var, expr } => {
-                Formula::Quantifier(*q, var.clone(), expr.on_atoms(f))
-            }
-        }
-    }
-
-    pub fn on_atoms_mut<F: Fn(&mut Formula<A>)>(&mut self, f: &F) {
-        match self {
-            Formula::True | Formula::False => {}
-
-            Formula::Atom { .. } => f(self),
-
-            Formula::Unary { expr, .. } => {
-                expr.on_atoms_mut(f);
-            }
-
-            Formula::Binary { lhs, rhs, .. } => {
-                lhs.on_atoms_mut(f);
-                rhs.on_atoms_mut(f);
-            }
-
-            Formula::Quantifier { expr, .. } => {
-                expr.on_atoms_mut(f);
+                Formula::Quantifier(*q, var.to_owned(), std::mem::take(expr).on_atoms(f))
             }
         }
     }
@@ -55,25 +38,29 @@ impl<A: Atomic> Formula<A> {
         self.atoms_d().cloned().collect()
     }
 
-    pub fn substitute(&self, atom: &A, formula: &Formula<A>) -> Formula<A> {
-        match self {
-            Formula::True | Formula::False => self.clone(),
+    pub fn substitute(mut self, atom: &A, fm: &Formula<A>) -> Formula<A> {
+        match &mut self {
+            Formula::True | Formula::False => self,
             Formula::Atom { var } => {
                 if var == atom {
-                    formula.to_owned()
+                    fm.to_owned()
                 } else {
-                    self.clone()
+                    self
                 }
             }
-            Formula::Unary { op, expr } => Formula::Unary(*op, expr.substitute(atom, formula)),
+            Formula::Unary { op, expr } => {
+                Formula::Unary(*op, std::mem::take(expr).substitute(atom, fm))
+            }
             Formula::Binary { op, lhs, rhs } => Formula::Binary(
                 *op,
-                lhs.substitute(atom, formula),
-                rhs.substitute(atom, formula),
+                std::mem::take(lhs).substitute(atom, fm),
+                std::mem::take(rhs).substitute(atom, fm),
             ),
-            Formula::Quantifier { q, var, expr } => {
-                Formula::Quantifier(*q, var.to_owned(), expr.substitute(atom, formula))
-            }
+            Formula::Quantifier { q, var, expr } => Formula::Quantifier(
+                *q,
+                var.to_owned(),
+                std::mem::take(expr).substitute(atom, fm),
+            ),
         }
     }
 }
@@ -95,14 +82,14 @@ mod tests {
             PropFormula::Atom(Prop::from("p")),
             PropFormula::Atom(Prop::from("q")),
         );
-        let atom_true = |_: &PropFormula| PropFormula::True;
-        expr = on_atoms(&atom_true, &expr);
+        let atom_true = |_: PropFormula| PropFormula::True;
+        expr = on_atoms(&atom_true, expr);
         assert_eq!(expr, PropFormula::And(PropFormula::True, PropFormula::True))
     }
 
     #[test]
     fn uppercase() {
-        let mut expr_lower = PropFormula::And(
+        let expr_lower = PropFormula::And(
             PropFormula::Atom(Prop::from("p")),
             PropFormula::Atom(Prop::from("q")),
         );
@@ -112,26 +99,15 @@ mod tests {
             PropFormula::Atom(Prop::from("Q")),
         );
 
-        let uppercase_pure = |fm: &PropFormula| -> Formula<Prop> {
-            if let Formula::Atom { var } = &fm {
-                let prop = Prop::from(var.name().to_uppercase().as_str());
-                Formula::Atom(prop)
-            } else {
-                fm.clone()
-            }
-        };
-
-        let expr_upper_pure = on_atoms(&uppercase_pure, &expr_lower);
-        assert_eq!(expr_upper_pure, expr_upper);
-
-        let uppercase_mut = |fm: &mut PropFormula| {
+        let uppercase_mut = |fm: PropFormula| -> PropFormula {
             if let Formula::Atom { var } = fm {
-                let prop = Prop::from(var.name().to_uppercase().as_str());
-                *var = prop;
+                Formula::Atom(Prop::from(var.name().to_uppercase().as_str()))
+            } else {
+                fm
             }
         };
 
-        expr_lower.on_atoms_mut(&uppercase_mut);
+        let expr_lower = expr_lower.on_atoms(&uppercase_mut);
         assert_eq!(expr_lower, expr_upper);
     }
 
