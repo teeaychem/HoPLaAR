@@ -22,7 +22,7 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    pub fn simplify1(self) -> Self {
+    pub fn simplify_once(self) -> Self {
         use {Formula::*, OpBinary::*, OpUnary::*};
 
         match &self {
@@ -74,9 +74,9 @@ impl<A: Atomic> Formula<A> {
 
     pub fn simplify(self) -> Self {
         match self {
-            Formula::Unary { op, expr } => Formula::Unary(op, expr.simplify()).simplify1(),
+            Formula::Unary { op, expr } => Formula::Unary(op, expr.simplify()).simplify_once(),
             Formula::Binary { op, lhs, rhs } => {
-                Formula::Binary(op, lhs.simplify(), rhs.simplify()).simplify1()
+                Formula::Binary(op, lhs.simplify(), rhs.simplify()).simplify_once()
             }
 
             Formula::Quantifier { .. } => todo!(),

@@ -1,9 +1,9 @@
 use crate::arithmetic::Expr;
 
 impl Expr {
-    pub fn simplify1(self) -> Self {
+    pub fn simplify_once(self) -> Self {
         use super::Expr::*;
-        match self {
+        match &self {
             Var { .. } => self,
 
             Const { .. } => self,
@@ -12,9 +12,9 @@ impl Expr {
                 //
                 match (lhs.as_ref(), rhs.as_ref()) {
                     (Const { val: m }, Const { val: n }) => Const { val: m + n },
-                    (Const { val: 0 }, _) => *rhs,
-                    (_, Const { val: 0 }) => *lhs,
-                    _ => Add { lhs, rhs },
+                    (Const { val: 0 }, _) => *rhs.clone(),
+                    (_, Const { val: 0 }) => *lhs.clone(),
+                    _ => self,
                 }
             }
 
@@ -24,12 +24,12 @@ impl Expr {
                     (Const { val: m }, Const { val: n }) => Const { val: m * n },
 
                     (Const { val: 0 }, _) => Const { val: 0 },
-                    (Const { val: 1 }, _) => *rhs,
+                    (Const { val: 1 }, _) => *rhs.clone(),
 
                     (_, Const { val: 0 }) => Const { val: 0 },
-                    (_, Const { val: 1 }) => *lhs,
+                    (_, Const { val: 1 }) => *lhs.clone(),
 
-                    _ => Mul { lhs, rhs },
+                    _ => self,
                 }
             }
         }
@@ -37,18 +37,20 @@ impl Expr {
 
     pub fn simplify(self) -> Self {
         use super::Expr::*;
+
         match self {
             Add { lhs, rhs } => Add {
                 lhs: Box::new(lhs.simplify()),
                 rhs: Box::new(rhs.simplify()),
             }
-            .simplify1(),
+            .simplify_once(),
             Mul { lhs, rhs } => Mul {
                 lhs: Box::new(lhs.simplify()),
                 rhs: Box::new(rhs.simplify()),
             }
-            .simplify1(),
-            _ => self.simplify1(),
+            .simplify_once(),
+
+            _ => self,
         }
     }
 }
