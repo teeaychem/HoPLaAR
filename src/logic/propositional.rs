@@ -159,6 +159,7 @@ impl Valuation {
     }
 }
 
+
 pub fn eval(formula: &PropFormula, valuation: &Valuation) -> bool {
     match formula {
         Formula::True => true,
@@ -260,6 +261,23 @@ impl PropFormula {
         }
         false
     }
+
+    pub fn dnf(&self) -> PropFormula {
+        let mut formula = PropFormula::False;
+
+        let mut valuation = Valuation::from_prop_set(self.atoms());
+        for _ in 0..valuation.permutation_count() {
+            if self.eval(&valuation) {
+                match formula {
+                    PropFormula::False => formula = valuation.as_formula(),
+                    _ => formula = PropFormula::Or(formula, valuation.as_formula()),
+                };
+            }
+            valuation.next_permutation_mut();
+        }
+
+        formula
+    }
 }
 
 #[cfg(test)]
@@ -267,7 +285,7 @@ mod tests {
 
     use crate::logic::{
         parsing::parse_propositional_formula,
-        propositional::{Prop, Valuation, eval},
+        propositional::{Prop, PropFormula, Valuation, eval},
     };
 
     #[test]
@@ -358,5 +376,12 @@ mod tests {
         let expr = parse_propositional_formula("a & ~b & c & d");
 
         assert_eq!(valuation.as_formula(), expr);
+    }
+
+    #[test]
+    fn cnf() {
+        let expr = parse_propositional_formula("(p | q & r) & (~p | ~r)");
+
+        assert!(PropFormula::Iff(expr.clone(), expr.dnf()).tautology());
     }
 }
