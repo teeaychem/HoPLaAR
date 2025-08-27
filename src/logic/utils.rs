@@ -143,6 +143,42 @@ impl<A: Atomic> std::ops::Not for Formula<A> {
     }
 }
 
+impl<A: Atomic> Formula<A> {
+    pub fn distribute(mut self) -> Self {
+        use {Formula::*, OpBinary::*};
+
+        match &mut self {
+            Binary {
+                op: And,
+                lhs: a,
+                rhs: b,
+            } => match (a.as_mut(), b.as_mut()) {
+                (_, Binary { op: Or, lhs, rhs }) => {
+                    let a = *std::mem::take(a);
+
+                    let lhs = Formula::And(a.clone(), *std::mem::take(lhs));
+                    let rhs = Formula::And(a, *std::mem::take(rhs));
+
+                    Formula::Or(lhs.distribute(), rhs.distribute())
+                }
+
+                (Binary { op: Or, lhs, rhs }, _) => {
+                    let b = *std::mem::take(b);
+
+                    let lhs = Formula::And(*std::mem::take(lhs), b.clone());
+                    let rhs = Formula::And(*std::mem::take(rhs), b);
+
+                    Formula::Or(lhs.distribute(), rhs.distribute())
+                }
+
+                _ => todo!(),
+            },
+
+            _ => self,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::logic::{parsing::parse_propositional_formula, propositional::Valuation};
@@ -199,5 +235,16 @@ mod tests {
         let n = parse_propositional_formula("~(p & q)");
 
         assert_eq!(n.negate(), p);
+    }
+
+    #[test]
+    fn distribution() {
+        let pqr = parse_propositional_formula("p & (q | r)");
+        let expected = parse_propositional_formula("(p & q) | (p & r)");
+        assert_eq!(pqr.distribute(), expected);
+
+        let pqr = parse_propositional_formula("(p | q) & r");
+        let expected = parse_propositional_formula("(p & r) | (q & r)");
+        assert_eq!(pqr.distribute(), expected);
     }
 }
