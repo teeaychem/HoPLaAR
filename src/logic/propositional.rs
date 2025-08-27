@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Write,
+};
 
 use crate::logic::{Atomic, Formula};
 
@@ -156,7 +159,9 @@ impl PropFormula {
         true
     }
 
-    pub fn print_truth_table(&self) {
+    pub fn truth_table(&self) -> String {
+        let mut table = String::default();
+
         let mut valuation = Valuation::from_prop_set(self.atoms());
 
         let spacing = 2 + valuation
@@ -167,27 +172,28 @@ impl PropFormula {
         let mut atoms = valuation.map().iter().collect::<Vec<_>>();
         atoms.sort_by(|(_, a), (_, b)| a.cmp(b));
 
-        println!("{self}");
-
         for (atom, _) in atoms {
-            print!("{name:width$}", width = spacing, name = atom.name());
+            let _ = write!(table, "{name:width$}", width = spacing, name = atom.name());
         }
 
-        println!("| {eval:width$}", width = spacing, eval = "formula");
-        println!("{:-<total_width$}", "");
+        let _ = writeln!(table, "| {eval:width$}", width = spacing, eval = "formula");
+        let _ = writeln!(table, "{:-<total_width$}", "");
 
         for _ in 0..valuation.permutation_count() {
             for value in &valuation.values {
-                print!("{value:width$}", width = spacing);
+                let _ = write!(table, "{value:width$}", width = spacing);
             }
-            println!(
+            let _ = writeln!(
+                table,
                 "| {eval:width$}",
                 width = spacing,
                 eval = self.eval(&valuation)
             );
             valuation.next_permutation_mut();
         }
-        println!("{:-<total_width$}", "");
+        let _ = writeln!(table, "{:-<total_width$}", "");
+
+        table
     }
 
     pub fn tautology(&self) -> bool {
