@@ -1,11 +1,11 @@
 use crate::logic::{Atomic, Formula, OpBinary, OpUnary};
 
 impl<A: Atomic> Formula<A> {
-    fn nnf_inner(&self) -> Self {
+    fn nnf_inner(self) -> Self {
         use {Formula::*, OpBinary::*, OpUnary::*};
 
         match self {
-            Unary { op, expr } => match op {
+            Unary { op, ref expr } => match op {
                 Not => match expr.as_ref() {
                     Unary { op, expr } => match op {
                         Not => expr.nnf(),
@@ -24,16 +24,16 @@ impl<A: Atomic> Formula<A> {
 
                     Quantifier { .. } => todo!(),
 
-                    _ => self.clone(),
+                    _ => self,
                 },
             },
             Binary { op, lhs, rhs } => match op {
                 And => Formula::And(lhs.nnf(), rhs.nnf()),
                 Or => Formula::Or(lhs.nnf(), rhs.nnf()),
-                Imp => Formula::Or(lhs.clone().negate().nnf(), rhs.nnf()),
+                Imp => Formula::Or(lhs.negate().nnf(), rhs.nnf()),
                 Iff => {
                     let a = Formula::And(lhs.nnf(), rhs.nnf());
-                    let b = Formula::And(lhs.clone().negate().nnf(), rhs.clone().negate().nnf());
+                    let b = Formula::And(lhs.negate().nnf(), rhs.negate().nnf());
                     Formula::Or(a, b)
                 }
             },

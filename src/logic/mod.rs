@@ -61,16 +61,22 @@ pub enum Formula<T: Atomic> {
     },
 }
 
+impl<A: Atomic> Default for Formula<A> {
+    fn default() -> Self {
+        Formula::False
+    }
+}
+
 #[allow(non_snake_case)]
-impl<T: Atomic> Formula<T> {
-    pub fn Unary(op: OpUnary, expr: Formula<T>) -> Self {
+impl<A: Atomic> Formula<A> {
+    pub fn Unary(op: OpUnary, expr: Formula<A>) -> Self {
         Self::Unary {
             op,
             expr: Box::new(expr),
         }
     }
 
-    pub fn Binary(op: OpBinary, lhs: Formula<T>, rhs: Formula<T>) -> Self {
+    pub fn Binary(op: OpBinary, lhs: Formula<A>, rhs: Formula<A>) -> Self {
         Self::Binary {
             op,
             lhs: Box::new(lhs),
@@ -78,7 +84,7 @@ impl<T: Atomic> Formula<T> {
         }
     }
 
-    pub fn Quantifier(q: Quantifier, var: T, expr: Formula<T>) -> Self {
+    pub fn Quantifier(q: Quantifier, var: A, expr: Formula<A>) -> Self {
         Self::Quantifier {
             q,
             var,

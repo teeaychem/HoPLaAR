@@ -1,11 +1,11 @@
 use crate::logic::{Atomic, Formula, OpBinary, OpUnary, Quantifier};
 
 impl<A: Atomic> Formula<A> {
-    pub fn dual(&self) -> Formula<A> {
+    pub fn dual(self) -> Formula<A> {
         match self {
             Formula::True => Formula::False,
             Formula::False => Formula::True,
-            Formula::Atom { .. } => self.to_owned(),
+            Formula::Atom { .. } => self,
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => Formula::Not(expr.dual()),
             },
@@ -16,52 +16,58 @@ impl<A: Atomic> Formula<A> {
                 OpBinary::Iff => panic!("Dual of Iff"),
             },
             Formula::Quantifier { q, var, expr } => match q {
-                Quantifier::ForAll => Formula::Exists(var.to_owned(), expr.dual()),
-                Quantifier::Exists => Formula::ForAll(var.to_owned(), expr.dual()),
+                Quantifier::ForAll => Formula::Exists(var, expr.dual()),
+                Quantifier::Exists => Formula::ForAll(var, expr.dual()),
             },
         }
     }
 
-    pub fn simplify_once(self) -> Self {
+    // Applies a single instance of simplification to `self`
+    pub fn simplify_once(mut self) -> Self {
         use {Formula::*, OpBinary::*, OpUnary::*};
+        // The internals are a little complex as the formula should only be changed when simplification occurs
+        // So, the formula is borrowed for initial matches.
+        // And, when some simplification occurs the enclosed expression is taken and the outer expression discarded.
+        // To do this, self must be mutable, along with all borrows.
 
-        match &self {
+        match &mut self {
             Unary { op, expr } => match op {
-                Not => match expr.as_ref() {
+                Not => match expr.as_mut() {
                     True => False,
                     False => True,
 
                     Unary { op, expr } => match op {
-                        Not => *expr.clone(),
+                        Not => std::mem::take(expr),
                     },
+
                     _ => self,
                 },
             },
 
             Binary { op, lhs, rhs } => match op {
-                And => match (lhs.as_ref(), rhs.as_ref()) {
+                And => match (lhs.as_mut(), rhs.as_mut()) {
                     (False, _) | (_, False) => False,
-                    (True, expr) | (expr, True) => expr.clone(),
+                    (True, expr) | (expr, True) => std::mem::take(expr),
                     _ => self,
                 },
 
-                Or => match (lhs.as_ref(), rhs.as_ref()) {
+                Or => match (lhs.as_mut(), rhs.as_mut()) {
                     (True, _) | (_, True) => True,
-                    (False, expr) | (expr, False) => expr.clone(),
+                    (False, expr) | (expr, False) => std::mem::take(expr),
                     _ => self,
                 },
 
-                Imp => match (lhs.as_ref(), rhs.as_ref()) {
+                Imp => match (lhs.as_mut(), rhs.as_mut()) {
                     (False, _) | (_, True) => True,
-                    (True, expr) => expr.clone(),
+                    (True, expr) => std::mem::take(expr),
                     (expr, False) => Formula::Not(expr.clone()),
 
                     _ => self,
                 },
 
-                Iff => match (lhs.as_ref(), rhs.as_ref()) {
-                    (expr, True) | (True, expr) => expr.clone(),
-                    (expr, False) | (False, expr) => Formula::Not(expr.clone()),
+                Iff => match (lhs.as_mut(), rhs.as_mut()) {
+                    (expr, True) | (True, expr) => std::mem::take(expr),
+                    (expr, False) | (False, expr) => Formula::Not(std::mem::take(expr)),
                     _ => self,
                 },
             },
