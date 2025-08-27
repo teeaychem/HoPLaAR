@@ -112,6 +112,14 @@ impl<A: Atomic> Formula<A> {
     }
 
     pub fn negate(self) -> Self {
+        !self
+    }
+}
+
+impl<A: Atomic> std::ops::Not for Formula<A> {
+    type Output = Formula<A>;
+
+    fn not(self) -> Self::Output {
         match self {
             Formula::True => Formula::False,
             Formula::False => Formula::True,
