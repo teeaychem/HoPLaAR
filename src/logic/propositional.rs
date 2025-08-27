@@ -73,6 +73,10 @@ impl Valuation {
         self.assignment[self.map[prop]].1
     }
 
+    pub fn set(&mut self, prop: &Prop, value: bool) {
+        self.assignment[self.map[prop]].1 = value
+    }
+
     // Views the valuation as a base two int and increments by one.
     //
     // Strictly, as a reversed base two int, as the bits are bumped from the left.
@@ -108,15 +112,50 @@ impl Valuation {
         &self.map
     }
 
-    pub fn invert(mut self) -> Valuation {
+    pub fn invert(&mut self) {
         for (_, value) in self.assignment.iter_mut() {
             *value = !*value;
         }
-        self
     }
 
     pub fn inverted(&self) -> Valuation {
-        self.clone().invert()
+        let mut inverted = self.clone();
+        inverted.invert();
+        inverted
+    }
+
+    pub fn as_formula(&self) -> PropFormula {
+        // In reverse so the constructed formula matches an equivalent parse without parens.
+        let mut assignment = self.assignment.iter().rev();
+
+        // An initial match to avoid top as the first conjunct.
+        match assignment.next() {
+            None => PropFormula::True,
+
+            Some((prop, val)) => {
+                let atom = PropFormula::Atom(prop.clone());
+
+                let literal = match val {
+                    true => atom,
+                    false => PropFormula::Not(atom),
+                };
+
+                let mut formula = literal;
+
+                #[allow(clippy::while_let_on_iterator)]
+                while let Some((prop, val)) = assignment.next() {
+                    let atom = PropFormula::Atom(prop.clone());
+                    let literal = match val {
+                        true => atom,
+                        false => PropFormula::Not(atom),
+                    };
+
+                    formula = PropFormula::And(literal, formula)
+                }
+
+                formula
+            }
+        }
     }
 }
 
@@ -300,5 +339,24 @@ mod tests {
 
         let c = parse_propositional_formula("p & ~p");
         assert!(c.unsatisfiable())
+    }
+
+    #[test]
+    fn as_formula() {
+        let mut valuation = Valuation::from_names(["a", "b", "c", "d"]);
+
+        let expr = parse_propositional_formula("~a & ~b & ~c & ~d");
+
+        assert_eq!(valuation.as_formula(), expr);
+
+        valuation.set(&Prop::from("b"), true);
+        let expr = parse_propositional_formula("~a & b & ~c & ~d");
+
+        assert_eq!(valuation.as_formula(), expr);
+
+        valuation.invert();
+        let expr = parse_propositional_formula("a & ~b & c & d");
+
+        assert_eq!(valuation.as_formula(), expr);
     }
 }
