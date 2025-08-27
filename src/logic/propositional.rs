@@ -3,7 +3,7 @@ use std::{
     fmt::Write,
 };
 
-use crate::logic::{Atomic, Formula};
+use crate::logic::{Atomic, Formula, OpBinary, OpUnary};
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq)]
 pub struct Prop {
@@ -128,14 +128,14 @@ pub fn eval(formula: &PropFormula, valuation: &Valuation) -> bool {
         Formula::Atom { var } => valuation.get(var),
 
         Formula::Unary { op, expr } => match op {
-            crate::logic::OpUnary::Not => !eval(expr, valuation),
+            OpUnary::Not => !eval(expr, valuation),
         },
 
         Formula::Binary { op, lhs, rhs } => match op {
-            crate::logic::OpBinary::And => lhs.eval(valuation) && rhs.eval(valuation),
-            crate::logic::OpBinary::Or => lhs.eval(valuation) || rhs.eval(valuation),
-            crate::logic::OpBinary::Imp => !lhs.eval(valuation) || rhs.eval(valuation),
-            crate::logic::OpBinary::Iff => lhs.eval(valuation) == rhs.eval(valuation),
+            OpBinary::And => lhs.eval(valuation) && rhs.eval(valuation),
+            OpBinary::Or => lhs.eval(valuation) || rhs.eval(valuation),
+            OpBinary::Imp => !lhs.eval(valuation) || rhs.eval(valuation),
+            OpBinary::Iff => lhs.eval(valuation) == rhs.eval(valuation),
         },
 
         Formula::Quantifier { .. } => todo!(),
