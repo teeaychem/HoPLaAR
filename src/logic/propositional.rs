@@ -5,7 +5,7 @@ use std::{
 
 use crate::logic::{Atomic, Formula, OpBinary, OpUnary};
 
-#[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Prop {
     name: String,
 }

@@ -1,7 +1,10 @@
 mod atoms;
+
 pub use atoms::on_atoms;
 
 mod display;
+
+pub mod formula_set;
 pub mod iterators;
 
 mod normal_form;
@@ -32,7 +35,10 @@ pub enum Quantifier {
     Exists,
 }
 
-pub trait Atomic: std::fmt::Debug + std::fmt::Display + Clone + std::hash::Hash + Eq {}
+pub trait Atomic:
+    std::fmt::Debug + std::fmt::Display + Clone + std::hash::Hash + Eq + std::cmp::Ord
+{
+}
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Formula<T: Atomic> {
@@ -95,36 +101,36 @@ impl<A: Atomic> Formula<A> {
 }
 
 #[allow(non_snake_case)]
-impl<T: Atomic> Formula<T> {
-    pub fn Not(expr: Formula<T>) -> Self {
+impl<A: Atomic> Formula<A> {
+    pub fn Not(expr: Formula<A>) -> Self {
         Self::Unary(OpUnary::Not, expr)
     }
 
-    pub fn And(lhs: Formula<T>, rhs: Formula<T>) -> Self {
+    pub fn And(lhs: Formula<A>, rhs: Formula<A>) -> Self {
         Self::Binary(OpBinary::And, lhs, rhs)
     }
 
-    pub fn Or(lhs: Formula<T>, rhs: Formula<T>) -> Self {
+    pub fn Or(lhs: Formula<A>, rhs: Formula<A>) -> Self {
         Self::Binary(OpBinary::Or, lhs, rhs)
     }
 
-    pub fn Imp(lhs: Formula<T>, rhs: Formula<T>) -> Self {
+    pub fn Imp(lhs: Formula<A>, rhs: Formula<A>) -> Self {
         Self::Binary(OpBinary::Imp, lhs, rhs)
     }
 
-    pub fn Iff(lhs: Formula<T>, rhs: Formula<T>) -> Self {
+    pub fn Iff(lhs: Formula<A>, rhs: Formula<A>) -> Self {
         Self::Binary(OpBinary::Iff, lhs, rhs)
     }
 
-    pub fn Atom(var: T) -> Self {
+    pub fn Atom(var: A) -> Self {
         Self::Atom { var }
     }
 
-    pub fn Exists(var: T, expr: Formula<T>) -> Self {
+    pub fn Exists(var: A, expr: Formula<A>) -> Self {
         Self::Quantifier(Quantifier::Exists, var, expr)
     }
 
-    pub fn ForAll(var: T, expr: Formula<T>) -> Self {
+    pub fn ForAll(var: A, expr: Formula<A>) -> Self {
         Self::Quantifier(Quantifier::ForAll, var, expr)
     }
 }
