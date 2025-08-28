@@ -7,6 +7,9 @@ mod display;
 pub mod formula_set;
 pub mod iterators;
 
+mod literal;
+pub use literal::Literal;
+
 mod normal_form;
 
 mod parsing;
