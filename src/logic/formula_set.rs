@@ -1,15 +1,54 @@
 use crate::logic::{Atomic, Formula, OpBinary, OpUnary};
 
+type Literal<A> = (A, bool);
+
+// Invariant: Literals are sorted by `literal_cmp`.
+type LiteralSet<A> = Vec<Literal<A>>;
+
 #[derive(Clone, Copy, Debug)]
 pub enum Mode {
     CNF,
     DNF,
 }
 
+// A formula, as a set of sets.
+// Invariant: `formula` is sorted by `literal_set_cmp`.
 #[derive(Debug)]
 pub struct FormulaSet<A: Atomic> {
-    formula: Vec<Vec<(A, bool)>>,
+    formula: Vec<LiteralSet<A>>,
     mode: Mode,
+}
+
+fn literal_cmp<A: Atomic>(a: &Literal<A>, b: &Literal<A>) -> std::cmp::Ordering {
+    use std::cmp::Ordering::*;
+
+    match a.0.cmp(&b.0) {
+        Less => Less,
+        Greater => Greater,
+        Equal => a.1.cmp(&b.1),
+    }
+}
+
+fn literal_set_cmp<A: Atomic>(a: &LiteralSet<A>, b: &LiteralSet<A>) -> std::cmp::Ordering {
+    use std::cmp::Ordering::*;
+
+    if a.is_empty() {
+        return Less;
+    }
+    if b.is_empty() {
+        return Greater;
+    }
+
+    let limit = std::cmp::min(a.len(), b.len());
+    for idx in 0..limit {
+        match a[idx].cmp(&b[idx]) {
+            Less => return Less,
+            Greater => return Greater,
+            Equal => continue,
+        }
+    }
+
+    a.len().cmp(&b.len())
 }
 
 impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
@@ -42,7 +81,7 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
 }
 
 impl<A: Atomic> FormulaSet<A> {
-    pub fn formula(&self) -> &Vec<Vec<(A, bool)>> {
+    pub fn formula(&self) -> &Vec<Vec<Literal<A>>> {
         &self.formula
     }
 
@@ -70,6 +109,13 @@ impl<A: Atomic> FormulaSet<A> {
             Mode::DNF => self.dnf_is_top(),
         }
     }
+
+    pub fn subsume(&mut self) {
+        match self.mode {
+            Mode::CNF => todo!(),
+            Mode::DNF => self.dnf_subsume(),
+        }
+    }
 }
 
 impl<A: Atomic> FormulaSet<A> {
@@ -91,7 +137,7 @@ impl<A: Atomic> FormulaSet<A> {
             set_idx += 1;
         }
 
-        self.formula.sort();
+        self.formula.sort_by(|a, b| literal_set_cmp(a, b));
     }
 
     pub fn dnf_is_bot(&self) -> bool {
@@ -100,6 +146,24 @@ impl<A: Atomic> FormulaSet<A> {
 
     pub fn dnf_is_top(&self) -> bool {
         self.formula.first().is_some_and(|set| set.is_empty())
+    }
+
+    pub fn dnf_subsume(&mut self) {
+        let mut limit = self.formula.len();
+        let mut set_idx = 1;
+
+        'set_loop: while set_idx < limit {
+            let base_set = &self.formula[set_idx - 1];
+            for (literal_idx, literal) in base_set.iter().enumerate() {
+                if literal != &self.formula[set_idx][literal_idx] {
+                    set_idx += 1;
+                    continue 'set_loop;
+                }
+            }
+
+            self.formula.remove(set_idx);
+            limit -= 1;
+        }
     }
 }
 
@@ -116,7 +180,7 @@ impl<A: Atomic> FormulaSet<A> {
 impl<A: Atomic> Formula<A> {
     pub fn dnf_to_formula_set(&self) -> FormulaSet<A> {
         let mut formula = self.dnf_to_set();
-        formula.sort();
+        formula.sort_by(|a, b| literal_set_cmp(a, b));
         formula.dedup();
 
         FormulaSet {
@@ -125,7 +189,7 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    fn dnf_to_set(&self) -> Vec<Vec<(A, bool)>> {
+    fn dnf_to_set(&self) -> Vec<Vec<Literal<A>>> {
         match self {
             Formula::True => vec![vec![]],
             Formula::False => vec![],
@@ -151,11 +215,12 @@ impl<A: Atomic> Formula<A> {
                         let mut fm = Vec::with_capacity(lhs.formula.len() * rhs.formula.len());
                         for l_set in &lhs.formula {
                             for r_set in &rhs.formula {
-                                let mut product: Vec<(A, bool)> =
+                                let mut product: Vec<Literal<A>> =
                                     l_set.iter().chain(r_set).cloned().collect();
 
                                 // 'Setify'
-                                product.sort(); // As the product is partially sorted, stable sort is preferred.
+                                // As the product is partially sorted, stable sort is preferred.
+                                product.sort_by(|a, b| literal_cmp(a, b));
                                 product.dedup();
 
                                 fm.push(product);
@@ -177,10 +242,10 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::parse_propositional_formula;
+    use crate::logic::{parse_propositional_formula, propositional::Prop};
 
     #[test]
-    pub fn dnf() {
+    fn dnf() {
         let expr = parse_propositional_formula("(p | q & r) & (~p | ~r)");
         let mut dnf = expr.dnf_to_formula_set();
         assert_eq!(dnf.formula().len(), 4);
@@ -188,7 +253,7 @@ mod tests {
         dnf.dnf_filter_contradictions();
         assert_eq!(dnf.formula().len(), 2);
 
-        let expr = parse_propositional_formula("(p | q & r) & true");
+        let expr = parse_propositional_formula("(p | p & r)");
         let dnf = expr.dnf_to_formula_set();
         assert_eq!(dnf.formula().len(), 2);
 
@@ -204,5 +269,17 @@ mod tests {
         let expr = parse_propositional_formula("true");
         let dnf = expr.dnf_to_formula_set();
         assert!(dnf.is_top());
+    }
+
+    #[test]
+    fn dnf_subsumption() {
+        let expr = parse_propositional_formula("(p | p & r) & true");
+        let mut dnf = expr.dnf_to_formula_set();
+        dnf.subsume();
+        assert!(
+            dnf.formula().first().is_some_and(
+                |set| set.len() == 1 && set.first().unwrap() == &(Prop::from("p"), true)
+            )
+        );
     }
 }
