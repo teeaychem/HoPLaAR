@@ -1,10 +1,14 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::logic::propositional::{Prop, PropFormula};
+use crate::logic::{
+    Literal,
+    propositional::{Prop, PropFormula},
+};
 
 #[derive(Clone, Default, Debug)]
 pub struct Valuation {
-    assignment: Vec<(Prop, bool)>,
+    fixed: Vec<bool>,
+    assignment: Vec<Literal<Prop>>,
     map: HashMap<Prop, usize>,
 }
 
@@ -35,32 +39,8 @@ impl Valuation {
 }
 
 impl Valuation {
-    pub fn extend(&mut self, prop: Prop, val: bool) {
-        self.map.insert(prop.clone(), self.assignment.len());
-        self.assignment.push((prop.clone(), val));
-    }
-
     pub fn get(&self, prop: &Prop) -> bool {
-        self.assignment[self.map[prop]].1
-    }
-
-    pub fn set(&mut self, prop: &Prop, value: bool) {
-        self.assignment[self.map[prop]].1 = value
-    }
-
-    // Views the valuation as a base two int and increments by one.
-    //
-    // Strictly, as a reversed base two int, as the bits are bumped from the left.
-    pub fn next_permutation_mut(&mut self) {
-        for (_, val) in self.assignment.iter_mut() {
-            match val {
-                true => *val = false,
-                false => {
-                    *val = true;
-                    break;
-                }
-            }
-        }
+        self.assignment[self.map[prop]].value()
     }
 
     pub fn size(&self) -> usize {
@@ -75,18 +55,16 @@ impl Valuation {
         )
     }
 
-    pub fn assignment(&self) -> &[(Prop, bool)] {
+    pub fn free_atom_count(&self) -> usize {
+        self.fixed.iter().filter(|f| !**f).count()
+    }
+
+    pub fn assignment(&self) -> &[Literal<Prop>] {
         &self.assignment
     }
 
     pub fn map(&self) -> &HashMap<Prop, usize> {
         &self.map
-    }
-
-    pub fn invert(&mut self) {
-        for (_, value) in self.assignment.iter_mut() {
-            *value = !*value;
-        }
     }
 
     pub fn inverted(&self) -> Valuation {
@@ -103,10 +81,10 @@ impl Valuation {
         match assignment.next() {
             None => PropFormula::True,
 
-            Some((prop, val)) => {
-                let atom = PropFormula::Atom(prop.clone());
+            Some(literal) => {
+                let atom = PropFormula::Atom(literal.atom().clone());
 
-                let literal = match val {
+                let literal = match literal.value() {
                     true => atom,
                     false => PropFormula::Not(atom),
                 };
@@ -114,9 +92,9 @@ impl Valuation {
                 let mut formula = literal;
 
                 #[allow(clippy::while_let_on_iterator)]
-                while let Some((prop, val)) = assignment.next() {
-                    let atom = PropFormula::Atom(prop.clone());
-                    let literal = match val {
+                while let Some(literal) = assignment.next() {
+                    let atom = PropFormula::Atom(literal.atom().clone());
+                    let literal = match literal.value() {
                         true => atom,
                         false => PropFormula::Not(atom),
                     };
@@ -127,5 +105,91 @@ impl Valuation {
                 formula
             }
         }
+    }
+}
+
+impl Valuation {
+    pub fn set(&mut self, prop: &Prop, value: bool) {
+        self.assignment[self.map[prop]].set_value(value)
+    }
+
+    pub fn extend(&mut self, prop: Prop, val: bool) {
+        self.map.insert(prop.clone(), self.assignment.len());
+        self.assignment.push(Literal::from(prop.clone(), val));
+        self.fixed.push(false);
+    }
+
+    pub fn fix(&mut self, prop: &Prop) {
+        self.fixed[self.map[prop]] = true
+    }
+
+    // Views the valuation as a base two int and increments by one.
+    //
+    // Strictly, as a reversed base two int, as the bits are bumped from the left.
+    pub fn next_permutation_mut(&mut self) {
+        for (idx, literal) in self.assignment.iter_mut().enumerate() {
+            if !self.fixed[idx] {
+                match literal.value() {
+                    true => literal.set_value(false),
+                    false => {
+                        literal.set_value(true);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn invert(&mut self) {
+        for literal in self.assignment.iter_mut() {
+            literal.invert_value();
+        }
+    }
+}
+
+impl PropFormula {
+    pub fn all_sat_valuations(&self) -> Vec<Valuation> {
+        let mut sat_valuations = Vec::default();
+
+        let mut valuation = Valuation::from_prop_set(self.atoms());
+        for _ in 0..valuation.permutation_count() {
+            if self.eval(&valuation) {
+                sat_valuations.push(valuation.clone());
+            }
+            valuation.next_permutation_mut();
+        }
+
+        sat_valuations
+    }
+
+    pub fn all_sat_valuations_from(&self, mut valuation: Valuation) -> Vec<Valuation> {
+        let mut sat_valuations = Vec::default();
+
+        for _ in 0..2_usize.pow(
+            valuation
+                .free_atom_count()
+                .try_into()
+                .expect("Free atoms exceed u32"),
+        ) {
+            if self.eval(&valuation) {
+                sat_valuations.push(valuation.clone());
+            }
+            valuation.next_permutation_mut();
+        }
+
+        sat_valuations
+    }
+}
+
+impl std::fmt::Display for Valuation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for literal in &self.assignment {
+            // Consistent spacing of literals.
+            let _ = match literal.value() {
+                true => write!(f, " {literal} "),
+                false => write!(f, "{literal} "),
+            };
+        }
+        Ok(())
     }
 }

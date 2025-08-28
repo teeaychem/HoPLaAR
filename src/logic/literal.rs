@@ -27,6 +27,16 @@ impl<A: Atomic> Literal<A> {
     }
 }
 
+impl<A: Atomic> Literal<A> {
+    pub fn set_value(&mut self, value: bool) {
+        self.value = value
+    }
+
+    pub fn invert_value(&mut self) {
+        self.value = !self.value
+}
+}
+
 impl<A: Atomic> std::cmp::PartialOrd for Literal<A> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))

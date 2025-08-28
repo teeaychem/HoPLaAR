@@ -56,22 +56,26 @@ impl PropFormula {
 
         let mut valuation = Valuation::from_prop_set(self.atoms());
 
-        let spacing = 1 + valuation
-            .assignment()
-            .iter()
-            .fold(7, |a, (n, _)| std::cmp::max(a, n.name().len()));
+        let spacing = 1 + valuation.assignment().iter().fold(7, |a, literal| {
+            std::cmp::max(a, literal.atom().name().len())
+        });
         let total_width = spacing * (valuation.size() + 1);
 
-        for (prop, _) in valuation.assignment() {
-            let _ = write!(table, "{name:width$}", width = spacing, name = prop.name());
+        for literal in valuation.assignment() {
+            let _ = write!(
+                table,
+                "{name:width$}",
+                width = spacing,
+                name = literal.atom().name()
+            );
         }
 
         let _ = writeln!(table, "| {eval:width$}", width = spacing, eval = "formula");
         let _ = writeln!(table, "{:-<total_width$}", "");
 
         for _ in 0..valuation.permutation_count() {
-            for (_, value) in valuation.assignment() {
-                let _ = write!(table, "{value:width$}", width = spacing);
+            for literal in valuation.assignment() {
+                let _ = write!(table, "{:width$}", literal.value(), width = spacing);
             }
             let _ = writeln!(
                 table,
