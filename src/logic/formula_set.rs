@@ -1,6 +1,57 @@
 use crate::logic::{Atomic, Formula, OpBinary, OpUnary};
 
-type Literal<A> = (A, bool);
+#[derive(Clone, Debug)]
+pub struct Literal<A> {
+    atom: A,
+    value: bool,
+}
+
+impl<A: Atomic> Literal<A> {
+    pub fn from(atom: A, value: bool) -> Self {
+        Literal { atom, value }
+    }
+
+    pub fn as_formula(&self) -> Formula<A> {
+        match self.value {
+            true => Formula::Atom(self.atom.to_owned()),
+            false => Formula::Not(Formula::Atom(self.atom.to_owned())),
+        }
+    }
+}
+
+impl<A: Atomic> std::cmp::PartialOrd for Literal<A> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<A: Atomic> std::cmp::Ord for Literal<A> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering::*;
+        match self.atom.cmp(&other.atom) {
+            Less => Less,
+            Greater => Greater,
+            Equal => self.value.cmp(&other.value),
+        }
+    }
+}
+
+impl<A: Atomic> std::cmp::PartialEq for Literal<A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.atom == other.atom && self.value == other.value
+    }
+}
+
+impl<A: Atomic> std::cmp::Eq for Literal<A> {}
+
+impl<A: Atomic> std::fmt::Display for Literal<A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.value {
+            true => write!(f, "{}", self.atom),
+            false => write!(f, "¬{}", self.atom),
+        }
+    }
+}
 
 // Invariant: Literals are sorted by `literal_cmp`.
 type LiteralSet<A> = Vec<Literal<A>>;
@@ -17,16 +68,6 @@ pub enum Mode {
 pub struct FormulaSet<A: Atomic> {
     sets: Vec<LiteralSet<A>>,
     mode: Mode,
-}
-
-fn literal_cmp<A: Atomic>(a: &Literal<A>, b: &Literal<A>) -> std::cmp::Ordering {
-    use std::cmp::Ordering::*;
-
-    match a.0.cmp(&b.0) {
-        Less => Less,
-        Greater => Greater,
-        Equal => a.1.cmp(&b.1),
-    }
 }
 
 fn literal_set_cmp<A: Atomic>(a: &LiteralSet<A>, b: &LiteralSet<A>) -> std::cmp::Ordering {
@@ -51,21 +92,14 @@ fn literal_set_cmp<A: Atomic>(a: &LiteralSet<A>, b: &LiteralSet<A>) -> std::cmp:
     a.len().cmp(&b.len())
 }
 
-fn literal_to_formula<A: Atomic>(l: &Literal<A>) -> Formula<A> {
-    match l.1 {
-        true => Formula::Atom(l.0.to_owned()),
-        false => Formula::Not(Formula::Atom(l.0.to_owned())),
-    }
-}
-
 fn literal_set_to_formula<A: Atomic>(op: OpBinary, ls: &LiteralSet<A>) -> Formula<A> {
     match ls.as_slice() {
         [] => Formula::True,
-        [literal] => literal_to_formula(literal),
+        [literal] => literal.as_formula(),
         [first, remaining @ ..] => {
-            let mut formula = literal_to_formula(first);
+            let mut formula = first.as_formula();
             for other in remaining {
-                formula = Formula::Binary(op, formula, literal_to_formula(other));
+                formula = Formula::Binary(op, formula, other.as_formula());
             }
             formula
         }
@@ -81,11 +115,8 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
             let inner_limit = expr.len().saturating_sub(1);
 
             let _ = write!(f, "{{");
-            for (inner_idx, (atom, value)) in expr.iter().enumerate() {
-                let _ = match value {
-                    true => write!(f, "{atom}"),
-                    false => write!(f, "¬{atom}"),
-                };
+            for (inner_idx, literal) in expr.iter().enumerate() {
+                let _ = write!(f, "{literal}");
                 if inner_idx < inner_limit {
                     let _ = write!(f, ", ");
                 }
@@ -102,7 +133,7 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
 }
 
 impl<A: Atomic> FormulaSet<A> {
-    pub fn sets(&self) -> &Vec<Vec<Literal<A>>> {
+    pub fn sets(&self) -> &Vec<LiteralSet<A>> {
         &self.sets
     }
 
@@ -154,14 +185,13 @@ impl<A: Atomic> FormulaSet<A> {
         'set_loop: while set_idx < limit {
             if self.sets[set_idx].len() > 1 {
                 for idx in 1..self.sets[set_idx].len() {
-                    if self.sets[set_idx][idx - 1].0 == self.sets[set_idx][idx].0 {
+                    if self.sets[set_idx][idx - 1].atom == self.sets[set_idx][idx].atom {
                         self.sets.swap_remove(set_idx);
                         limit -= 1;
                         continue 'set_loop;
                     }
                 }
             }
-
             set_idx += 1;
         }
 
@@ -278,12 +308,12 @@ impl<A: Atomic> Formula<A> {
             Formula::True => vec![vec![]],
             Formula::False => vec![],
 
-            Formula::Atom { var } => vec![vec![(var.clone(), true)]],
+            Formula::Atom { var } => vec![vec![Literal::from(var.clone(), true)]],
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
                     if let Formula::Atom { var } = expr.as_ref() {
-                        vec![vec![(var.clone(), false)]]
+                        vec![vec![Literal::from(var.clone(), false)]]
                     } else {
                         panic!()
                     }
@@ -304,7 +334,7 @@ impl<A: Atomic> Formula<A> {
 
                                 // 'Setify'
                                 // As the product is partially sorted, stable sort is preferred.
-                                product.sort_by(|a, b| literal_cmp(a, b));
+                                product.sort();
                                 product.dedup();
 
                                 fm.push(product);
