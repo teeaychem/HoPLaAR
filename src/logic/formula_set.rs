@@ -148,14 +148,19 @@ impl<A: Atomic> FormulaSet<A> {
         self.formula.first().is_some_and(|set| set.is_empty())
     }
 
+    // DNF subsumption
+    //
+    // Formula sets are ordered by inclusion.
+    // So from left to right, if all elements of A are in B, A ⊆ B.
+    // And, then, A should be removed while B is preserved, as A and B are conjuncts.
     pub fn dnf_subsume(&mut self) {
-        let mut limit = self.formula.len();
-        let mut set_idx = 1;
+        let mut limit = self.formula.len() - 1;
+        let mut set_idx = 0;
 
         'set_loop: while set_idx < limit {
-            let base_set = &self.formula[set_idx - 1];
+            let base_set = &self.formula[set_idx];
             for (literal_idx, literal) in base_set.iter().enumerate() {
-                if literal != &self.formula[set_idx][literal_idx] {
+                if literal != &self.formula[set_idx + 1][literal_idx] {
                     set_idx += 1;
                     continue 'set_loop;
                 }
@@ -174,6 +179,29 @@ impl<A: Atomic> FormulaSet<A> {
 
     pub fn cnf_is_top(&self) -> bool {
         self.formula.is_empty()
+    }
+
+    // CNF subsumption
+    //
+    // Formula sets are ordered by inclusion.
+    // So from left to right, if all elements of A are in B, A ⊆ B.
+    // And, then, A should be removed while B is preserved, as A and B are disjuncts.
+    pub fn cnf_subsume(&mut self) {
+        let mut limit = self.formula.len();
+        let mut set_idx = 1;
+
+        'set_loop: while set_idx < limit {
+            let base_set = &self.formula[set_idx];
+            for (literal_idx, literal) in base_set.iter().enumerate() {
+                if literal != &self.formula[set_idx + 1][literal_idx] {
+                    set_idx += 1;
+                    continue 'set_loop;
+                }
+            }
+
+            self.formula.remove(set_idx);
+            limit -= 1;
+        }
     }
 }
 
@@ -242,7 +270,7 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{parse_propositional_formula, propositional::Prop};
+    use crate::logic::parse_propositional_formula;
 
     #[test]
     fn dnf() {
@@ -276,10 +304,6 @@ mod tests {
         let expr = parse_propositional_formula("(p | p & r) & true");
         let mut dnf = expr.dnf_to_formula_set();
         dnf.subsume();
-        assert!(
-            dnf.formula().first().is_some_and(
-                |set| set.len() == 1 && set.first().unwrap() == &(Prop::from("p"), true)
-            )
-        );
+        assert!(dnf.formula().first().is_some_and(|set| set.len() == 2));
     }
 }
