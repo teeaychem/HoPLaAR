@@ -137,3 +137,31 @@ impl<A: Atomic> Formula<A> {
         Self::Quantifier(Quantifier::ForAll, var, expr)
     }
 }
+
+impl<A: Atomic> Formula<A> {
+    pub fn conjoin<I: Iterator<Item = Formula<A>>>(mut conjuncts: I) -> Formula<A> {
+        let mut formula = match conjuncts.next() {
+            Some(conjunct) => conjunct,
+            None => Formula::True,
+        };
+
+        for conjunct in conjuncts {
+            formula = Formula::And(formula, conjunct)
+        }
+
+        formula
+    }
+
+    pub fn disjoin<I: Iterator<Item = Formula<A>>>(mut conjuncts: I) -> Formula<A> {
+        let mut formula = match conjuncts.next() {
+            Some(conjunct) => conjunct,
+            None => Formula::True,
+        };
+
+        for conjunct in conjuncts {
+            formula = Formula::Or(formula, conjunct)
+        }
+
+        formula
+    }
+}
