@@ -6,33 +6,36 @@ use crate::logic::{
 impl PropFormula {
     pub fn cnf(self) -> (Option<Prop>, PropFormula) {
         let mut dict = PropDict::default();
-        let main_def = self.cnf_build_dict(&mut dict);
+        let main_def = self.cnf_build_binary_dict(&mut dict);
 
         if main_def == self {
             return (None, self);
         }
 
         match &main_def {
-            PropFormula::Atom { var } => (Some(var.clone()), Formula::And(main_def, dict.to_cnf())),
+            PropFormula::Atom { var } => (
+                Some(var.clone()),
+                Formula::And(main_def, dict.to_three_cnf()),
+            ),
             _ => panic!(),
         }
     }
 
     // Recursively replaces complex formulas with defining literals, and returns the defining literal.
-    pub fn cnf_build_dict(&self, dict: &mut PropDict) -> PropFormula {
+    pub fn cnf_build_binary_dict(&self, dict: &mut PropDict) -> PropFormula {
         use Formula::*;
 
         match self {
             True | False | Atom { .. } => self.clone(),
 
             Unary { op, expr } => {
-                let expr = expr.cnf_build_dict(dict);
+                let expr = expr.cnf_build_binary_dict(dict);
                 PropFormula::Unary(*op, expr)
             }
 
             Binary { op, lhs, rhs } => {
-                let lhs = lhs.cnf_build_dict(dict);
-                let rhs = rhs.cnf_build_dict(dict);
+                let lhs = lhs.cnf_build_binary_dict(dict);
+                let rhs = rhs.cnf_build_binary_dict(dict);
 
                 let defined = PropFormula::Binary(*op, lhs, rhs);
 

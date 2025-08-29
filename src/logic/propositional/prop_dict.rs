@@ -65,7 +65,7 @@ impl PropDict {
     // - It contains at most one binary connective.
     // - Unary connectives only occur in literals.
     // - It does not contain any stacked unary connectives.
-    pub fn def_to_cnf(formula: &PropFormula, def: &Prop) -> PropFormula {
+    pub fn def_to_three_cnf(formula: &PropFormula, def: &Prop) -> PropFormula {
         use {Formula::*, OpBinary::*};
 
         let def = PropFormula::Atom(def.clone());
@@ -109,18 +109,44 @@ impl PropDict {
                     Formula::conjoin([a, b, c].into_iter())
                 }
 
-                Iff => todo!(),
+                Iff => {
+                    let l = Formula::conjoin(
+                        [
+                            Formula::Or(
+                                def.clone().negate(),
+                                Formula::Or(lhs.clone().negate(), *rhs.clone()),
+                            ),
+                            Formula::Or(*lhs.clone(), def.clone()),
+                            Formula::Or(rhs.clone().negate(), def.clone()),
+                        ]
+                        .into_iter(),
+                    );
+
+                    let r = Formula::conjoin(
+                        [
+                            Formula::Or(
+                                def.clone().negate(),
+                                Formula::Or(rhs.clone().negate(), *lhs.clone()),
+                            ),
+                            Formula::Or(*rhs.clone(), def.clone()),
+                            Formula::Or(lhs.clone().negate(), def.clone()),
+                        ]
+                        .into_iter(),
+                    );
+
+                    Formula::And(l, r)
+                }
             },
         }
     }
 
     // Generates a conjunction of all definitions in CNF.
     // Note, the 'head' of any defined formula is not a conjunct.
-    pub fn to_cnf(&self) -> PropFormula {
+    pub fn to_three_cnf(&self) -> PropFormula {
         let def_cnfs = self
             .definitions
             .iter()
-            .map(|(fm, def)| PropDict::def_to_cnf(fm, def));
+            .map(|(fm, def)| PropDict::def_to_three_cnf(fm, def));
         Formula::conjoin(def_cnfs)
     }
 }
