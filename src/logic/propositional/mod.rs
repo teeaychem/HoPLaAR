@@ -2,6 +2,9 @@ use std::fmt::Write;
 
 use crate::logic::{Formula, OpBinary, OpUnary};
 
+mod prop_dict;
+pub use prop_dict::PropDict;
+
 mod prop;
 pub use prop::Prop;
 

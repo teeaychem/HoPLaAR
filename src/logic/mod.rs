@@ -19,12 +19,12 @@ pub mod propositional;
 
 pub mod utils;
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum OpUnary {
     Not,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum OpBinary {
     And,
     Or,
@@ -32,7 +32,7 @@ pub enum OpBinary {
     Iff,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum Quantifier {
     ForAll,
     Exists,
@@ -43,7 +43,7 @@ pub trait Atomic:
 {
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum Formula<T: Atomic> {
     True,
     False,

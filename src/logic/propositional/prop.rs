@@ -23,7 +23,8 @@ impl Prop {
     }
 }
 
-struct PropSeq {
+#[derive(Debug)]
+pub struct PropSeq {
     id: String,
     idx: usize,
 }
