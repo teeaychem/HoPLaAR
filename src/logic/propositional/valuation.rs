@@ -47,16 +47,16 @@ impl Valuation {
         self.assignment.len()
     }
 
-    pub fn permutation_count(&self) -> usize {
-        2_usize.pow(
-            self.size()
-                .try_into()
-                .expect("Permutation count exceeds usize"),
-        )
-    }
-
     pub fn free_atom_count(&self) -> usize {
         self.fixed.iter().filter(|f| !**f).count()
+    }
+
+    pub fn permutation_count(&self) -> usize {
+        2_usize.pow(
+            self.free_atom_count()
+                .try_into()
+                .expect("Valuation free count exceeds usize"),
+        )
     }
 
     pub fn assignment(&self) -> &[Literal<Prop>] {
@@ -141,8 +141,10 @@ impl Valuation {
     }
 
     pub fn invert(&mut self) {
-        for literal in self.assignment.iter_mut() {
-            literal.invert_value();
+        for (idx, literal) in self.assignment.iter_mut().enumerate() {
+            if !self.fixed[idx] {
+                literal.invert_value();
+            }
         }
     }
 }
@@ -162,6 +164,20 @@ impl PropFormula {
         sat_valuations
     }
 
+    pub fn all_unsat_valuations(&self) -> Vec<Valuation> {
+        let mut unsat_valuations = Vec::default();
+
+        let mut valuation = Valuation::from_prop_set(self.atoms());
+        for _ in 0..valuation.permutation_count() {
+            if !self.eval(&valuation) {
+                unsat_valuations.push(valuation.clone());
+            }
+            valuation.next_permutation_mut();
+        }
+
+        unsat_valuations
+    }
+
     pub fn all_sat_valuations_from(&self, mut valuation: Valuation) -> Vec<Valuation> {
         let mut sat_valuations = Vec::default();
 
@@ -178,6 +194,24 @@ impl PropFormula {
         }
 
         sat_valuations
+    }
+
+    pub fn all_unsat_valuations_from(&self, mut valuation: Valuation) -> Vec<Valuation> {
+        let mut unsat_valuations = Vec::default();
+
+        for _ in 0..2_usize.pow(
+            valuation
+                .free_atom_count()
+                .try_into()
+                .expect("Free atoms exceed u32"),
+        ) {
+            if !self.eval(&valuation) {
+                unsat_valuations.push(valuation.clone());
+            }
+            valuation.next_permutation_mut();
+        }
+
+        unsat_valuations
     }
 }
 
