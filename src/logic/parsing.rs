@@ -246,22 +246,22 @@ mod tests {
     fn less_simple() {
         let expr = "p & q | r";
         let parse = parse_propositional_formula(expr);
-        let expected = "((p ∧ q) ∨ r)";
+        let expected = "(p ∧ q) ∨ r";
         assert_eq!(format!("{parse}"), expected);
 
         let expr = "p & q <=> r";
         let parse = parse_propositional_formula(expr);
-        let expected = "((p ∧ q) ↔ r)";
+        let expected = "(p ∧ q) ↔ r";
         assert_eq!(format!("{parse}"), expected);
 
         let expr = "~p & q <=> r";
         let parse = parse_propositional_formula(expr);
-        let expected = "((¬(p) ∧ q) ↔ r)";
+        let expected = "(¬p ∧ q) ↔ r";
         assert_eq!(format!("{parse}"), expected);
 
         let expr = "~(p & q) <=> r";
         let parse = parse_propositional_formula(expr);
-        let expected = "(¬((p ∧ q)) ↔ r)";
+        let expected = "¬(p ∧ q) ↔ r";
         assert_eq!(format!("{parse}"), expected);
     }
 }
