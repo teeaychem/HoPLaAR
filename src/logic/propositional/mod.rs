@@ -2,6 +2,7 @@ use std::fmt::Write;
 
 use crate::logic::{Formula, OpBinary, OpUnary};
 
+mod bdd;
 mod cnf;
 
 mod prop_dict;
