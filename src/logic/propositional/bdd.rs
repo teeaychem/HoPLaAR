@@ -216,7 +216,15 @@ impl BDDGraph {
 
         let mut end = false;
 
-        let spacing = 2;
+        let spacing = std::cmp::max(
+            5,
+            self.by_index
+                .values()
+                .map(|node| node.prop.name().len())
+                .max()
+                .unwrap_or_default()
+                + 3,
+        );
         let mut indent = 0;
         let mut depth = 0;
 
@@ -232,24 +240,17 @@ impl BDDGraph {
 
                 -1 => {
                     for _ in 0..(indent - depth - 1) {
-                        print!("    ");
+                        print!("{:<spacing$}", "");
                     }
-                    match depth {
-                        0 => {}
-                        1 => print!("  │ "),
-                        _ => {
-                            for _ in 0..depth {
-                                print!("  │ ")
-                            }
-                        }
+                    for _ in 0..depth {
+                        print!(" │{:<width$}", "", width = spacing - 2)
                     }
+                    println!(" └{:─<width$} ⊥", "", width = spacing - 2);
 
-                    println!("  └  ⊥");
                     next = stack.pop();
 
                     depth -= 1;
                     indent -= 1;
-
                     end = true;
                 }
 
@@ -260,13 +261,23 @@ impl BDDGraph {
                         .unwrap_or_else(|| panic!("!{idx}"));
                     if end {
                         for _ in 1..indent {
-                            print!("    ");
+                            print!("{:<spacing$}", "");
                         }
-                        print!("  └ ");
+                        print!(" └{:─<width$} ", "", width = spacing - 3)
                     }
+
+                    let prop = &node.prop.name();
                     match idx.is_positive() {
-                        true => print!("+ {} ", node.prop),
-                        false => print!("- {} ", node.prop),
+                        true => print!(
+                            " + {prop}{:<width$}",
+                            "",
+                            width = (spacing - prop.len() - 3)
+                        ),
+                        false => print!(
+                            " - {prop}{:<width$}",
+                            "",
+                            width = (spacing - prop.len() - 3)
+                        ),
                     }
 
                     depth += 1;
@@ -317,7 +328,7 @@ mod tests {
 
         print!("\n\n");
 
-        let expr = parse_propositional_formula("p | q | r");
+        let expr = parse_propositional_formula("p | q | long_r");
         let (head, graph) = expr.bdd();
 
         graph.representation_string(head);
@@ -328,7 +339,7 @@ mod tests {
 
         print!("\n\n");
 
-        let expr = parse_propositional_formula("p <=> (q => ~r)");
+        let expr = parse_propositional_formula("big_p <=> (q => ~r)");
         let (head, graph) = expr.bdd();
 
         graph.representation_string(head);
