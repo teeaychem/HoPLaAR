@@ -25,9 +25,26 @@ impl BDDNode {
         Self { prop, tb, fb }
     }
 
-    pub fn invert(&mut self) {
+    pub fn top() -> Self {
+        Self {
+            prop: Prop::from("t"),
+            tb: 1,
+            fb: 1,
+        }
+    }
+
+    pub fn bot() -> Self {
+        Self {
+            prop: Prop::from("f"),
+            tb: -1,
+            fb: -1,
+        }
+    }
+
+    pub fn invert(mut self) -> BDDNode {
         self.tb = -self.tb;
         self.fb = -self.fb;
+        self
     }
 }
 
@@ -50,6 +67,7 @@ impl Iterator for BDDIndicies {
     }
 }
 
+// 0 is unused with 1 reserved for true (and -1 for false)
 impl Default for BDDIndicies {
     fn default() -> Self {
         Self { idx: 2 }
@@ -81,94 +99,100 @@ impl BDDGraph {
         idx
     }
 
-    pub fn expand_node(&self, idx: &BDDIndex) -> Option<BDDNode> {
+    pub fn get_or_insert(&mut self, node: BDDNode) -> BDDIndex {
+        match self.by_nodes.get(&node).cloned() {
+            Some(idx) => idx,
+            None => {
+                let idx = self.indicies.next().expect("…");
+                self.by_index.insert(idx, node.clone());
+                self.by_nodes.insert(node, idx);
+                idx
+            }
+        }
+    }
+
+    pub fn expand_node(&self, idx: &BDDIndex) -> BDDNode {
         match idx.is_positive() {
-            true => self.by_index.get(&idx.abs()).cloned(),
-            false => {
-                let mut node = self.by_index.get(&idx.abs()).cloned()?;
-                node.invert();
-                Some(node)
-            }
+            true => match self.by_index.get(idx) {
+                Some(node) => node.clone(),
+                None => BDDNode::top(),
+            },
+            false => match self.by_index.get(&-idx) {
+                Some(node) => node.clone().invert(),
+                None => BDDNode::bot(),
+            },
         }
     }
 
-    fn bdd_make_node(&mut self, prop: Prop, l: BDDIndex, r: BDDIndex) -> BDDIndex {
-        if l == r {
+    fn bdd_make_node(&mut self, prop: Prop, t: BDDIndex, f: BDDIndex) -> BDDIndex {
+        if t == f {
             1
-        } else if l.is_positive() {
-            let node = BDDNode::from(prop, l, r);
-
-            match self.by_nodes.get(&node) {
-                Some(idx) => *idx,
-                None => self.insert(node),
-            }
+        } else if t.is_positive() {
+            let node = BDDNode::from(prop, t, f);
+            self.get_or_insert(node)
         } else {
-            let node = BDDNode::from(prop, -l, -r);
-
-            match self.by_nodes.get(&node) {
-                Some(idx) => *idx,
-                None => self.insert(node),
-            }
+            let node = BDDNode::from(prop, -t, -f);
+            -self.get_or_insert(node)
         }
     }
 
-    fn bdd_make_and(&mut self, lhs_idx: BDDIndex, rhs_idx: BDDIndex) -> BDDIndex {
-        match lhs_idx {
-            -1 => return -1,
-            1 => return rhs_idx,
+    fn bdd_make_and(&mut self, t_idx: BDDIndex, f_idx: BDDIndex) -> BDDIndex {
+        match (t_idx, f_idx) {
+            (-1, _) | (_, -1) => return -1,
+            (1, _) => return f_idx,
+            (_, 1) => return t_idx,
             _ => {}
         }
 
-        match rhs_idx {
-            -1 => return -1,
-            1 => return lhs_idx,
-            _ => {}
-        }
-
-        if let Some(idx) = self.compilations.get(&(lhs_idx, rhs_idx)) {
-            return *idx;
-        }
-        if let Some(idx) = self.compilations.get(&(rhs_idx, lhs_idx)) {
+        if let Some(idx) = self.compilations.get(&(t_idx, f_idx)) {
             return *idx;
         }
 
-        let lhs = self.expand_node(&lhs_idx).expect("!");
-        let rhs = self.expand_node(&rhs_idx).expect("!");
+        if let Some(idx) = self.compilations.get(&(f_idx, t_idx)) {
+            return *idx;
+        }
+
+        let t = self.expand_node(&t_idx);
+        let f = self.expand_node(&f_idx);
 
         let (prop, (lt, lf), (rt, rf)) = {
             use std::cmp::Ordering::*;
 
-            match lhs.prop.cmp(&rhs.prop) {
-                Equal => (lhs.prop, (lhs.tb, lhs.fb), (rhs.tb, rhs.fb)),
-                Less => (lhs.prop, (lhs.tb, rhs_idx), (lhs.fb, rhs_idx)),
-                Greater => (rhs.prop, (lhs_idx, rhs.tb), (lhs_idx, rhs.fb)),
+            match t.prop.cmp(&f.prop) {
+                Equal => (t.prop, (t.tb, t.fb), (f.tb, f.fb)),
+                Less => (t.prop, (t.tb, f_idx), (t.fb, f_idx)),
+                Greater => (f.prop, (t_idx, f.tb), (t_idx, f.fb)),
             }
         };
 
-        let l_new = self.bdd_make_and(lt, lf);
-        let r_new = self.bdd_make_and(rt, rf);
+        let t_new = self.bdd_make_and(lt, lf);
+        let f_new = self.bdd_make_and(rt, rf);
 
-        let idx = self.bdd_make_node(prop, l_new, r_new);
+        let idx = self.bdd_make_node(prop, t_new, f_new);
 
-        self.compilations.insert((lhs_idx, rhs_idx), idx);
+        self.compilations.insert((t_idx, f_idx), idx);
 
         idx
     }
 
-    pub fn mkbdd(&mut self, formula: &PropFormula) -> BDDIndex {
+    pub fn bdd_make(&mut self, formula: &PropFormula) -> BDDIndex {
         match formula {
             Formula::True => 1,
             Formula::False => -1,
 
             Formula::Atom { var } => self.bdd_make_node(var.clone(), 1, -1),
 
-            Formula::Unary { op, expr } => match op {
-                OpUnary::Not => -self.mkbdd(expr),
-            },
+            Formula::Unary { op, expr } => {
+                let expr_node = self.bdd_make(expr);
+
+                match op {
+                    OpUnary::Not => -expr_node,
+                }
+            }
 
             Formula::Binary { op, lhs, rhs } => {
-                let lhs_idx = self.mkbdd(lhs);
-                let rhs_idx = self.mkbdd(rhs);
+                let lhs_idx = self.bdd_make(lhs);
+                let rhs_idx = self.bdd_make(rhs);
 
                 match op {
                     OpBinary::And => self.bdd_make_and(lhs_idx, rhs_idx),
@@ -188,11 +212,10 @@ impl BDDGraph {
 }
 
 impl PropFormula {
-    pub fn bdd(self) {
+    pub fn bdd(self) -> (BDDIndex, BDDGraph) {
         let mut graph = BDDGraph::default();
-        let head = graph.mkbdd(&self);
-        println!("Head: {head}");
-        println!("{graph}");
+        let head = graph.bdd_make(&self);
+        (head, graph)
     }
 }
 
@@ -203,12 +226,34 @@ mod tests {
     #[test]
     fn basic() {
         let expr = parse_propositional_formula("p & q & r & s");
-        expr.bdd();
+        let (head, graph) = expr.bdd();
+
+        println!("{head}");
+        for (idx, node) in graph.by_index {
+            println!("{idx} : {node}");
+        }
+
+        print!("\n\n");
 
         let expr = parse_propositional_formula("-p & -q");
-        expr.bdd();
+        let (head, graph) = expr.bdd();
+        // graph.write_graph(head);
+        println!();
+        println!("{head}");
+        for (idx, node) in graph.by_index {
+            println!("{idx} : {node}");
+        }
 
-        let expr = parse_propositional_formula("p | q");
-        expr.bdd();
+        print!("\n\n");
+
+        let expr = parse_propositional_formula("p | q | r");
+        let (head, graph) = expr.bdd();
+
+        println!("{head}");
+        for (idx, node) in graph.by_index {
+            println!("{idx} : {node}");
+        }
+
+        print!("\n\n");
     }
 }
