@@ -126,7 +126,7 @@ impl BDDGraph {
 
     fn bdd_make_node(&mut self, prop: Prop, t: BDDIndex, f: BDDIndex) -> BDDIndex {
         if t == f {
-            1
+            t
         } else if t.is_positive() {
             let node = BDDNode::from(prop, t, f);
             self.get_or_insert(node)
@@ -139,8 +139,7 @@ impl BDDGraph {
     fn bdd_make_and(&mut self, t_idx: BDDIndex, f_idx: BDDIndex) -> BDDIndex {
         match (t_idx, f_idx) {
             (-1, _) | (_, -1) => return -1,
-            (1, _) => return f_idx,
-            (_, 1) => return t_idx,
+            (1, q) | (q, 1) => return q,
             _ => {}
         }
 
@@ -210,7 +209,7 @@ impl BDDGraph {
         }
     }
 
-    pub fn representation_string(&self, head: BDDIndex) {
+    pub fn print_representation(&self, head: BDDIndex) {
         let mut stack: Vec<BDDIndex> = Vec::default();
         let mut next = Some(head);
 
@@ -308,7 +307,7 @@ mod tests {
         let expr = parse_propositional_formula("p & q & r & s");
         let (head, graph) = expr.bdd();
 
-        graph.representation_string(head);
+        graph.print_representation(head);
         println!("{head}");
         for (idx, node) in graph.by_index {
             println!("{idx} : {node}");
@@ -319,7 +318,7 @@ mod tests {
         let expr = parse_propositional_formula("-p & -q");
         let (head, graph) = expr.bdd();
 
-        graph.representation_string(head);
+        graph.print_representation(head);
         println!();
         println!("{head}");
         for (idx, node) in graph.by_index {
@@ -331,7 +330,7 @@ mod tests {
         let expr = parse_propositional_formula("p | q | long_r");
         let (head, graph) = expr.bdd();
 
-        graph.representation_string(head);
+        graph.print_representation(head);
         println!("{head}");
         for (idx, node) in graph.by_index {
             println!("{idx} : {node}");
@@ -342,7 +341,27 @@ mod tests {
         let expr = parse_propositional_formula("big_p <=> (q => ~r)");
         let (head, graph) = expr.bdd();
 
-        graph.representation_string(head);
+        graph.print_representation(head);
+        println!("{head}");
+        for (idx, node) in graph.by_index {
+            println!("{idx} : {node}");
+        }
+
+        print!("\n\n");
+
+        let expr = parse_propositional_formula("p & ~p");
+        let (head, graph) = expr.bdd();
+        graph.print_representation(head);
+        println!("{head}");
+        for (idx, node) in graph.by_index {
+            println!("{idx} : {node}");
+        }
+
+        print!("\n\n");
+
+        let expr = parse_propositional_formula("p | ~p");
+        let (head, graph) = expr.bdd();
+        graph.print_representation(head);
         println!("{head}");
         for (idx, node) in graph.by_index {
             println!("{idx} : {node}");
