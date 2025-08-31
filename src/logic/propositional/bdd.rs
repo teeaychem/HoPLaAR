@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Write};
 
 use crate::logic::{
     Formula, OpBinary, OpUnary,
@@ -92,6 +92,10 @@ impl std::fmt::Display for BDDGraph {
 }
 
 impl BDDGraph {
+    pub fn indies_to_nodes(&self) -> &HashMap<i32, BDDNode> {
+        &self.by_index
+    }
+
     pub fn insert(&mut self, node: BDDNode) -> BDDIndex {
         let idx = self.indicies.next().expect("…");
         self.by_index.insert(idx, node.clone());
@@ -99,7 +103,7 @@ impl BDDGraph {
         idx
     }
 
-    pub fn get_or_insert(&mut self, node: BDDNode) -> BDDIndex {
+    pub fn get_or_insert_index(&mut self, node: BDDNode) -> BDDIndex {
         match self.by_nodes.get(&node).cloned() {
             Some(idx) => idx,
             None => {
@@ -108,6 +112,13 @@ impl BDDGraph {
                 self.by_nodes.insert(node, idx);
                 idx
             }
+        }
+    }
+
+    pub fn get_node(&self, idx: &BDDIndex) -> Option<BDDNode> {
+        match idx.is_positive() {
+            true => self.by_index.get(idx).cloned(),
+            false => self.by_index.get(&-idx).map(|node| node.clone().invert()),
         }
     }
 
@@ -129,10 +140,10 @@ impl BDDGraph {
             t
         } else if t.is_positive() {
             let node = BDDNode::from(prop, t, f);
-            self.get_or_insert(node)
+            self.get_or_insert_index(node)
         } else {
             let node = BDDNode::from(prop, -t, -f);
-            -self.get_or_insert(node)
+            -self.get_or_insert_index(node)
         }
     }
 
@@ -209,11 +220,8 @@ impl BDDGraph {
         }
     }
 
-    pub fn print_representation(&self, head: BDDIndex) {
-        let mut stack: Vec<BDDIndex> = Vec::default();
-        let mut next = Some(head);
-
-        let mut end = false;
+    pub fn string_respresentation(&self, head: BDDIndex) -> String {
+        let mut string = String::default();
 
         let spacing = std::cmp::max(
             5,
@@ -224,13 +232,17 @@ impl BDDGraph {
                 .unwrap_or_default()
                 + 3,
         );
+
         let mut indent = 0;
         let mut depth = 0;
+        let mut end = false;
 
+        let mut stack: Vec<BDDIndex> = Vec::default();
+        let mut next = Some(head);
         while let Some(idx) = next {
             match idx {
                 1 => {
-                    println!(" ⊤");
+                    let _ = writeln!(string, " ⊤");
                     next = stack.pop();
 
                     depth -= 1;
@@ -239,12 +251,12 @@ impl BDDGraph {
 
                 -1 => {
                     for _ in 0..(indent - depth - 1) {
-                        print!("{:<spacing$}", "");
+                        let _ = write!(string, "{:<spacing$}", "");
                     }
                     for _ in 0..depth {
-                        print!(" │{:<width$}", "", width = spacing - 2)
+                        let _ = write!(string, " │{:<width$}", "", width = spacing - 2);
                     }
-                    println!(" └{:─<width$} ⊥", "", width = spacing - 2);
+                    let _ = writeln!(string, " └{:─<width$} ⊥", "", width = spacing - 2);
 
                     next = stack.pop();
 
@@ -260,24 +272,26 @@ impl BDDGraph {
                         .unwrap_or_else(|| panic!("!{idx}"));
                     if end {
                         for _ in 1..indent {
-                            print!("{:<spacing$}", "");
+                            let _ = write!(string, "{:<spacing$}", "");
                         }
-                        print!(" └{:─<width$} ", "", width = spacing - 3)
+                        let _ = write!(string, " └{:─<width$} ", "", width = spacing - 3);
                     }
 
                     let prop = &node.prop.name();
-                    match idx.is_positive() {
-                        true => print!(
+                    let _ = match idx.is_positive() {
+                        true => write!(
+                            string,
                             " + {prop}{:<width$}",
                             "",
-                            width = (spacing - prop.len() - 3)
+                            width = (spacing - prop.len() - 3),
                         ),
-                        false => print!(
+                        false => write!(
+                            string,
                             " - {prop}{:<width$}",
                             "",
                             width = (spacing - prop.len() - 3)
                         ),
-                    }
+                    };
 
                     depth += 1;
                     indent += 1;
@@ -287,13 +301,14 @@ impl BDDGraph {
                 }
             }
         }
+        string
     }
 }
 
 impl PropFormula {
-    pub fn bdd(self) -> (BDDIndex, BDDGraph) {
+    pub fn bdd(&self) -> (BDDIndex, BDDGraph) {
         let mut graph = BDDGraph::default();
-        let head = graph.bdd_make(&self);
+        let head = graph.bdd_make(self);
         (head, graph)
     }
 }
@@ -304,69 +319,17 @@ mod tests {
 
     #[test]
     fn basic() {
-        let expr = parse_propositional_formula("p & q & r & s");
-        let (head, graph) = expr.bdd();
-
-        graph.print_representation(head);
-        println!("{head}");
-        for (idx, node) in graph.by_index {
-            println!("{idx} : {node}");
-        }
-
-        print!("\n\n");
-
-        let expr = parse_propositional_formula("-p & -q");
-        let (head, graph) = expr.bdd();
-
-        graph.print_representation(head);
-        println!();
-        println!("{head}");
-        for (idx, node) in graph.by_index {
-            println!("{idx} : {node}");
-        }
-
-        print!("\n\n");
-
-        let expr = parse_propositional_formula("p | q | long_r");
-        let (head, graph) = expr.bdd();
-
-        graph.print_representation(head);
-        println!("{head}");
-        for (idx, node) in graph.by_index {
-            println!("{idx} : {node}");
-        }
-
-        print!("\n\n");
-
-        let expr = parse_propositional_formula("big_p <=> (q => ~r)");
-        let (head, graph) = expr.bdd();
-
-        graph.print_representation(head);
-        println!("{head}");
-        for (idx, node) in graph.by_index {
-            println!("{idx} : {node}");
-        }
-
-        print!("\n\n");
-
         let expr = parse_propositional_formula("p & ~p");
         let (head, graph) = expr.bdd();
-        graph.print_representation(head);
-        println!("{head}");
-        for (idx, node) in graph.by_index {
-            println!("{idx} : {node}");
-        }
-
-        print!("\n\n");
+        graph.string_respresentation(head);
+        assert_eq!(head, -1);
 
         let expr = parse_propositional_formula("p | ~p");
-        let (head, graph) = expr.bdd();
-        graph.print_representation(head);
-        println!("{head}");
-        for (idx, node) in graph.by_index {
-            println!("{idx} : {node}");
-        }
+        let (head, _) = expr.bdd();
+        assert_eq!(head, 1);
 
-        print!("\n\n");
+        let expr = parse_propositional_formula("(p => q) | (q => p)");
+        let (head, _) = expr.bdd();
+        assert_eq!(head, 1);
     }
 }
