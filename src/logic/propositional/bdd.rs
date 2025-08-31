@@ -209,6 +209,75 @@ impl BDDGraph {
             Formula::Quantifier { .. } => todo!(),
         }
     }
+
+    pub fn representation_string(&self, head: BDDIndex) {
+        let mut stack: Vec<BDDIndex> = Vec::default();
+        let mut next = Some(head);
+
+        let mut end = false;
+
+        let spacing = 2;
+        let mut indent = 0;
+        let mut depth = 0;
+
+        while let Some(idx) = next {
+            match idx {
+                1 => {
+                    println!(" ⊤");
+                    next = stack.pop();
+
+                    depth -= 1;
+                    end = true;
+                }
+
+                -1 => {
+                    for _ in 0..(indent - depth - 1) {
+                        print!("    ");
+                    }
+                    match depth {
+                        0 => {}
+                        1 => print!("  │ "),
+                        _ => {
+                            for _ in 0..depth {
+                                print!("  │ ")
+                            }
+                        }
+                    }
+
+                    println!("  └  ⊥");
+                    next = stack.pop();
+
+                    depth -= 1;
+                    indent -= 1;
+
+                    end = true;
+                }
+
+                _ => {
+                    let node = self
+                        .by_index
+                        .get(&idx.abs())
+                        .unwrap_or_else(|| panic!("!{idx}"));
+                    if end {
+                        for _ in 1..indent {
+                            print!("    ");
+                        }
+                        print!("  └ ");
+                    }
+                    match idx.is_positive() {
+                        true => print!("+ {} ", node.prop),
+                        false => print!("- {} ", node.prop),
+                    }
+
+                    depth += 1;
+                    indent += 1;
+                    stack.push(node.fb);
+                    next = Some(node.tb);
+                    end = false;
+                }
+            }
+        }
+    }
 }
 
 impl PropFormula {
@@ -228,6 +297,7 @@ mod tests {
         let expr = parse_propositional_formula("p & q & r & s");
         let (head, graph) = expr.bdd();
 
+        graph.representation_string(head);
         println!("{head}");
         for (idx, node) in graph.by_index {
             println!("{idx} : {node}");
@@ -237,7 +307,8 @@ mod tests {
 
         let expr = parse_propositional_formula("-p & -q");
         let (head, graph) = expr.bdd();
-        // graph.write_graph(head);
+
+        graph.representation_string(head);
         println!();
         println!("{head}");
         for (idx, node) in graph.by_index {
@@ -249,6 +320,18 @@ mod tests {
         let expr = parse_propositional_formula("p | q | r");
         let (head, graph) = expr.bdd();
 
+        graph.representation_string(head);
+        println!("{head}");
+        for (idx, node) in graph.by_index {
+            println!("{idx} : {node}");
+        }
+
+        print!("\n\n");
+
+        let expr = parse_propositional_formula("p <=> (q => ~r)");
+        let (head, graph) = expr.bdd();
+
+        graph.representation_string(head);
         println!("{head}");
         for (idx, node) in graph.by_index {
             println!("{idx} : {node}");
