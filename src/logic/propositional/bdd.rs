@@ -197,10 +197,10 @@ impl BDDGraph {
                 match op {
                     OpBinary::And => self.bdd_make_and(lhs_idx, rhs_idx),
                     OpBinary::Or => -self.bdd_make_and(-lhs_idx, -rhs_idx),
-                    OpBinary::Imp => -self.bdd_make_and(-lhs_idx, rhs_idx),
+                    OpBinary::Imp => -self.bdd_make_and(lhs_idx, -rhs_idx),
                     OpBinary::Iff => {
-                        let ltr = -self.bdd_make_and(-lhs_idx, rhs_idx);
-                        let rtl = -self.bdd_make_and(-rhs_idx, lhs_idx);
+                        let ltr = -self.bdd_make_and(lhs_idx, -rhs_idx);
+                        let rtl = -self.bdd_make_and(-lhs_idx, rhs_idx);
                         self.bdd_make_and(ltr, rtl)
                     }
                 }
