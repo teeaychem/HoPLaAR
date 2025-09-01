@@ -91,7 +91,7 @@ fn parse_atom<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormul
             PropFormula::Not(expr)
         }
 
-        Some(Token::Constant(id)) => PropFormula::Atom(Prop::from(&id)),
+        Some(Token::Identifier(id)) => PropFormula::Atom(Prop::from(&id)),
 
         None => panic!("Expected an expression at end of input"),
 

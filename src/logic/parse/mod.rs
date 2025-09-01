@@ -2,7 +2,7 @@ mod propositional;
 pub use propositional::parse_propositional;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Paren {
+pub enum Paren {
     Blinky,
     Pinky,
     Inky,
@@ -10,10 +10,10 @@ enum Paren {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum Token {
+pub enum Token {
     ParenL(Paren),
     ParenR(Paren),
-    Constant(String),
+    Identifier(String),
     True,
     False,
     Not,
@@ -21,11 +21,12 @@ enum Token {
     Or,
     Imp,
     Iff,
+    Comma,
 }
 
 type TokenVec = Vec<Token>;
 
-fn lex(expr: &str) -> Vec<Token> {
+pub fn lex(expr: &str) -> Vec<Token> {
     let mut tokens = Vec::default();
 
     let mut chars = expr.chars().peekable();
@@ -78,7 +79,9 @@ fn lex(expr: &str) -> Vec<Token> {
                 _ => todo!(),
             },
 
-            char if char.is_ascii_alphanumeric() && char.is_lowercase() => {
+            ',' => tokens.push(Token::Comma),
+
+            char if char.is_ascii_alphanumeric() => {
                 let mut string = String::from(char);
                 while let Some(char) = chars.peek() {
                     match char {
@@ -102,7 +105,7 @@ fn lex(expr: &str) -> Vec<Token> {
                     "or" => tokens.push(Token::Or),
                     "implies" => tokens.push(Token::Imp),
                     "iff" => tokens.push(Token::Iff),
-                    _ => tokens.push(Token::Constant(string)),
+                    _ => tokens.push(Token::Identifier(string)),
                 }
             }
 
