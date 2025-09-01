@@ -83,12 +83,44 @@ pub struct Relation {
     terms: Vec<Term>,
 }
 
+impl Relation {
+    pub fn predicate(id: &str) -> Self {
+        Self {
+            id: id.to_owned(),
+            terms: Vec::default(),
+        }
+    }
+
+    pub fn n_ary(id: &str, terms: &[Term]) -> Self {
+        Self {
+            id: id.to_owned(),
+            terms: terms.to_vec(),
+        }
+    }
+}
+
+impl std::fmt::Display for Relation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.terms.as_slice() {
+            [] => write!(f, "{}", self.id),
+            [first, remaining @ ..] => {
+                let mut term_string = format!("{first}");
+                for term in remaining {
+                    term_string.push_str(&format!(", {term}"));
+                }
+
+                write!(f, "({}, {term_string})", self.id)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::logic::first_order::Term;
+    use crate::logic::first_order::{Relation, Term};
 
     #[test]
-    fn debug() {
+    fn debug_term() {
         let term = Term::unary(
             "sqrt",
             Term::binary(
@@ -106,5 +138,14 @@ mod tests {
         );
 
         println!("{term}");
+    }
+
+    #[test]
+    fn debug_relation() {
+        let x_plus_y = Term::binary("+", Term::variable("x"), Term::variable("y"));
+        let z = Term::variable("z");
+        let r = Relation::n_ary("<", &[x_plus_y, z]);
+
+        println!("{r}");
     }
 }
