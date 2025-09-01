@@ -1,8 +1,10 @@
 mod propositional;
 pub use propositional::parse_propositional;
 
+mod first_order;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Paren {
+enum Paren {
     Blinky,
     Pinky,
     Inky,
@@ -10,7 +12,7 @@ pub enum Paren {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Token {
+enum Token {
     ParenL(Paren),
     ParenR(Paren),
     Identifier(String),
@@ -26,7 +28,7 @@ pub enum Token {
 
 type TokenVec = Vec<Token>;
 
-pub fn lex(expr: &str) -> Vec<Token> {
+fn lex(expr: &str) -> Vec<Token> {
     let mut tokens = Vec::default();
 
     let mut chars = expr.chars().peekable();
