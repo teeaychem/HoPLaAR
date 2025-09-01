@@ -32,9 +32,25 @@ enum Token {
     Comma,
     Stop,
     Quantifier(Quantifier),
+    Whitespace,
 }
 
 type TokenVec = Vec<Token>;
+
+fn string_to_token(string: &str) -> Token {
+    match string {
+        "true" => Token::True,
+        "false" => Token::False,
+        "not" => Token::Not,
+        "and" => Token::And,
+        "or" => Token::Or,
+        "implies" => Token::Imp,
+        "iff" => Token::Iff,
+        "forall" => Token::Quantifier(Quantifier::ForAll),
+        "exists" => Token::Quantifier(Quantifier::Exists),
+        _ => Token::Identifier(string.to_owned()),
+    }
+}
 
 fn lex(expr: &str) -> TokenVec {
     let mut tokens = Vec::default();
@@ -42,55 +58,53 @@ fn lex(expr: &str) -> TokenVec {
     let mut chars = expr.chars().peekable();
 
     while let Some(char) = chars.next() {
-        match char {
-            '(' => tokens.push(Token::ParenL(Paren::Blinky)),
-            ')' => tokens.push(Token::ParenR(Paren::Blinky)),
-            '[' => tokens.push(Token::ParenL(Paren::Pinky)),
-            ']' => tokens.push(Token::ParenR(Paren::Pinky)),
-            '{' => tokens.push(Token::ParenL(Paren::Inky)),
-            '}' => tokens.push(Token::ParenR(Paren::Inky)),
+        let token = match char {
+            '(' => Token::ParenL(Paren::Blinky),
+            ')' => Token::ParenR(Paren::Blinky),
 
-            'T' => tokens.push(Token::True),
-            'F' => tokens.push(Token::False),
+            '[' => Token::ParenL(Paren::Pinky),
+            ']' => Token::ParenR(Paren::Pinky),
 
-            '~' => tokens.push(Token::Not),
+            '{' => Token::ParenL(Paren::Inky),
+            '}' => Token::ParenR(Paren::Inky),
 
-            '|' => tokens.push(Token::Or),
-            '&' => tokens.push(Token::And),
+            '~' => Token::Not,
+
+            '|' => Token::Or,
+            '&' => Token::And,
 
             '/' => match chars.next() {
-                Some('\\') => tokens.push(Token::And),
-                _ => todo!(),
+                Some('\\') => Token::And,
+                _ => string_to_token("/"),
             },
 
             '\\' => match chars.next() {
-                Some('/') => tokens.push(Token::Or),
-                _ => todo!(),
+                Some('/') => Token::Or,
+                _ => string_to_token("\\"),
             },
 
             '=' => match chars.next() {
-                Some('>') => tokens.push(Token::Imp),
+                Some('>') => Token::Imp,
                 Some('=') => match chars.peek() {
                     Some('>') => {
                         chars.next();
-                        tokens.push(Token::Imp);
+                        Token::Imp
                     }
-
-                    _ => tokens.push(Token::Iff),
+                    _ => Token::Iff,
                 },
-                _ => todo!(),
+                _ => string_to_token("="),
             },
 
             '<' => match chars.next() {
                 Some('=') => match chars.next() {
-                    Some('>') => tokens.push(Token::Iff),
-                    _ => todo!(),
+                    Some('>') => Token::Iff,
+                    _ => string_to_token("<="),
                 },
-                _ => todo!(),
+                _ => string_to_token("<"),
             },
 
-            ',' => tokens.push(Token::Comma),
-            '.' => tokens.push(Token::Stop),
+            ',' => Token::Comma,
+            '.' => Token::Stop,
 
             char if char.is_ascii_alphanumeric() => {
                 let mut string = String::from(char);
@@ -108,26 +122,17 @@ fn lex(expr: &str) -> TokenVec {
                     }
                 }
 
-                let token = match string.as_str() {
-                    "true" => Token::True,
-                    "false" => Token::False,
-                    "not" => Token::Not,
-                    "and" => Token::And,
-                    "or" => Token::Or,
-                    "implies" => Token::Imp,
-                    "iff" => Token::Iff,
-                    "forall" => Token::Quantifier(Quantifier::ForAll),
-                    "exists" => Token::Quantifier(Quantifier::Exists),
-                    _ => Token::Identifier(string),
-                };
-
-                tokens.push(token)
+                string_to_token(&string)
             }
 
-            whitespace if whitespace.is_whitespace() => {}
-            _ => {
-                todo!()
-            }
+            whitespace if whitespace.is_whitespace() => Token::Whitespace,
+
+            _ => todo!(),
+        };
+
+        match token {
+            Token::Whitespace => {}
+            _ => tokens.push(token),
         }
     }
 
