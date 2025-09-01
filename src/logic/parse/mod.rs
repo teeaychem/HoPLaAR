@@ -1,14 +1,18 @@
 mod propositional;
 pub use propositional::parse_propositional;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Paren {
+    Blinky,
+    Pinky,
+    Inky,
+    Clyde,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum Token {
-    BraceL,
-    BraceR,
-    BracketL,
-    BracketR,
-    ParenL,
-    ParenR,
+    ParenL(Paren),
+    ParenR(Paren),
     Constant(String),
     True,
     False,
@@ -28,20 +32,20 @@ fn lex(expr: &str) -> Vec<Token> {
 
     while let Some(char) = chars.next() {
         match char {
-            '(' => tokens.push(Token::ParenL),
-            ')' => tokens.push(Token::ParenR),
-            '[' => tokens.push(Token::BracketL),
-            ']' => tokens.push(Token::BracketR),
-            '{' => tokens.push(Token::BraceL),
-            '}' => tokens.push(Token::BraceR),
+            '(' => tokens.push(Token::ParenL(Paren::Blinky)),
+            ')' => tokens.push(Token::ParenR(Paren::Blinky)),
+            '[' => tokens.push(Token::ParenL(Paren::Pinky)),
+            ']' => tokens.push(Token::ParenR(Paren::Pinky)),
+            '{' => tokens.push(Token::ParenL(Paren::Inky)),
+            '}' => tokens.push(Token::ParenR(Paren::Inky)),
 
-            '1' | 'T' => tokens.push(Token::True),
-            '0' | 'F' => tokens.push(Token::False),
+            'T' => tokens.push(Token::True),
+            'F' => tokens.push(Token::False),
 
-            '-' | '~' => tokens.push(Token::Not),
+            '~' => tokens.push(Token::Not),
 
-            '+' | '|' => tokens.push(Token::Or),
-            '*' | '&' => tokens.push(Token::And),
+            '|' => tokens.push(Token::Or),
+            '&' => tokens.push(Token::And),
 
             '/' => match chars.next() {
                 Some('\\') => tokens.push(Token::And),

@@ -72,28 +72,14 @@ fn parse_and<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormula
 
 fn parse_atom<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormula {
     match tokens.next() {
-        Some(Token::ParenL) => {
+        Some(Token::ParenL(l_kind)) => {
             let expression = parse_formula(tokens);
             match tokens.next() {
-                Some(Token::ParenR) => expression,
+                Some(Token::ParenR(r_kind)) if l_kind == r_kind => {}
                 _ => panic!("Expected closing parenethsis"),
             }
-        }
 
-        Some(Token::BracketL) => {
-            let expression = parse_formula(tokens);
-            match tokens.next() {
-                Some(Token::BracketR) => expression,
-                _ => panic!("Expected closing parenethsis"),
-            }
-        }
-
-        Some(Token::BraceL) => {
-            let expression = parse_formula(tokens);
-            match tokens.next() {
-                Some(Token::BraceR) => expression,
-                _ => panic!("Expected closing parenethsis"),
-            }
+            expression
         }
 
         Some(Token::True) => PropFormula::True,
