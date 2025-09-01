@@ -56,6 +56,14 @@ impl Term {
             _ => id.chars().all(|c| c.is_numeric()),
         }
     }
+
+    pub fn to_variable(self) -> Self {
+        match self {
+            Term::Cst { id } => Term::Var { id },
+            Term::Var { .. } => self,
+            Term::Fun { .. } => panic!(),
+        }
+    }
 }
 
 impl std::fmt::Display for Term {

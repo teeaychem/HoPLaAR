@@ -2,7 +2,7 @@ use std::{collections::HashSet, iter::Peekable};
 
 use crate::logic::{
     first_order::{FirstOrderFormula, Relation, Term, TermId},
-    parse::{Token, lex},
+    parse::{Quantifier, Token, lex},
 };
 
 pub fn parse_first_order(str: &str) -> FirstOrderFormula {
@@ -122,19 +122,15 @@ fn parse_base<I: Iterator<Item = Token>>(
             None => panic!(),
         },
 
-        Some(Token::ForAll) => {
+        Some(Token::Quantifier(q)) => {
+            let q = *q;
+
             tokens.next();
-            let var = match tokens.peek() {
-                Some(Token::Identifier(_)) => match try_parse_term(tokens, variable_ids) {
-                    Some(term) => match &term {
-                        Term::Cst { id } => Term::Var(id),
-                        Term::Var { .. } => term,
-                        Term::Fun { .. } => panic!(),
-                    },
-                    None => panic!(),
-                },
-                _ => panic!(),
-            };
+            let var = try_parse_term(tokens, variable_ids)
+                .expect("Expected quantified variable")
+                .to_variable();
+
+            tokens.next_if(|t| matches!(t, Token::Stop));
 
             variable_ids.insert(var.id().to_owned());
             let expr = parse_base(tokens, variable_ids);
@@ -142,28 +138,10 @@ fn parse_base<I: Iterator<Item = Token>>(
 
             println!("After for all {:?}", tokens.peek());
 
-            FirstOrderFormula::ForAll(var, expr)
-        }
-
-        Some(Token::Exists) => {
-            tokens.next();
-            let var = match tokens.peek() {
-                Some(Token::Identifier(_)) => match try_parse_term(tokens, variable_ids) {
-                    Some(term) => match &term {
-                        Term::Cst { id } => Term::Var(id),
-                        Term::Var { .. } => term,
-                        Term::Fun { .. } => panic!(),
-                    },
-                    None => panic!(),
-                },
-                _ => panic!(),
-            };
-
-            variable_ids.insert(var.id().to_owned());
-            let expr = parse_base(tokens, variable_ids);
-            variable_ids.remove(var.id());
-
-            FirstOrderFormula::Exists(var, expr)
+            match q {
+                Quantifier::ForAll => FirstOrderFormula::ForAll(var, expr),
+                Quantifier::Exists => FirstOrderFormula::Exists(var, expr),
+            }
         }
 
         None => panic!("Expected an expression at end of input"),

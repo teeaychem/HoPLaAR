@@ -11,6 +11,12 @@ enum Paren {
     Clyde,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Quantifier {
+    ForAll,
+    Exists,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Token {
     ParenL(Paren),
@@ -24,8 +30,8 @@ enum Token {
     Imp,
     Iff,
     Comma,
-    ForAll,
-    Exists,
+    Stop,
+    Quantifier(Quantifier),
 }
 
 type TokenVec = Vec<Token>;
@@ -84,6 +90,7 @@ fn lex(expr: &str) -> TokenVec {
             },
 
             ',' => tokens.push(Token::Comma),
+            '.' => tokens.push(Token::Stop),
 
             char if char.is_ascii_alphanumeric() => {
                 let mut string = String::from(char);
@@ -109,8 +116,8 @@ fn lex(expr: &str) -> TokenVec {
                     "or" => Token::Or,
                     "implies" => Token::Imp,
                     "iff" => Token::Iff,
-                    "forall" => Token::ForAll,
-                    "exists" => Token::Exists,
+                    "forall" => Token::Quantifier(Quantifier::ForAll),
+                    "exists" => Token::Quantifier(Quantifier::Exists),
                     _ => Token::Identifier(string),
                 };
 
