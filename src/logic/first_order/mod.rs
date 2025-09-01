@@ -1,11 +1,14 @@
-use std::iter::Peekable;
+use std::{collections::HashSet, iter::Peekable};
 
 use crate::logic::parse::Token;
 
 #[derive(Clone, Debug)]
 pub enum Term {
+    /// A constant, or function with no arguments
     Cst { id: String },
+    /// A variable
     Var { id: String },
+    /// A function, with at least one argument
     Fun { id: String, args: Vec<Term> },
 }
 
@@ -31,6 +34,13 @@ impl Term {
 
     pub fn binary(op: &str, lhs: Term, rhs: Term) -> Self {
         Term::function(op, &[lhs, rhs])
+    }
+
+    pub fn is_const_id(id: &str) -> bool {
+        match id {
+            "nil" => true,
+            _ => id.chars().all(|c| c.is_numeric()),
+        }
     }
 }
 
@@ -92,7 +102,10 @@ impl std::fmt::Display for Relation {
     }
 }
 
-fn try_parse_term<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Option<Term> {
+fn try_parse_term<I: Iterator<Item = Token>>(
+    tokens: &mut Peekable<I>,
+    variable_ids: &HashSet<String>,
+) -> Option<Term> {
     let id = match tokens.peek() {
         Some(Token::Identifier(id)) => id.to_owned(),
         _ => return None,
@@ -116,7 +129,7 @@ fn try_parse_term<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Option
                         tokens.next();
                     }
 
-                    _ => match try_parse_term(tokens) {
+                    _ => match try_parse_term(tokens, variable_ids) {
                         Some(term) => args.push(term),
                         None => panic!("Hm"),
                     },
@@ -128,11 +141,20 @@ fn try_parse_term<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Option
             }
         }
 
-        _ => Some(Term::Var { id }),
+        _ => {
+            if variable_ids.contains(&id) || !Term::is_const_id(&id) {
+                Some(Term::Var { id })
+            } else {
+                Some(Term::Cst { id })
+            }
+        }
     }
 }
 
-fn try_parse_relation<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Option<Relation> {
+fn try_parse_relation<I: Iterator<Item = Token>>(
+    tokens: &mut Peekable<I>,
+    variable_ids: &HashSet<String>,
+) -> Option<Relation> {
     let id = match tokens.peek() {
         Some(Token::Identifier(id)) => id.to_owned(),
         _ => return None,
@@ -154,7 +176,7 @@ fn try_parse_relation<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Op
                     tokens.next();
                 }
 
-                _ => match try_parse_term(tokens) {
+                _ => match try_parse_term(tokens, variable_ids) {
                     Some(term) => terms.push(term),
                     None => break,
                 },
@@ -167,6 +189,8 @@ fn try_parse_relation<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Op
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use crate::logic::{
         first_order::{Term, try_parse_relation, try_parse_term},
         parse::lex,
@@ -174,6 +198,8 @@ mod tests {
 
     #[test]
     fn debug_term() {
+        let variable_ids: HashSet<String> = HashSet::default();
+
         let _term = Term::unary(
             "sqrt",
             Term::binary(
@@ -194,12 +220,12 @@ mod tests {
 
         let str = "a";
         let mut tokens = lex(str).into_iter().peekable();
-        let tmp = try_parse_term(&mut tokens).unwrap();
+        let tmp = try_parse_term(&mut tokens, &variable_ids).unwrap();
         println!("{tmp}");
 
         let str = "f(a,g(b,h(c)))";
         let mut tokens = lex(str).into_iter().peekable();
-        let tmp = try_parse_term(&mut tokens).unwrap();
+        let tmp = try_parse_term(&mut tokens, &variable_ids).unwrap();
         println!("{tmp}");
     }
 
@@ -209,14 +235,16 @@ mod tests {
         // let z = Term::variable("z");
         // let r = Relation::n_ary("<", &[x_plus_y, z]);
 
+        let variable_ids: HashSet<String> = HashSet::default();
+
         let str = "R()";
         let mut tokens = lex(str).into_iter().peekable();
-        let tmp = try_parse_relation(&mut tokens).unwrap();
+        let tmp = try_parse_relation(&mut tokens, &variable_ids).unwrap();
         println!("{tmp}");
 
         let str = "EQ(add(a,b), times(minus(x),y))";
         let mut tokens = lex(str).into_iter().peekable();
-        let tmp = try_parse_relation(&mut tokens).unwrap();
+        let tmp = try_parse_relation(&mut tokens, &variable_ids).unwrap();
         println!("{tmp}");
     }
 }
