@@ -28,7 +28,7 @@ enum Token {
 
 type TokenVec = Vec<Token>;
 
-fn lex(expr: &str) -> Vec<Token> {
+fn lex(expr: &str) -> TokenVec {
     let mut tokens = Vec::default();
 
     let mut chars = expr.chars().peekable();
