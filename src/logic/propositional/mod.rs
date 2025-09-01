@@ -14,6 +14,8 @@ pub use prop::Prop;
 mod valuation;
 pub use valuation::Valuation;
 
+pub use crate::logic::parse::parse_propositional as parse;
+
 // Propositional formula
 pub type PropFormula = Formula<Prop>;
 
@@ -23,7 +25,7 @@ pub fn eval(formula: &PropFormula, valuation: &Valuation) -> bool {
 
         Formula::False => false,
 
-        Formula::Atom { var } => valuation.get(var),
+        Formula::Atom(atom) => valuation.get(atom),
 
         Formula::Unary { op, expr } => match op {
             OpUnary::Not => !eval(expr, valuation),
@@ -62,18 +64,14 @@ impl PropFormula {
 
         let mut valuation = Valuation::from_prop_set(self.atoms());
 
-        let spacing = 1 + valuation.assignment().iter().fold(7, |a, literal| {
-            std::cmp::max(a, literal.atom().name().len())
-        });
+        let spacing = 1 + valuation
+            .assignment()
+            .iter()
+            .fold(7, |a, literal| std::cmp::max(a, literal.id().len()));
         let total_width = spacing * (valuation.size() + 1);
 
         for literal in valuation.assignment() {
-            let _ = write!(
-                table,
-                "{name:width$}",
-                width = spacing,
-                name = literal.atom().name()
-            );
+            let _ = write!(table, "{id:width$}", width = spacing, id = literal.id());
         }
 
         let _ = writeln!(table, "| {eval:width$}", width = spacing, eval = "formula");
@@ -144,19 +142,16 @@ impl PropFormula {
 #[cfg(test)]
 mod tests {
 
-    use crate::logic::{
-        parsing::parse_propositional_formula,
-        propositional::{Prop, PropFormula, Valuation, eval},
-    };
+    use crate::logic::propositional::{Prop, PropFormula, Valuation, eval, parse};
 
     #[test]
     fn eval_empty() {
         let v = Valuation::default();
 
-        let expr = parse_propositional_formula("true or false");
+        let expr = parse("true or false");
         assert!(expr.eval(&v));
 
-        let expr = parse_propositional_formula("true and false");
+        let expr = parse("true and false");
         assert!(!expr.eval(&v));
     }
 
@@ -166,82 +161,82 @@ mod tests {
         v.extend(Prop::from("a"), true);
         v.extend(Prop::from("b"), false);
 
-        let expr = parse_propositional_formula("a or b");
+        let expr = parse("a or b");
         assert!(expr.eval(&v));
 
-        let expr = parse_propositional_formula("a and b");
+        let expr = parse("a and b");
         assert!(!expr.eval(&v));
 
-        let expr = parse_propositional_formula("a ==> b");
+        let expr = parse("a ==> b");
         assert!(!expr.eval(&v));
 
-        let expr = parse_propositional_formula("~a ==> b");
+        let expr = parse("~a ==> b");
         assert!(expr.eval(&v));
 
-        let expr = parse_propositional_formula("~(a <=> b)");
+        let expr = parse("~(a <=> b)");
         assert!(expr.eval(&v));
     }
 
     #[test]
     fn all_valuations() {
-        let expr = parse_propositional_formula("p and (q or r) iff (p and q) or (p and r)");
+        let expr = parse("p and (q or r) iff (p and q) or (p and r)");
         assert!(expr.on_all_valuations(&eval));
 
-        let expr = parse_propositional_formula("p and (q or r) iff (p or q) and (p or r)");
+        let expr = parse("p and (q or r) iff (p or q) and (p or r)");
         assert!(!expr.on_all_valuations(&eval));
     }
 
     #[test]
     fn tautologies() {
-        let a = parse_propositional_formula("p | ~p");
+        let a = parse("p | ~p");
         assert!(a.tautology());
 
-        let b = parse_propositional_formula("p | q ==> p");
+        let b = parse("p | q ==> p");
         assert!(!b.tautology());
 
-        let c = parse_propositional_formula("p | q => q | (p <=> q)");
+        let c = parse("p | q => q | (p <=> q)");
         assert!(!c.tautology());
 
-        let d = parse_propositional_formula("(p | q) & ~(p & q) ==> (~p <=> q)");
+        let d = parse("(p | q) & ~(p & q) ==> (~p <=> q)");
         assert!(d.tautology());
     }
 
     #[test]
     fn satisfiability() {
-        let a = parse_propositional_formula("p | ~p");
+        let a = parse("p | ~p");
         assert!(a.satisfiable());
         assert!(!a.unsatisfiable());
 
-        let b = parse_propositional_formula("p | q ==> p");
+        let b = parse("p | q ==> p");
         assert!(b.satisfiable());
         assert!(!b.unsatisfiable());
 
-        let c = parse_propositional_formula("p & ~p");
+        let c = parse("p & ~p");
         assert!(c.unsatisfiable())
     }
 
     #[test]
     fn as_formula() {
-        let mut valuation = Valuation::from_names(["a", "b", "c", "d"]);
+        let mut valuation = Valuation::from_ids(["a", "b", "c", "d"]);
 
-        let expr = parse_propositional_formula("~a & ~b & ~c & ~d");
+        let expr = parse("~a & ~b & ~c & ~d");
 
         assert_eq!(valuation.as_formula(), expr);
 
         valuation.set(&Prop::from("b"), true);
-        let expr = parse_propositional_formula("~a & b & ~c & ~d");
+        let expr = parse("~a & b & ~c & ~d");
 
         assert_eq!(valuation.as_formula(), expr);
 
         valuation.invert();
-        let expr = parse_propositional_formula("a & ~b & c & d");
+        let expr = parse("a & ~b & c & d");
 
         assert_eq!(valuation.as_formula(), expr);
     }
 
     #[test]
     fn cnf() {
-        let expr = parse_propositional_formula("(p | q & r) & (~p | ~r)");
+        let expr = parse("(p | q & r) & (~p | ~r)");
 
         assert!(PropFormula::Iff(expr.clone(), expr.dnf()).tautology());
     }

@@ -195,44 +195,44 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Formula, parsing::parse_propositional_formula, propositional::Valuation};
+    use crate::logic::{Formula, parse_propositional, propositional::Valuation};
 
     #[test]
     fn duals() {
-        let expr = parse_propositional_formula("p | ~ p");
-        let expected = parse_propositional_formula("p & ~ p");
+        let expr = parse_propositional("p | ~ p");
+        let expected = parse_propositional("p & ~ p");
         assert_eq!(expr.dual(), expected);
     }
 
     #[test]
     fn thm_2_7() {
-        let expr = parse_propositional_formula("p & q");
+        let expr = parse_propositional("p & q");
         let v_a = Valuation::from_prop_set(expr.atoms());
         assert_eq!(expr.eval(&v_a), !expr.dual().eval(&v_a.inverted()))
     }
 
     #[test]
     fn simplification() {
-        let expr = parse_propositional_formula("(true ==> (x <=> false)) ==> ~(y | false & z)");
-        let expected = parse_propositional_formula("~x ==> ~y");
+        let expr = parse_propositional("(true ==> (x <=> false)) ==> ~(y | false & z)");
+        let expected = parse_propositional("~x ==> ~y");
 
         assert_eq!(expr.simplify(), expected);
 
-        let expr = parse_propositional_formula("((x ==> y) ==> true) | ~false");
-        let expected = parse_propositional_formula("true");
+        let expr = parse_propositional("((x ==> y) ==> true) | ~false");
+        let expected = parse_propositional("true");
 
         assert_eq!(expr.simplify(), expected);
     }
 
     #[test]
     fn literals() {
-        let p = parse_propositional_formula("p");
+        let p = parse_propositional("p");
 
         assert!(p.is_literal());
         assert!(p.is_positive_literal());
         assert!(!p.is_negative_literal());
 
-        let pq = parse_propositional_formula("p & q");
+        let pq = parse_propositional("p & q");
         assert!(!pq.is_literal());
         assert!(!pq.is_positive_literal());
         assert!(!pq.is_negative_literal());
@@ -240,33 +240,32 @@ mod tests {
 
     #[test]
     fn negate() {
-        let p = parse_propositional_formula("p");
-        let n = parse_propositional_formula("~p");
+        let p = parse_propositional("p");
+        let n = parse_propositional("~p");
 
         assert_eq!(n.negate(), p);
 
-        let p = parse_propositional_formula("p & q");
-        let n = parse_propositional_formula("~(p & q)");
+        let p = parse_propositional("p & q");
+        let n = parse_propositional("~(p & q)");
 
         assert_eq!(n.negate(), p);
     }
 
     #[test]
     fn distribution() {
-        let pqr = parse_propositional_formula("p & (q | r)");
-        let expected = parse_propositional_formula("(p & q) | (p & r)");
+        let pqr = parse_propositional("p & (q | r)");
+        let expected = parse_propositional("(p & q) | (p & r)");
         assert_eq!(pqr.distribute(), expected);
 
-        let pqr = parse_propositional_formula("(p | q) & r");
-        let expected = parse_propositional_formula("(p & r) | (q & r)");
+        let pqr = parse_propositional("(p | q) & r");
+        let expected = parse_propositional("(p & r) | (q & r)");
         assert_eq!(pqr.distribute(), expected);
     }
 
     #[test]
     fn raw_dnf() {
-        let expr = parse_propositional_formula("(p | q & r) & (~p | ~r)");
-        let expected =
-            parse_propositional_formula("(p & ~p | (q & r) & ~p) | p & ~r | (q & r) & ~r");
+        let expr = parse_propositional("(p | q & r) & (~p | ~r)");
+        let expected = parse_propositional("(p & ~p | (q & r) & ~p) | p & ~r | (q & r) & ~r");
         assert!(Formula::Iff(expr.raw_dnf(), expected).tautology());
     }
 }

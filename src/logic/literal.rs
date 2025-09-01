@@ -22,6 +22,10 @@ impl<A: Atomic> Literal<A> {
         &self.atom
     }
 
+    pub fn id(&self) -> &str {
+        self.atom.id()
+    }
+
     pub fn value(&self) -> bool {
         self.value
     }
@@ -34,7 +38,7 @@ impl<A: Atomic> Literal<A> {
 
     pub fn invert_value(&mut self) {
         self.value = !self.value
-}
+    }
 }
 
 impl<A: Atomic> std::cmp::PartialOrd for Literal<A> {

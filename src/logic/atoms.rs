@@ -41,8 +41,8 @@ impl<A: Atomic> Formula<A> {
     pub fn substitute(mut self, atom: &A, fm: &Formula<A>) -> Formula<A> {
         match &mut self {
             Formula::True | Formula::False => self,
-            Formula::Atom { var } => {
-                if var == atom {
+            Formula::Atom(other) => {
+                if other == atom {
                     fm.to_owned()
                 } else {
                     self
@@ -70,9 +70,9 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::logic::{
-        Formula,
+        Atomic, Formula,
         atoms::on_atoms,
-        parsing::parse_propositional_formula,
+        parse::parse_propositional,
         propositional::{Prop, PropFormula, Valuation},
     };
 
@@ -100,8 +100,8 @@ mod tests {
         );
 
         let uppercase_mut = |fm: PropFormula| -> PropFormula {
-            if let Formula::Atom { var } = fm {
-                Formula::Atom(Prop::from(var.name().to_uppercase().as_str()))
+            if let Formula::Atom(atom) = fm {
+                Formula::Atom(Prop::from(&atom.id().to_uppercase()))
             } else {
                 fm
             }
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn union() {
-        let expr = parse_propositional_formula("(a | (c & d)) & b");
+        let expr = parse_propositional("(a | (c & d)) & b");
         let atom_union = expr.atoms();
         let atom_set = HashSet::from([
             Prop::from("b"),
@@ -126,25 +126,25 @@ mod tests {
 
     #[test]
     fn substitution() {
-        let expr = parse_propositional_formula("p & q & p & q");
-        let s = parse_propositional_formula("p & q");
+        let expr = parse_propositional("p & q & p & q");
+        let s = parse_propositional("p & q");
         let expr_s = expr.substitute(&Prop::from("p"), &s);
 
-        let expected = parse_propositional_formula("(p & q) & q & (p & q) & q");
+        let expected = parse_propositional("(p & q) & q & (p & q) & q");
 
         assert_eq!(expected, expr_s);
     }
 
     #[test]
     fn duals() {
-        let expr = parse_propositional_formula("p | ~ p");
-        let expected = parse_propositional_formula("p & ~ p");
+        let expr = parse_propositional("p | ~ p");
+        let expected = parse_propositional("p & ~ p");
         assert_eq!(expr.dual(), expected);
     }
 
     #[test]
     fn thm_2_7() {
-        let expr = parse_propositional_formula("p & q");
+        let expr = parse_propositional("p & q");
         let v_a = Valuation::from_prop_set(expr.atoms());
         assert_eq!(expr.eval(&v_a), !expr.dual().eval(&v_a.inverted()))
     }

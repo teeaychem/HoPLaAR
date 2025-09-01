@@ -13,8 +13,8 @@ impl PropFormula {
         }
 
         match &main_def {
-            PropFormula::Atom { var } => (
-                Some(var.clone()),
+            PropFormula::Atom(atom) => (
+                Some(atom.clone()),
                 Formula::And(main_def, dict.to_three_cnf()),
             ),
             _ => panic!(),
@@ -51,11 +51,11 @@ impl PropFormula {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::parse_propositional_formula;
+    use crate::logic::propositional::parse;
 
     #[test]
     fn cnf() {
-        let expr = parse_propositional_formula("(p | (q & ~r))");
+        let expr = parse("(p | (q & ~r))");
         let (_, cnf) = expr.clone().cnf();
 
         assert!(!expr.satisfiable() || cnf.satisfiable());

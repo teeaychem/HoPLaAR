@@ -21,10 +21,10 @@ impl Valuation {
         valuation
     }
 
-    pub fn from_names<const N: usize>(names: [&str; N]) -> Self {
+    pub fn from_ids<const N: usize>(ids: [&str; N]) -> Self {
         let mut valuation = Valuation::default();
-        for name in names {
-            valuation.extend(Prop::from(name), false);
+        for id in ids {
+            valuation.extend(Prop::from(id), false);
         }
         valuation
     }

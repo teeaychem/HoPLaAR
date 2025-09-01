@@ -1,4 +1,4 @@
-use crate::logic::{Literal, Atomic, Formula, OpBinary, OpUnary};
+use crate::logic::{Atomic, Formula, Literal, OpBinary, OpUnary};
 
 // Invariant: Literals are sorted by `literal_cmp`.
 type LiteralSet<A> = Vec<Literal<A>>;
@@ -255,12 +255,12 @@ impl<A: Atomic> Formula<A> {
             Formula::True => vec![vec![]],
             Formula::False => vec![],
 
-            Formula::Atom { var } => vec![vec![Literal::from(var.clone(), true)]],
+            Formula::Atom(atom) => vec![vec![Literal::from(atom.clone(), true)]],
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
-                    if let Formula::Atom { var } = expr.as_ref() {
-                        vec![vec![Literal::from(var.clone(), false)]]
+                    if let Formula::Atom(atom) = expr.as_ref() {
+                        vec![vec![Literal::from(atom.clone(), false)]]
                     } else {
                         panic!()
                     }
@@ -303,38 +303,38 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Formula, parse_propositional_formula};
+    use crate::logic::{Formula, parse_propositional};
 
     #[test]
     fn dnf() {
-        let expr = parse_propositional_formula("(p | q & r) & (~p | ~r)");
+        let expr = parse_propositional("(p | q & r) & (~p | ~r)");
         let mut dnf = expr.dnf_to_formula_set();
         assert_eq!(dnf.sets().len(), 4);
 
         dnf.dnf_filter_contradictions();
         assert_eq!(dnf.sets().len(), 2);
 
-        let expr = parse_propositional_formula("(p | p & r)");
+        let expr = parse_propositional("(p | p & r)");
         let dnf = expr.dnf_to_formula_set();
         assert_eq!(dnf.sets().len(), 2);
 
-        let expr = parse_propositional_formula("false");
+        let expr = parse_propositional("false");
         let dnf = expr.dnf_to_formula_set();
         assert!(dnf.is_bot());
 
-        let expr = parse_propositional_formula("p & ~p");
+        let expr = parse_propositional("p & ~p");
         let mut dnf = expr.dnf_to_formula_set();
         dnf.filter_contradictions();
         assert!(dnf.is_bot());
 
-        let expr = parse_propositional_formula("true");
+        let expr = parse_propositional("true");
         let dnf = expr.dnf_to_formula_set();
         assert!(dnf.is_top());
     }
 
     #[test]
     fn dnf_subsumption() {
-        let expr = parse_propositional_formula("(p | p & r) & true");
+        let expr = parse_propositional("(p | p & r) & true");
         let mut dnf = expr.dnf_to_formula_set();
         dnf.subsume();
         assert!(dnf.sets().first().is_some_and(|set| set.len() == 2));
@@ -342,7 +342,7 @@ mod tests {
 
     #[test]
     fn dnf_formula() {
-        let expr = parse_propositional_formula("(p | q & r) & (~p | ~r)");
+        let expr = parse_propositional("(p | q & r) & (~p | ~r)");
         let dnf = expr.dnf_to_formula_set();
         let fm = dnf.as_formula();
         assert!(Formula::Iff(expr, fm).tautology());

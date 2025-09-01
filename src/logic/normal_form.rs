@@ -111,11 +111,11 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Formula, parse_propositional_formula};
+    use crate::logic::{Formula, parse_propositional};
 
     #[test]
     fn nnf_simple() {
-        let expr = parse_propositional_formula("(p <=> q) <=> ~(r ==> s)");
+        let expr = parse_propositional("(p <=> q) <=> ~(r ==> s)");
         let expr_nnf = expr.clone().nnf();
 
         assert!(Formula::Iff(expr, expr_nnf).tautology())
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn nenf_simple() {
-        let expr = parse_propositional_formula("(p <=> q) <=> ~(r ==> s)");
+        let expr = parse_propositional("(p <=> q) <=> ~(r ==> s)");
         let expr_nenf = expr.clone().nenf();
 
         assert!(Formula::Iff(expr, expr_nenf).tautology())

@@ -12,8 +12,8 @@ pub use literal::Literal;
 
 mod normal_form;
 
-mod parsing;
-pub use parsing::parse_propositional_formula;
+mod parse;
+pub use parse::parse_propositional;
 
 pub mod propositional;
 
@@ -41,6 +41,8 @@ pub enum Quantifier {
 pub trait Atomic:
     std::fmt::Debug + std::fmt::Display + Clone + std::hash::Hash + Eq + std::cmp::Ord
 {
+    // A string identifier which uniquely identifier the atom.
+    fn id(&self) -> &str;
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -48,9 +50,7 @@ pub enum Formula<T: Atomic> {
     True,
     False,
 
-    Atom {
-        var: T,
-    },
+    Atom(T),
 
     Unary {
         op: OpUnary,
@@ -125,8 +125,8 @@ impl<A: Atomic> Formula<A> {
         Self::Binary(OpBinary::Iff, lhs, rhs)
     }
 
-    pub fn Atom(var: A) -> Self {
-        Self::Atom { var }
+    pub fn Atom(atomic: A) -> Self {
+        Self::Atom(atomic)
     }
 
     pub fn Exists(var: A, expr: Formula<A>) -> Self {

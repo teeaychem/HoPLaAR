@@ -34,7 +34,7 @@ impl<A: Atomic> std::fmt::Display for Formula<A> {
             Formula::True => write!(f, "⊤"),
             Formula::False => write!(f, "⊥"),
 
-            Formula::Atom { var } => write!(f, "{var}"),
+            Formula::Atom(atom) => write!(f, "{atom}"),
 
             Formula::Unary { op, expr } => match expr.as_ref() {
                 Formula::True
@@ -85,6 +85,6 @@ impl<A: Atomic> std::fmt::Display for Formula<A> {
 
 impl std::fmt::Display for Prop {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
+        write!(f, "{}", self.id())
     }
 }

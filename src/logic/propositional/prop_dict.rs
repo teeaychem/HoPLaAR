@@ -153,20 +153,17 @@ impl PropDict {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{
-        parse_propositional_formula,
-        propositional::{Prop, PropDict},
-    };
+    use crate::logic::propositional::{Prop, PropDict, parse};
 
     #[test]
     fn dict() {
         let mut dict = PropDict::default();
 
-        let expr = parse_propositional_formula("p_0");
+        let expr = parse("p_0");
         let def = dict.get_or_insert(&expr);
         assert_eq!(def, Prop::from("p_1"));
 
-        let expr = parse_propositional_formula("p & q");
+        let expr = parse("p & q");
         let def = dict.get_or_insert(&expr);
         assert_eq!(def, Prop::from("p_2"));
     }

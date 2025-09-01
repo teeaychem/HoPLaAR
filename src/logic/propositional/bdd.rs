@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Write};
 
 use crate::logic::{
-    Formula, OpBinary, OpUnary,
+    Atomic, Formula, OpBinary, OpUnary,
     propositional::{Prop, PropFormula},
 };
 
@@ -190,7 +190,7 @@ impl BDDGraph {
             Formula::True => 1,
             Formula::False => -1,
 
-            Formula::Atom { var } => self.bdd_make_node(var.clone(), 1, -1),
+            Formula::Atom(atom) => self.bdd_make_node(atom.clone(), 1, -1),
 
             Formula::Unary { op, expr } => {
                 let expr_node = self.bdd_make(expr);
@@ -227,7 +227,7 @@ impl BDDGraph {
             5,
             self.by_index
                 .values()
-                .map(|node| node.prop.name().len())
+                .map(|node| node.prop.id().len())
                 .max()
                 .unwrap_or_default()
                 + 3,
@@ -277,7 +277,7 @@ impl BDDGraph {
                         let _ = write!(string, " └{:─<width$} ", "", width = spacing - 3);
                     }
 
-                    let prop = &node.prop.name();
+                    let prop = &node.prop.id();
                     let _ = match idx.is_positive() {
                         true => write!(
                             string,
@@ -315,20 +315,20 @@ impl PropFormula {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::parse_propositional_formula;
+    use crate::logic::propositional::parse;
 
     #[test]
     fn basic() {
-        let expr = parse_propositional_formula("p & ~p");
+        let expr = parse("p & ~p");
         let (head, graph) = expr.bdd();
         graph.string_respresentation(head);
         assert_eq!(head, -1);
 
-        let expr = parse_propositional_formula("p | ~p");
+        let expr = parse("p | ~p");
         let (head, _) = expr.bdd();
         assert_eq!(head, 1);
 
-        let expr = parse_propositional_formula("(p => q) | (q => p)");
+        let expr = parse("(p => q) | (q => p)");
         let (head, _) = expr.bdd();
         assert_eq!(head, 1);
     }

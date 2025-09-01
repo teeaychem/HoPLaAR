@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::logic::{Formula, Atomic};
+use crate::logic::{Atomic, Formula};
 
 pub struct AtomIteratorD<'a, T: Atomic> {
     stack: Vec<&'a Formula<T>>,
@@ -17,9 +17,9 @@ impl<'a, A: Atomic> Iterator for AtomIteratorD<'a, A> {
                 self.next()
             }
 
-            Some(Formula::Atom { var }) => {
+            Some(Formula::Atom(atom)) => {
                 self.expr = self.stack.pop();
-                Some(var)
+                Some(atom)
             }
 
             Some(Formula::Unary { expr, .. }) => {
@@ -48,8 +48,8 @@ pub struct AtomIteratorB<'a, A: Atomic> {
     expr: Option<&'a Formula<A>>,
 }
 
-impl<'a, T: Atomic> Iterator for AtomIteratorB<'a, T> {
-    type Item = &'a T;
+impl<'a, A: Atomic> Iterator for AtomIteratorB<'a, A> {
+    type Item = &'a A;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.expr {
@@ -58,15 +58,15 @@ impl<'a, T: Atomic> Iterator for AtomIteratorB<'a, T> {
                 self.next()
             }
 
-            Some(Formula::Atom { var }) => {
+            Some(Formula::Atom(atom)) => {
                 self.expr = self.stack.pop_front();
-                Some(var)
+                Some(atom)
             }
 
             Some(Formula::Unary { expr, .. }) => match &**expr {
-                Formula::Atom { var } => {
+                Formula::Atom(atom) => {
                     self.expr = self.stack.pop_front();
-                    Some(var)
+                    Some(atom)
                 }
                 _ => {
                     self.expr = Some(expr);
@@ -75,14 +75,14 @@ impl<'a, T: Atomic> Iterator for AtomIteratorB<'a, T> {
             },
 
             Some(Formula::Binary { lhs, rhs, .. }) => match (&**lhs, &**rhs) {
-                (Formula::Atom { var }, _) => {
+                (Formula::Atom(atom), _) => {
                     self.expr = Some(rhs);
-                    Some(var)
+                    Some(atom)
                 }
 
-                (_, Formula::Atom { var }) => {
+                (_, Formula::Atom(atom)) => {
                     self.expr = Some(lhs);
-                    Some(var)
+                    Some(atom)
                 }
 
                 _ => {
@@ -121,11 +121,11 @@ impl<T: Atomic> Formula<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{parsing::parse_propositional_formula, propositional::Prop};
+    use crate::logic::{parse::parse_propositional, propositional::Prop};
 
     #[test]
     fn iter_d() {
-        let expr = parse_propositional_formula("(a | (c & d)) & b");
+        let expr = parse_propositional("(a | (c & d)) & b");
         let atoms = expr.atoms_d().cloned().collect::<Vec<_>>();
         let expected_atoms = vec![
             Prop::from("a"),
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn iter_b() {
-        let expr = parse_propositional_formula("((a => d) | c) & b");
+        let expr = parse_propositional("((a => d) | c) & b");
         let atoms = expr.atoms_b().cloned().collect::<Vec<_>>();
         let expected_atoms = vec![
             Prop::from("b"),
