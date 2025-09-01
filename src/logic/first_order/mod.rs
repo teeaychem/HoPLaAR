@@ -17,16 +17,15 @@ pub struct Fun {
 
 impl std::fmt::Display for Fun {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.args.len() {
-            0 => write!(f, "{}", self.id),
-            _ => {
-                let x = self
-                    .args
-                    .iter()
-                    .map(|arg| format!("{arg}"))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                write!(f, "{}({})", self.id, x)
+        match self.args.as_slice() {
+            [] => write!(f, "{}", self.id),
+            [first, remaining @ ..] => {
+                let mut arg_string = format!("{first}");
+                for arg in remaining {
+                    arg_string.push_str(&format!(", {arg}"));
+                }
+
+                write!(f, "{}({arg_string})", self.id)
             }
         }
     }
