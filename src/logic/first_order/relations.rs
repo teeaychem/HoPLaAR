@@ -1,4 +1,7 @@
-use crate::logic::{first_order::{Term, TermId}, Atomic};
+use crate::logic::{
+    Atomic,
+    first_order::{Term, TermId},
+};
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Relation {

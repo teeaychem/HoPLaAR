@@ -37,6 +37,8 @@ enum Token {
 
 type TokenVec = Vec<Token>;
 
+static DELIMITING_CHARS: &str = "(){}[],.~&|\\/=<";
+
 fn string_to_token(string: &str) -> Token {
     match string {
         "true" => Token::True,
@@ -48,7 +50,17 @@ fn string_to_token(string: &str) -> Token {
         "iff" => Token::Iff,
         "forall" => Token::Quantifier(Quantifier::ForAll),
         "exists" => Token::Quantifier(Quantifier::Exists),
-        _ => Token::Identifier(string.to_owned()),
+        _ => {
+            let mut chars = string.chars();
+
+            let head_ok = chars.next().is_some_and(|head| head.is_alphanumeric());
+            let body_ok = chars.all(|char| char.is_alphanumeric() || "_\'`".contains(char));
+            if head_ok && body_ok {
+                Token::Identifier(string.to_owned())
+            } else {
+                panic!("Failed identifier: '{string}'")
+            }
+        }
     }
 }
 
@@ -59,6 +71,14 @@ fn lex(expr: &str) -> TokenVec {
 
     while let Some(char) = chars.next() {
         let token = match char {
+            whitespace if whitespace.is_whitespace() => {
+                while chars.peek().is_some_and(|c| c.is_whitespace()) {
+                    chars.next();
+                }
+
+                Token::Whitespace
+            }
+
             '(' => Token::ParenL(Paren::Blinky),
             ')' => Token::ParenR(Paren::Blinky),
 
@@ -75,12 +95,12 @@ fn lex(expr: &str) -> TokenVec {
 
             '/' => match chars.next() {
                 Some('\\') => Token::And,
-                _ => string_to_token("/"),
+                _ => panic!(),
             },
 
             '\\' => match chars.next() {
                 Some('/') => Token::Or,
-                _ => string_to_token("\\"),
+                _ => panic!(),
             },
 
             '=' => match chars.next() {
@@ -92,42 +112,34 @@ fn lex(expr: &str) -> TokenVec {
                     }
                     _ => Token::Iff,
                 },
-                _ => string_to_token("="),
+                _ => panic!(),
             },
 
             '<' => match chars.next() {
                 Some('=') => match chars.next() {
                     Some('>') => Token::Iff,
-                    _ => string_to_token("<="),
+                    _ => panic!(),
                 },
-                _ => string_to_token("<"),
+                _ => panic!(),
             },
 
             ',' => Token::Comma,
             '.' => Token::Stop,
 
-            char if char.is_ascii_alphanumeric() => {
+            char => {
                 let mut string = String::from(char);
                 while let Some(char) = chars.peek() {
                     match char {
-                        a if a.is_alphanumeric() => {
-                            string.push(*char);
+                        whitespace if whitespace.is_whitespace() => break,
+                        delimiting if DELIMITING_CHARS.contains(*delimiting) => break,
+                        c => {
+                            string.push(*c);
                             chars.next();
                         }
-                        '_' | '\'' | '’' => {
-                            string.push(*char);
-                            chars.next();
-                        }
-                        _ => break,
                     }
                 }
-
                 string_to_token(&string)
             }
-
-            whitespace if whitespace.is_whitespace() => Token::Whitespace,
-
-            _ => todo!(),
         };
 
         match token {
