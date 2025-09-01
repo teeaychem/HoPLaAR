@@ -4,6 +4,8 @@ pub use atoms::on_atoms;
 
 mod display;
 
+pub mod first_order;
+
 pub mod formula_set;
 pub mod iterators;
 
