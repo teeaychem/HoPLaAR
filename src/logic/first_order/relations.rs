@@ -1,6 +1,6 @@
-use crate::logic::first_order::{Term, TermId};
+use crate::logic::{first_order::{Term, TermId}, Atomic};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Relation {
     id: TermId,
     terms: Vec<Term>,
@@ -41,5 +41,11 @@ impl std::fmt::Display for Relation {
                 write!(f, "({}, {term_string})", self.id)
             }
         }
+    }
+}
+
+impl Atomic for Relation {
+    fn id(&self) -> &str {
+        &self.id
     }
 }

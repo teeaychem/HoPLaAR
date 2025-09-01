@@ -24,6 +24,8 @@ enum Token {
     Imp,
     Iff,
     Comma,
+    ForAll,
+    Exists,
 }
 
 type TokenVec = Vec<Token>;
@@ -99,16 +101,20 @@ fn lex(expr: &str) -> TokenVec {
                     }
                 }
 
-                match string.as_str() {
-                    "true" => tokens.push(Token::True),
-                    "false" => tokens.push(Token::False),
-                    "not" => tokens.push(Token::Not),
-                    "and" => tokens.push(Token::And),
-                    "or" => tokens.push(Token::Or),
-                    "implies" => tokens.push(Token::Imp),
-                    "iff" => tokens.push(Token::Iff),
-                    _ => tokens.push(Token::Identifier(string)),
-                }
+                let token = match string.as_str() {
+                    "true" => Token::True,
+                    "false" => Token::False,
+                    "not" => Token::Not,
+                    "and" => Token::And,
+                    "or" => Token::Or,
+                    "implies" => Token::Imp,
+                    "iff" => Token::Iff,
+                    "forall" => Token::ForAll,
+                    "exists" => Token::Exists,
+                    _ => Token::Identifier(string),
+                };
+
+                tokens.push(token)
             }
 
             whitespace if whitespace.is_whitespace() => {}

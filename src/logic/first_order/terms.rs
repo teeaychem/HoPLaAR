@@ -1,6 +1,6 @@
 pub type TermId = String;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Term {
     /// A constant, or function with no arguments
     Cst { id: TermId },
