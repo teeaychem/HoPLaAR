@@ -2,14 +2,16 @@ use std::{collections::HashSet, iter::Peekable};
 
 use crate::logic::parse::Token;
 
+pub type TermId = String;
+
 #[derive(Clone, Debug)]
 pub enum Term {
     /// A constant, or function with no arguments
-    Cst { id: String },
+    Cst { id: TermId },
     /// A variable
-    Var { id: String },
+    Var { id: TermId },
     /// A function, with at least one argument
-    Fun { id: String, args: Vec<Term> },
+    Fun { id: TermId, args: Vec<Term> },
 }
 
 impl Term {
@@ -66,7 +68,7 @@ impl std::fmt::Display for Term {
 
 #[derive(Clone, Debug)]
 pub struct Relation {
-    id: String,
+    id: TermId,
     terms: Vec<Term>,
 }
 
@@ -104,7 +106,7 @@ impl std::fmt::Display for Relation {
 
 fn try_parse_term<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
-    variable_ids: &HashSet<String>,
+    variable_ids: &HashSet<TermId>,
 ) -> Option<Term> {
     let id = match tokens.peek() {
         Some(Token::Identifier(id)) => id.to_owned(),
@@ -153,7 +155,7 @@ fn try_parse_term<I: Iterator<Item = Token>>(
 
 fn try_parse_relation<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
-    variable_ids: &HashSet<String>,
+    variable_ids: &HashSet<TermId>,
 ) -> Option<Relation> {
     let id = match tokens.peek() {
         Some(Token::Identifier(id)) => id.to_owned(),
@@ -192,13 +194,13 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::logic::{
-        first_order::{Term, try_parse_relation, try_parse_term},
+        first_order::{try_parse_relation, try_parse_term, Term, TermId},
         parse::lex,
     };
 
     #[test]
     fn debug_term() {
-        let variable_ids: HashSet<String> = HashSet::default();
+        let variable_ids: HashSet<TermId> = HashSet::default();
 
         let _term = Term::unary(
             "sqrt",
@@ -235,7 +237,7 @@ mod tests {
         // let z = Term::variable("z");
         // let r = Relation::n_ary("<", &[x_plus_y, z]);
 
-        let variable_ids: HashSet<String> = HashSet::default();
+        let variable_ids: HashSet<TermId> = HashSet::default();
 
         let str = "R()";
         let mut tokens = lex(str).into_iter().peekable();
