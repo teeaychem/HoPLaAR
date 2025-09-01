@@ -50,10 +50,6 @@ impl Term {
     }
 
     pub fn function(id: &str, args: &[Term]) -> Self {
-        if args.is_empty() {
-            panic!("Use Term::constant(...) to create a constant")
-        }
-
         Term::Fun(Fun {
             id: id.to_owned(),
             args: args.to_vec(),
