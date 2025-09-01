@@ -7,11 +7,7 @@ use crate::logic::{
 
 pub fn parse_propositional(str: &str) -> PropFormula {
     let mut tokens = lex(str).into_iter().peekable();
-    parse_formula(&mut tokens)
-}
-
-fn parse_formula<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormula {
-    parse_iff(tokens)
+    parse_iff(&mut tokens)
 }
 
 fn parse_iff<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormula {
@@ -73,7 +69,7 @@ fn parse_and<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormula
 fn parse_atom<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> PropFormula {
     match tokens.next() {
         Some(Token::ParenL(l_kind)) => {
-            let expression = parse_formula(tokens);
+            let expression = parse_iff(tokens);
             match tokens.next() {
                 Some(Token::ParenR(r_kind)) if l_kind == r_kind => {}
                 _ => panic!("Expected closing parenethsis"),
