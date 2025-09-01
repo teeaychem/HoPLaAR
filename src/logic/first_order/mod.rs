@@ -3,61 +3,26 @@ use std::iter::Peekable;
 use crate::logic::parse::Token;
 
 #[derive(Clone, Debug)]
-pub struct Var {
-    id: String,
-}
-
-impl std::fmt::Display for Var {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.id)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Fun {
-    id: String,
-    args: Vec<Term>,
-}
-
-impl std::fmt::Display for Fun {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.args.as_slice() {
-            [] => write!(f, "{}", self.id),
-            [first, remaining @ ..] => {
-                let mut arg_string = format!("{first}");
-                for arg in remaining {
-                    arg_string.push_str(&format!(", {arg}"));
-                }
-
-                write!(f, "{}({arg_string})", self.id)
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
 pub enum Term {
-    Var(Var),
-    Fun(Fun),
+    Cst { id: String },
+    Var { id: String },
+    Fun { id: String, args: Vec<Term> },
 }
 
 impl Term {
     pub fn variable(id: &str) -> Self {
-        Term::Var(Var { id: id.to_owned() })
+        Term::Var { id: id.to_owned() }
     }
 
     pub fn constant(id: &str) -> Self {
-        Term::Fun(Fun {
-            id: id.to_owned(),
-            args: Vec::default(),
-        })
+        Term::Cst { id: id.to_owned() }
     }
 
     pub fn function(id: &str, args: &[Term]) -> Self {
-        Term::Fun(Fun {
+        Term::Fun {
             id: id.to_owned(),
             args: args.to_vec(),
-        })
+        }
     }
 
     pub fn unary(op: &str, term: Term) -> Self {
@@ -72,8 +37,19 @@ impl Term {
 impl std::fmt::Display for Term {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Term::Var(var) => write!(f, "{var}"),
-            Term::Fun(fun) => write!(f, "{fun}"),
+            Term::Cst { id } => write!(f, "{id}"),
+            Term::Var { id } => write!(f, "{id}"),
+            Term::Fun { id, args } => match args.as_slice() {
+                [] => write!(f, "{}", id),
+                [first, remaining @ ..] => {
+                    let mut arg_string = format!("{first}");
+                    for arg in remaining {
+                        arg_string.push_str(&format!(", {arg}"));
+                    }
+
+                    write!(f, "{}({arg_string})", id)
+                }
+            },
         }
     }
 }
@@ -125,31 +101,34 @@ fn try_parse_term<I: Iterator<Item = Token>>(tokens: &mut Peekable<I>) -> Option
 
     let mut args: Vec<Term> = Vec::default();
 
-    if let Some(Token::ParenL(l)) = tokens.next_if(|t| matches!(t, Token::ParenL(_))) {
-        loop {
-            match tokens.peek() {
-                Some(Token::ParenR(r)) if &l == r => {
-                    tokens.next();
-                    break;
+    match tokens.next_if(|t| matches!(t, Token::ParenL(_))) {
+        Some(Token::ParenL(l)) => {
+            loop {
+                match tokens.peek() {
+                    Some(Token::ParenR(r)) if &l == r => {
+                        tokens.next();
+                        break;
+                    }
+
+                    Some(Token::ParenR(_)) => panic!("Mismatched parentheses"),
+
+                    Some(Token::Comma) => {
+                        tokens.next();
+                    }
+
+                    _ => match try_parse_term(tokens) {
+                        Some(term) => args.push(term),
+                        None => panic!("Hm"),
+                    },
                 }
-
-                Some(Token::ParenR(_)) => panic!("Mismatched parentheses"),
-
-                Some(Token::Comma) => {
-                    tokens.next();
-                }
-
-                _ => match try_parse_term(tokens) {
-                    Some(term) => args.push(term),
-                    None => panic!("Hm"),
-                },
+            }
+            match args.is_empty() {
+                true => Some(Term::Cst { id }),
+                false => Some(Term::Fun { id, args }),
             }
         }
-    }
 
-    match args.is_empty() {
-        true => Some(Term::Var(Var { id })),
-        false => Some(Term::Fun(Fun { id, args })),
+        _ => Some(Term::Var { id }),
     }
 }
 
