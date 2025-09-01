@@ -17,6 +17,8 @@ mod normal_form;
 mod parse;
 pub use parse::parse_propositional;
 
+use crate::logic::first_order::Term;
+
 pub mod propositional;
 
 pub mod utils;
@@ -67,7 +69,7 @@ pub enum Formula<T: Atomic> {
 
     Quantifier {
         q: Quantifier,
-        var: T,
+        var: Term,
         expr: Box<Formula<T>>,
     },
 }
@@ -96,7 +98,7 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    pub fn Quantifier(q: Quantifier, var: A, expr: Formula<A>) -> Self {
+    pub fn Quantifier(q: Quantifier, var: Term, expr: Formula<A>) -> Self {
         Self::Quantifier {
             q,
             var,
@@ -131,11 +133,11 @@ impl<A: Atomic> Formula<A> {
         Self::Atom(atomic)
     }
 
-    pub fn Exists(var: A, expr: Formula<A>) -> Self {
+    pub fn Exists(var: Term, expr: Formula<A>) -> Self {
         Self::Quantifier(Quantifier::Exists, var, expr)
     }
 
-    pub fn ForAll(var: A, expr: Formula<A>) -> Self {
+    pub fn ForAll(var: Term, expr: Formula<A>) -> Self {
         Self::Quantifier(Quantifier::ForAll, var, expr)
     }
 }

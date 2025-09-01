@@ -12,13 +12,13 @@ pub enum Term {
 
 #[allow(non_snake_case)]
 impl Term {
-    pub fn Cst(id: TermId) -> Self {
-        Term::Cst { id }
+    pub fn Cst(id: &str) -> Self {
+        Term::Cst { id: id.to_owned() }
     }
 
-    pub fn Fun(id: TermId, args: Vec<Term>) -> Self {
+    pub fn Fun(id: &str, args: Vec<Term>) -> Self {
         Term::Fun {
-            id,
+            id: id.to_owned(),
             args,
         }
     }
@@ -26,30 +26,28 @@ impl Term {
     pub fn Var(id: &str) -> Self {
         Term::Var { id: id.to_owned() }
     }
-}
 
-impl Term {
-    pub fn variable(id: &str) -> Self {
-        Term::Var { id: id.to_owned() }
-    }
-
-    pub fn constant(id: &str) -> Self {
-        Term::Cst { id: id.to_owned() }
-    }
-
-    pub fn function(id: &str, args: &[Term]) -> Self {
+    pub fn Fun_slice(id: &str, args: &[Term]) -> Self {
         Term::Fun {
             id: id.to_owned(),
             args: args.to_vec(),
         }
     }
+}
+
+impl Term {
+    pub fn id(&self) -> &str {
+        match self {
+            Term::Cst { id } | Term::Var { id } | Term::Fun { id, .. } => &id,
+        }
+    }
 
     pub fn unary(op: &str, term: Term) -> Self {
-        Term::function(op, &[term])
+        Term::Fun_slice(op, &[term])
     }
 
     pub fn binary(op: &str, lhs: Term, rhs: Term) -> Self {
-        Term::function(op, &[lhs, rhs])
+        Term::Fun_slice(op, &[lhs, rhs])
     }
 
     pub fn is_const_id(id: &TermId) -> bool {
@@ -63,8 +61,8 @@ impl Term {
 impl std::fmt::Display for Term {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Term::Cst { id } => write!(f, "{id}"),
-            Term::Var { id } => write!(f, "{id}"),
+            Term::Cst { id } => write!(f, "\x1B[1m{id}\x1B[0m"),
+            Term::Var { id } => write!(f, "\x1B[3m{id}\x1B[0m"),
             Term::Fun { id, args } => match args.as_slice() {
                 [] => write!(f, "{}", id),
                 [first, remaining @ ..] => {

@@ -84,10 +84,14 @@ fn parse_base<I: Iterator<Item = Token>>(
     variable_ids: &mut HashSet<TermId>,
 ) -> FirstOrderFormula {
     // In order to avoid consuming the identifier of a relation, advance to the next token only if the token is not an identifier.
-    tokens.next_if(|t| !matches!(t, Token::Identifier(_)));
+    // tokens.next_if(|t| !matches!(t, Token::Identifier(_)));
+
+    println!("Base: {:?}", tokens.peek());
+
     match tokens.peek() {
         Some(Token::ParenL(l)) => {
             let paren_kind = *l; // As peek borrows, create a clone of `l` to release the borrow and permit mutation of the token vec
+            tokens.next();
             let expression = parse_iff(tokens, variable_ids);
             match tokens.next() {
                 Some(Token::ParenR(r)) if paren_kind == r => {}
@@ -97,11 +101,18 @@ fn parse_base<I: Iterator<Item = Token>>(
             expression
         }
 
-        Some(Token::True) => FirstOrderFormula::True,
+        Some(Token::True) => {
+            tokens.next();
+            FirstOrderFormula::True
+        }
 
-        Some(Token::False) => FirstOrderFormula::False,
+        Some(Token::False) => {
+            tokens.next();
+            FirstOrderFormula::False
+        }
 
         Some(Token::Not) => {
+            tokens.next();
             let expr = parse_base(tokens, variable_ids);
             FirstOrderFormula::Not(expr)
         }
@@ -110,6 +121,50 @@ fn parse_base<I: Iterator<Item = Token>>(
             Some(relation) => FirstOrderFormula::Atom(relation),
             None => panic!(),
         },
+
+        Some(Token::ForAll) => {
+            tokens.next();
+            let var = match tokens.peek() {
+                Some(Token::Identifier(_)) => match try_parse_term(tokens, variable_ids) {
+                    Some(term) => match &term {
+                        Term::Cst { id } => Term::Var(id),
+                        Term::Var { .. } => term,
+                        Term::Fun { .. } => panic!(),
+                    },
+                    None => panic!(),
+                },
+                _ => panic!(),
+            };
+
+            variable_ids.insert(var.id().to_owned());
+            let expr = parse_base(tokens, variable_ids);
+            variable_ids.remove(var.id());
+
+            println!("After for all {:?}", tokens.peek());
+
+            FirstOrderFormula::ForAll(var, expr)
+        }
+
+        Some(Token::Exists) => {
+            tokens.next();
+            let var = match tokens.peek() {
+                Some(Token::Identifier(_)) => match try_parse_term(tokens, variable_ids) {
+                    Some(term) => match &term {
+                        Term::Cst { id } => Term::Var(id),
+                        Term::Var { .. } => term,
+                        Term::Fun { .. } => panic!(),
+                    },
+                    None => panic!(),
+                },
+                _ => panic!(),
+            };
+
+            variable_ids.insert(var.id().to_owned());
+            let expr = parse_base(tokens, variable_ids);
+            variable_ids.remove(var.id());
+
+            FirstOrderFormula::Exists(var, expr)
+        }
 
         None => panic!("Expected an expression at end of input"),
 
@@ -133,6 +188,7 @@ fn try_parse_relation<I: Iterator<Item = Token>>(
         loop {
             match tokens.peek() {
                 Some(Token::ParenR(r)) if &l == r => {
+                    tokens.next();
                     break;
                 }
 
@@ -205,46 +261,47 @@ fn try_parse_term<I: Iterator<Item = Token>>(
 #[cfg(test)]
 mod tests {
 
-    use crate::logic::{first_order::Term, parse::first_order::parse_first_order};
+    use crate::logic::parse::first_order::parse_first_order;
 
     #[test]
     fn debug() {
-        let _term = Term::unary(
-            "sqrt",
-            Term::binary(
-                "-",
-                Term::constant("1"),
-                Term::unary(
-                    "cos",
-                    Term::binary(
-                        "pow",
-                        Term::binary("+", Term::variable("x"), Term::variable("y")),
-                        Term::constant("2"),
-                    ),
-                ),
-            ),
-        );
+        // let _term = Term::unary(
+        //     "sqrt",
+        //     Term::binary(
+        //         "-",
+        //         Term::Cst("1"),
+        //         Term::unary(
+        //             "cos",
+        //             Term::binary(
+        //                 "pow",
+        //                 Term::binary("+", Term::Var("x"), Term::Var("y")),
+        //                 Term::Cst("2"),
+        //             ),
+        //         ),
+        //     ),
+        // );
 
-        // println!("{term}");
+        // // println!("{term}");
 
-        let expr = "a & f(f(x))";
-        let tmp = parse_first_order(expr);
-        println!("{tmp}");
-
-        // let expr = "f(a,g(b,h(c)))";
+        // let expr = "a & f(f(x))";
         // let tmp = parse_first_order(expr);
         // println!("{tmp}");
 
-        // let x_plus_y = Term::binary("+", Term::variable("x"), Term::variable("y"));
-        // let z = Term::variable("z");
-        // let r = Relation::n_ary("<", &[x_plus_y, z]);
+        // // let expr = "f(a,g(b,h(c)))";
+        // // let tmp = parse_first_order(expr);
+        // // println!("{tmp}");
 
-        let expr = "R()";
-        let tmp = parse_first_order(expr);
-        println!("{tmp}");
+        // // let x_plus_y = Term::binary("+", Term::variable("x"), Term::variable("y"));
+        // // let z = Term::variable("z");
+        // // let r = Relation::n_ary("<", &[x_plus_y, z]);
 
-        let expr = "EQ(add(a,b), times(minus(x),y))";
+        // let expr = "EQ(add(a,b), times(minus(x),y))";
+        // let tmp = parse_first_order(expr);
+        // println!("{tmp}");
+
+        let expr = "~forall x P(x) | exists 1 ~P(1) & R(0,1)";
         let tmp = parse_first_order(expr);
+        dbg!(&tmp);
         println!("{tmp}");
     }
 }
