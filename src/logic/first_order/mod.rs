@@ -16,8 +16,8 @@ use crate::logic::{
 
 pub type FirstOrderFormula = Formula<Relation>;
 
-pub type InterpretationF<D: Domain> = fn(&Fun, &Valuation<D>) -> D;
-pub type InterpretationR<D: Domain> = fn(&Relation, InterpretationF<D>, &Valuation<D>) -> D;
+pub type InterpretationF<D> = fn(&Fun, &Valuation<D>) -> D;
+pub type InterpretationR<D> = fn(&Relation, InterpretationF<D>, &Valuation<D>) -> D;
 
 #[derive(Clone)]
 pub struct Interpretation<D: Domain> {
