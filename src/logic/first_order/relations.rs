@@ -13,9 +13,7 @@ impl Relation {
     pub fn from(id: TermId, terms: Vec<Term>) -> Self {
         Self { id, terms }
     }
-}
 
-impl Relation {
     pub fn predicate(id: &str) -> Self {
         Self {
             id: id.to_owned(),
@@ -28,6 +26,16 @@ impl Relation {
             id: id.to_owned(),
             terms: terms.to_vec(),
         }
+    }
+}
+
+impl Relation {
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn terms(&self) -> &[Term] {
+        &self.terms
     }
 }
 
