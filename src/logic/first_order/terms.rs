@@ -1,53 +1,81 @@
 pub type TermId = String;
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
+pub struct Fun {
+    id: TermId,
+    args: Vec<Term>,
+}
+
+impl Fun {
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn args(&self) -> &[Term] {
+        &self.args
+    }
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
+pub struct Var {
+    id: TermId,
+}
+
+impl Var {
+    pub fn from(id: &str) -> Self {
+        Var { id: id.to_owned() }
+    }
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Term {
-    /// A constant, or function with no arguments
-    Cst { id: TermId },
+    /// A function
+    F(Fun),
     /// A variable
-    Var { id: TermId },
-    /// A function, with at least one argument
-    Fun { id: TermId, args: Vec<Term> },
+    V(Var),
 }
 
 #[allow(non_snake_case)]
 impl Term {
-    pub fn Cst(id: &str) -> Self {
-        Term::Cst { id: id.to_owned() }
+    pub fn cst(id: &str) -> Self {
+        Term::F(Fun {
+            id: id.to_owned(),
+            args: Vec::default(),
+        })
     }
 
-    pub fn Fun(id: &str, args: Vec<Term>) -> Self {
-        Term::Fun {
+    pub fn fun(id: &str, args: Vec<Term>) -> Self {
+        Term::F(Fun {
             id: id.to_owned(),
             args,
-        }
+        })
     }
 
-    pub fn Var(id: &str) -> Self {
-        Term::Var { id: id.to_owned() }
+    pub fn var(id: &str) -> Self {
+        Term::V(Var { id: id.to_owned() })
     }
 
-    pub fn Fun_slice(id: &str, args: &[Term]) -> Self {
-        Term::Fun {
+    pub fn fun_slice(id: &str, args: &[Term]) -> Self {
+        Term::F(Fun {
             id: id.to_owned(),
             args: args.to_vec(),
-        }
+        })
     }
 }
 
 impl Term {
     pub fn id(&self) -> &str {
         match self {
-            Term::Cst { id } | Term::Var { id } | Term::Fun { id, .. } => &id,
+            Term::V(Var { id }) | Term::F(Fun { id, .. }) => id,
         }
     }
 
     pub fn unary(op: &str, term: Term) -> Self {
-        Term::Fun_slice(op, &[term])
+        Term::fun_slice(op, &[term])
     }
 
     pub fn binary(op: &str, lhs: Term, rhs: Term) -> Self {
-        Term::Fun_slice(op, &[lhs, rhs])
+        Term::fun_slice(op, &[lhs, rhs])
     }
 
     pub fn is_const_id(id: &TermId) -> bool {
@@ -59,9 +87,14 @@ impl Term {
 
     pub fn to_variable(self) -> Self {
         match self {
-            Term::Cst { id } => Term::Var { id },
-            Term::Var { .. } => self,
-            Term::Fun { .. } => panic!(),
+            Term::V { .. } => self,
+            Term::F(Fun { id, args }) => {
+                if args.is_empty() {
+                    Term::V(Var { id })
+                } else {
+                    panic!()
+                }
+            }
         }
     }
 }
@@ -69,19 +102,23 @@ impl Term {
 impl std::fmt::Display for Term {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Term::Cst { id } => write!(f, "\x1B[1m{id}\x1B[0m"),
-            Term::Var { id } => write!(f, "\x1B[3m{id}\x1B[0m"),
-            Term::Fun { id, args } => match args.as_slice() {
-                [] => write!(f, "{}", id),
-                [first, remaining @ ..] => {
-                    let mut arg_string = format!("{first}");
-                    for arg in remaining {
-                        arg_string.push_str(&format!(", {arg}"));
-                    }
+            Term::V(Var { id }) => write!(f, "\x1B[3m{id}\x1B[0m"),
+            Term::F(Fun { id, args }) => {
+                write!(f, "\x1B[1m{id}\x1B[0m")?;
 
-                    write!(f, "{}({arg_string})", id)
+                match args.as_slice() {
+                    [] => {}
+                    [first, remaining @ ..] => {
+                        write!(f, "(")?;
+                        write!(f, "{first}")?;
+                        for arg in remaining {
+                            write!(f, ", {arg}")?;
+                        }
+                        write!(f, ")")?;
+                    }
                 }
-            },
+                Ok(())
+            }
         }
     }
 }

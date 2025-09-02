@@ -41,7 +41,7 @@ impl std::fmt::Display for Relation {
                     term_string.push_str(&format!(", {term}"));
                 }
 
-                write!(f, "({}, {term_string})", self.id)
+                write!(f, "{}({term_string})", self.id)
             }
         }
     }

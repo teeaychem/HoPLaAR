@@ -15,16 +15,16 @@ fn parse_iff<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
     variable_ids: &mut HashSet<TermId>,
 ) -> FirstOrderFormula {
-    let expression = parse_imp(tokens, variable_ids);
+    let expr = parse_imp(tokens, variable_ids);
 
     match tokens.peek() {
         Some(Token::Iff) => {
             tokens.next();
             let rhs = parse_iff(tokens, variable_ids);
-            FirstOrderFormula::Iff(expression, rhs)
+            FirstOrderFormula::Iff(expr, rhs)
         }
 
-        _ => expression,
+        _ => expr,
     }
 }
 
@@ -32,16 +32,16 @@ fn parse_imp<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
     variable_ids: &mut HashSet<TermId>,
 ) -> FirstOrderFormula {
-    let expression = parse_or(tokens, variable_ids);
+    let expr = parse_or(tokens, variable_ids);
 
     match tokens.peek() {
         Some(Token::Imp) => {
             tokens.next();
             let rhs = parse_imp(tokens, variable_ids);
-            FirstOrderFormula::Imp(expression, rhs)
+            FirstOrderFormula::Imp(expr, rhs)
         }
 
-        _ => expression,
+        _ => expr,
     }
 }
 
@@ -49,16 +49,16 @@ fn parse_or<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
     variable_ids: &mut HashSet<TermId>,
 ) -> FirstOrderFormula {
-    let expression = parse_and(tokens, variable_ids);
+    let expr = parse_and(tokens, variable_ids);
 
     match tokens.peek() {
         Some(Token::Or) => {
             tokens.next();
             let rhs = parse_or(tokens, variable_ids);
-            FirstOrderFormula::Or(expression, rhs)
+            FirstOrderFormula::Or(expr, rhs)
         }
 
-        _ => expression,
+        _ => expr,
     }
 }
 
@@ -66,16 +66,16 @@ fn parse_and<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
     variable_ids: &mut HashSet<TermId>,
 ) -> FirstOrderFormula {
-    let expression = parse_base(tokens, variable_ids);
+    let expr = parse_base(tokens, variable_ids);
 
     match tokens.peek() {
         Some(Token::And) => {
             tokens.next();
             let rhs = parse_and(tokens, variable_ids);
-            FirstOrderFormula::And(expression, rhs)
+            FirstOrderFormula::And(expr, rhs)
         }
 
-        _ => expression,
+        _ => expr,
     }
 }
 
@@ -84,21 +84,18 @@ fn parse_base<I: Iterator<Item = Token>>(
     variable_ids: &mut HashSet<TermId>,
 ) -> FirstOrderFormula {
     // In order to avoid consuming the identifier of a relation, advance to the next token only if the token is not an identifier.
-    // tokens.next_if(|t| !matches!(t, Token::Identifier(_)));
-
-    println!("Base: {:?}", tokens.peek());
 
     match tokens.peek() {
         Some(Token::ParenL(l)) => {
             let paren_kind = *l; // As peek borrows, create a clone of `l` to release the borrow and permit mutation of the token vec
             tokens.next();
-            let expression = parse_iff(tokens, variable_ids);
+            let expr = parse_iff(tokens, variable_ids);
             match tokens.next() {
                 Some(Token::ParenR(r)) if paren_kind == r => {}
                 _ => panic!("Expected closing parenethsis"),
             }
 
-            expression
+            expr
         }
 
         Some(Token::True) => {
@@ -117,7 +114,7 @@ fn parse_base<I: Iterator<Item = Token>>(
             FirstOrderFormula::Not(expr)
         }
 
-        Some(Token::Identifier(_)) => match try_parse_relation(tokens, variable_ids) {
+        Some(Token::Identifier(_)) => match try_parse_relation_local(tokens, variable_ids) {
             Some(relation) => FirstOrderFormula::Atom(relation),
             None => panic!(),
         },
@@ -126,7 +123,7 @@ fn parse_base<I: Iterator<Item = Token>>(
             let q = *q;
 
             tokens.next();
-            let var = try_parse_term(tokens, variable_ids)
+            let var = try_parse_term_local(tokens, variable_ids)
                 .expect("Expected quantified variable")
                 .to_variable();
 
@@ -135,8 +132,6 @@ fn parse_base<I: Iterator<Item = Token>>(
             variable_ids.insert(var.id().to_owned());
             let expr = parse_base(tokens, variable_ids);
             variable_ids.remove(var.id());
-
-            println!("After for all {:?}", tokens.peek());
 
             match q {
                 Quantifier::ForAll => FirstOrderFormula::ForAll(var, expr),
@@ -150,7 +145,7 @@ fn parse_base<I: Iterator<Item = Token>>(
     }
 }
 
-fn try_parse_relation<I: Iterator<Item = Token>>(
+pub fn try_parse_relation_local<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
     variable_ids: &mut HashSet<TermId>,
 ) -> Option<Relation> {
@@ -176,7 +171,7 @@ fn try_parse_relation<I: Iterator<Item = Token>>(
                     tokens.next();
                 }
 
-                _ => match try_parse_term(tokens, variable_ids) {
+                _ => match try_parse_term_local(tokens, variable_ids) {
                     Some(term) => terms.push(term),
                     None => break,
                 },
@@ -187,7 +182,13 @@ fn try_parse_relation<I: Iterator<Item = Token>>(
     Some(Relation::from(id, terms))
 }
 
-fn try_parse_term<I: Iterator<Item = Token>>(
+pub fn try_parse_relation(str: &str) -> Option<Relation> {
+    let mut tokens = lex(str).into_iter().peekable();
+    let mut variable_ids = HashSet::default();
+    try_parse_relation_local(&mut tokens, &mut variable_ids)
+}
+
+fn try_parse_term_local<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
     variable_ids: &mut HashSet<TermId>,
 ) -> Option<Term> {
@@ -214,26 +215,32 @@ fn try_parse_term<I: Iterator<Item = Token>>(
                         tokens.next();
                     }
 
-                    _ => match try_parse_term(tokens, variable_ids) {
+                    _ => match try_parse_term_local(tokens, variable_ids) {
                         Some(term) => args.push(term),
                         None => panic!("Hm"),
                     },
                 }
             }
             match args.is_empty() {
-                true => Some(Term::Cst { id }),
-                false => Some(Term::Fun { id, args }),
+                true => Some(Term::cst(&id)),
+                false => Some(Term::fun(&id, args)),
             }
         }
 
         _ => {
             if variable_ids.contains(&id) || !Term::is_const_id(&id) {
-                Some(Term::Var { id })
+                Some(Term::var(&id))
             } else {
-                Some(Term::Cst { id })
+                Some(Term::cst(&id))
             }
         }
     }
+}
+
+pub fn try_parse_term(str: &str) -> Option<Term> {
+    let mut tokens = lex(str).into_iter().peekable();
+    let mut variable_ids = HashSet::default();
+    try_parse_term_local(&mut tokens, &mut variable_ids)
 }
 
 #[cfg(test)]
@@ -277,9 +284,9 @@ mod tests {
         // let tmp = parse_first_order(expr);
         // println!("{tmp}");
 
-        let expr = "~forall x P(x) | exists 1 ~P(1) & R(0,1)";
+        let expr = "~forall x P(f(1)) | exists 1 ~P(1) & R(0,1)";
         let tmp = parse_first_order(expr);
-        dbg!(&tmp);
-        println!("{tmp}");
+        // dbg!(&tmp);
+        // println!("{tmp}");
     }
 }

@@ -2,6 +2,7 @@ mod propositional;
 pub use propositional::parse_propositional;
 
 mod first_order;
+pub use first_order::{parse_first_order, try_parse_relation, try_parse_term};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Paren {
