@@ -9,6 +9,10 @@ pub struct Domain<E> {
 
 impl<E: Element> Domain<E> {
     pub fn from<const N: usize>(elements: &[E; N]) -> Self {
+        if elements.is_empty() {
+            panic!("Domains must be non-empty");
+        }
+
         Self {
             elements: elements.to_vec(),
         }

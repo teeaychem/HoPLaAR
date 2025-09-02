@@ -103,31 +103,28 @@ pub fn eval<E: Element>(
             }
         },
 
-        Formula::Quantifier { q, var, expr } => match q {
-            Quantifier::ForAll => {
-                for idx in 0..interpretation.domain.size() {
-                    valuation.insert(var.clone(), interpretation.domain.element(idx));
-                    if !expr.eval(interpretation, valuation) {
-                        valuation.remove(var);
-                        return false;
-                    }
+        Formula::Quantifier { q, var, expr } => {
+            let shadowed_value = valuation.get(var).cloned();
+            let mut value = match q {
+                Quantifier::ForAll => true,
+                Quantifier::Exists => false,
+            };
+
+            for element in interpretation.domain.elements() {
+                valuation.insert(var.clone(), element.clone());
+                if expr.eval(interpretation, valuation) != value {
+                    value = !value;
+                    break;
                 }
-                valuation.remove(var);
-                true
             }
 
-            Quantifier::Exists => {
-                for element in interpretation.domain.elements() {
-                    valuation.insert(var.clone(), element.clone());
-                    if expr.eval(interpretation, valuation) {
-                        valuation.remove(var);
-                        return true;
-                    }
-                }
-                valuation.remove(var);
-                false
-            }
-        },
+            match shadowed_value {
+                Some(val) => valuation.insert(var.clone(), val.clone()),
+                None => valuation.remove(var),
+            };
+
+            value
+        }
     }
 }
 
@@ -167,7 +164,7 @@ mod tests {
                 x_val && y_val
             }
 
-            _ => todo!("Request for: {}", fun.id()),
+            _ => todo!("Request for term: {}", fun.id()),
         }
     }
 
@@ -184,7 +181,7 @@ mod tests {
             }
             ("is_true", [x]) => x.eval(interpretation, valuation),
 
-            _ => todo!("Request for {}", rel.id()),
+            _ => todo!("Request for relation: {}", rel.id()),
         }
     }
 
@@ -203,7 +200,7 @@ mod tests {
         let v = expr.eval(&interpretation_bool, &mut valuation);
         println!("{expr} {v}");
 
-        let expr = parse("forall a is_true(a)");
+        let expr = parse("forall a. exists b. (eq(mul(a, a), add(a,b)))");
         let v = expr.eval(&interpretation_bool, &mut valuation);
         println!("{expr} {v}");
 
