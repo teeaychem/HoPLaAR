@@ -1,3 +1,5 @@
+use crate::logic::first_order::{Element, InterpretationF, Valuation, eval_term};
+
 pub type TermId = String;
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
@@ -125,6 +127,11 @@ impl Term {
                 }
             }
         }
+    }
+
+    #[allow(non_snake_case)]
+    pub fn eval<E: Element>(&self, I: InterpretationF<E>, v: &Valuation<E>) -> E {
+        eval_term(self, I, v)
     }
 }
 
