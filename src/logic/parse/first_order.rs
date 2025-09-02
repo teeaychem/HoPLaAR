@@ -285,7 +285,7 @@ mod tests {
         // println!("{tmp}");
 
         let expr = "~forall x P(f(1)) | exists 1 ~P(1) & R(0,1)";
-        let tmp = parse_first_order(expr);
+        let _ = parse_first_order(expr);
         // dbg!(&tmp);
         // println!("{tmp}");
     }

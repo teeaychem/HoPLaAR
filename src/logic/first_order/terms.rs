@@ -16,6 +16,25 @@ impl Fun {
     }
 }
 
+impl std::fmt::Display for Fun {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\x1B[1m{}\x1B[0m", self.id)?;
+
+        match self.args.as_slice() {
+            [] => {}
+            [first, remaining @ ..] => {
+                write!(f, "(")?;
+                write!(f, "{first}")?;
+                for arg in remaining {
+                    write!(f, ", {arg}")?;
+                }
+                write!(f, ")")?;
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Var {
     id: TermId,
@@ -24,6 +43,16 @@ pub struct Var {
 impl Var {
     pub fn from(id: &str) -> Self {
         Var { id: id.to_owned() }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+}
+
+impl std::fmt::Display for Var {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\x1B[3m{}\x1B[0m", self.id)
     }
 }
 
@@ -85,14 +114,14 @@ impl Term {
         }
     }
 
-    pub fn to_variable(self) -> Self {
+    pub fn to_variable(self) -> Var {
         match self {
-            Term::V { .. } => self,
+            Term::V(var) => var,
             Term::F(Fun { id, args }) => {
                 if args.is_empty() {
-                    Term::V(Var { id })
+                    Var { id }
                 } else {
-                    panic!()
+                    panic!("Attempt to convert {id} to variable failed")
                 }
             }
         }
@@ -102,23 +131,8 @@ impl Term {
 impl std::fmt::Display for Term {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Term::V(Var { id }) => write!(f, "\x1B[3m{id}\x1B[0m"),
-            Term::F(Fun { id, args }) => {
-                write!(f, "\x1B[1m{id}\x1B[0m")?;
-
-                match args.as_slice() {
-                    [] => {}
-                    [first, remaining @ ..] => {
-                        write!(f, "(")?;
-                        write!(f, "{first}")?;
-                        for arg in remaining {
-                            write!(f, ", {arg}")?;
-                        }
-                        write!(f, ")")?;
-                    }
-                }
-                Ok(())
-            }
+            Term::V(var) => write!(f, "{var}"),
+            Term::F(fun) => write!(f, "{fun}"),
         }
     }
 }

@@ -1,7 +1,8 @@
 mod domains;
-pub use domains::Domain;
+pub use domains::Element;
 
-mod terms;
+pub mod terms;
+
 use std::collections::HashMap;
 
 pub use terms::{Term, TermId};
@@ -10,8 +11,11 @@ mod relations;
 pub use relations::Relation;
 
 use crate::logic::{
-    Formula, OpBinary, OpUnary,
-    first_order::terms::{Fun, Var},
+    Formula, OpBinary, OpUnary, Quantifier,
+    first_order::{
+        domains::Domain,
+        terms::{Fun, Var},
+    },
 };
 
 pub use crate::logic::parse::parse_first_order as parse;
@@ -22,17 +26,18 @@ pub type InterpretationF<D> = fn(&Fun, &Valuation<D>) -> D;
 pub type InterpretationR<D> = fn(&Relation, InterpretationF<D>, &Valuation<D>) -> bool;
 
 #[derive(Clone)]
-pub struct Interpretation<D: Domain> {
-    functions: InterpretationF<D>,
-    relations: InterpretationR<D>,
+pub struct Interpretation<E: Element> {
+    domain: Domain<E>,
+    functions: InterpretationF<E>,
+    relations: InterpretationR<E>,
 }
 
 pub type Valuation<Domain> = HashMap<Var, Domain>;
 
 pub type InterpretationBool = Interpretation<bool>;
 
-impl<D: Domain> Interpretation<D> {
-    pub fn term_value(&self, term: &Term, valuation: &Valuation<D>) -> D {
+impl<E: Element> Interpretation<E> {
+    pub fn term_value(&self, term: &Term, valuation: &Valuation<E>) -> E {
         match term {
             Term::F(fun) => (self.functions)(fun, valuation),
             Term::V(var) => valuation[var].clone(),
@@ -41,11 +46,11 @@ impl<D: Domain> Interpretation<D> {
 }
 
 impl Term {
-    pub fn eval<D: Domain>(
+    pub fn eval<E: Element>(
         &self,
-        interpretation: InterpretationF<D>,
-        valuation: &Valuation<D>,
-    ) -> D {
+        interpretation: InterpretationF<E>,
+        valuation: &Valuation<E>,
+    ) -> E {
         match self {
             Term::F(fun) => interpretation(fun, valuation),
             Term::V(var) => valuation[var].clone(),
@@ -53,40 +58,36 @@ impl Term {
     }
 }
 
-pub fn eval_relation<D: Domain>(
+pub fn eval_relation<E: Element>(
     relation: &Relation,
-    interpretation: &Interpretation<D>,
-    valuation: &Valuation<D>,
+    interpretation: &Interpretation<E>,
+    valuation: &Valuation<E>,
 ) -> bool {
     (interpretation.relations)(relation, interpretation.functions, valuation)
 }
 
 impl Relation {
-    pub fn eval<D: Domain>(
+    pub fn eval<E: Element>(
         &self,
-        interpretation: &Interpretation<D>,
-        valuation: &Valuation<D>,
+        interpretation: &Interpretation<E>,
+        valuation: &Valuation<E>,
     ) -> bool {
         (interpretation.relations)(self, interpretation.functions, valuation)
     }
 }
 
-pub fn eval<D: Domain>(
+pub fn eval<E: Element>(
     formula: &FirstOrderFormula,
-    interpretation: &Interpretation<D>,
-    valuation: &Valuation<D>,
+    interpretation: &Interpretation<E>,
+    valuation: &mut Valuation<E>,
 ) -> bool {
     match formula {
         Formula::True => true,
-
         Formula::False => false,
-
         Formula::Atom(atom) => eval_relation(atom, interpretation, valuation),
-
         Formula::Unary { op, expr } => match op {
             OpUnary::Not => !eval(expr, interpretation, valuation),
         },
-
         Formula::Binary { op, lhs, rhs } => match op {
             OpBinary::And => {
                 lhs.eval(interpretation, valuation) && rhs.eval(interpretation, valuation)
@@ -102,15 +103,39 @@ pub fn eval<D: Domain>(
             }
         },
 
-        Formula::Quantifier { .. } => todo!(),
+        Formula::Quantifier { q, var, expr } => match q {
+            Quantifier::ForAll => {
+                for idx in 0..interpretation.domain.size() {
+                    valuation.insert(var.clone(), interpretation.domain.element(idx));
+                    if !expr.eval(interpretation, valuation) {
+                        valuation.remove(var);
+                        return false;
+                    }
+                }
+                valuation.remove(var);
+                true
+            }
+
+            Quantifier::Exists => {
+                for element in interpretation.domain.elements() {
+                    valuation.insert(var.clone(), element.clone());
+                    if expr.eval(interpretation, valuation) {
+                        valuation.remove(var);
+                        return true;
+                    }
+                }
+                valuation.remove(var);
+                false
+            }
+        },
     }
 }
 
 impl FirstOrderFormula {
-    pub fn eval<D: Domain>(
+    pub fn eval<D: Element>(
         &self,
         interpretation: &Interpretation<D>,
-        valuation: &Valuation<D>,
+        valuation: &mut Valuation<D>,
     ) -> bool {
         eval(self, interpretation, valuation)
     }
@@ -121,8 +146,11 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::logic::first_order::{
-            parse, terms::{Fun, Var}, Interpretation, InterpretationF, Relation, Valuation
-        };
+        Interpretation, InterpretationF, Relation, Valuation,
+        domains::Domain,
+        parse,
+        terms::{Fun, Var},
+    };
 
     fn interpretation_bool_functions(fun: &Fun, valuation: &Valuation<bool>) -> bool {
         match (fun.id(), fun.args()) {
@@ -139,7 +167,7 @@ mod tests {
                 x_val && y_val
             }
 
-            _ => todo!(),
+            _ => todo!("Request for: {}", fun.id()),
         }
     }
 
@@ -154,14 +182,16 @@ mod tests {
                 let y_val = y.eval(interpretation, valuation);
                 x_val == y_val
             }
+            ("is_true", [x]) => x.eval(interpretation, valuation),
 
-            _ => todo!(),
+            _ => todo!("Request for {}", rel.id()),
         }
     }
 
     #[test]
     fn valuation_basic() {
         let interpretation_bool = Interpretation {
+            domain: Domain::from(&[true, false]),
             functions: interpretation_bool_functions,
             relations: interpretation_bool_relations,
         };
@@ -169,8 +199,12 @@ mod tests {
         let mut valuation = HashMap::from([(Var::from("x"), true), (Var::from("y"), false)]);
         let _ = valuation.insert(Var::from("y"), true);
 
-        let expr = parse("eq(mul(x,y), add(x, y))");
-        let v = expr.eval(&interpretation_bool, &valuation);
+        let expr = parse("exists a is_true(a)");
+        let v = expr.eval(&interpretation_bool, &mut valuation);
+        println!("{expr} {v}");
+
+        let expr = parse("forall a is_true(a)");
+        let v = expr.eval(&interpretation_bool, &mut valuation);
         println!("{expr} {v}");
 
         // let bool_interpretation = InterpretationBool::default();
