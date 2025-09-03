@@ -47,16 +47,15 @@ impl Model<bool> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
 
-    use crate::logic::first_order::{Model, parse, terms::Var};
+    use crate::logic::first_order::{Model, Valuation, parse};
 
     #[test]
     fn valuation_basic() {
         let m_boolean = Model::boolean();
 
-        let mut v = HashMap::from([(Var::from("x"), true), (Var::from("y"), false)]);
-        let _ = v.insert(Var::from("y"), true);
+        let mut v = Valuation::from([("x", true), ("y", false)]);
+        let _ = v.insert_id("y", true);
 
         let expr = parse("exists a is_true(a)");
         let result = expr.eval(&m_boolean, &mut v);

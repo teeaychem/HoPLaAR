@@ -15,7 +15,7 @@ use crate::logic::{
 pub fn eval_term<E: Element>(term: &Term, M: InterpretationF<E>, v: &Valuation<E>) -> E {
     match term {
         Term::F(fun) => M(fun, v),
-        Term::V(var) => v[var].clone(),
+        Term::V(var) => v.get(var).unwrap().clone(),
     }
 }
 
