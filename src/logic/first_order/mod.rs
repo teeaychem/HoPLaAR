@@ -6,6 +6,8 @@ pub use domains::Element;
 mod semantics;
 pub use semantics::{Model, Valuation, eval_first_order, eval_relation, eval_term};
 
+pub mod syntax;
+
 pub mod terms;
 
 pub use terms::{Term, TermId};
