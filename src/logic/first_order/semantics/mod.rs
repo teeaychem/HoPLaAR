@@ -75,3 +75,20 @@ pub fn eval_first_order<E: Element, M: Model<E>>(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::logic::first_order::{Valuation, domains::Domain, parse};
+
+    #[test]
+    fn scope() {
+        let m = Domain::boolean();
+        let mut v = Valuation::undefined();
+
+        let narrow = parse("forall x. eq(x, 0) => eq(1,0)");
+        let wide = parse("forall x. (eq(x, 0) => eq(1,0))");
+
+        assert!(narrow.eval(&m, &mut v));
+        assert!(!wide.eval(&m, &mut v));
+    }
+}

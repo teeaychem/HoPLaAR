@@ -18,7 +18,7 @@ impl Modulo {
 
 impl Valuation<usize> {
     fn modulo() -> Self {
-        Self::default()
+        Self::undefined()
     }
 }
 

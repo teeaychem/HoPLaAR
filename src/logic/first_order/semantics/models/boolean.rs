@@ -3,14 +3,14 @@ use crate::logic::first_order::{
 };
 
 impl Domain<bool> {
-    fn boolean() -> Self {
+    pub fn boolean() -> Self {
         Domain::from([true, false].into_iter())
     }
 }
 
 impl Valuation<bool> {
     fn boolean() -> Self {
-        Self::default()
+        Self::undefined()
     }
 }
 

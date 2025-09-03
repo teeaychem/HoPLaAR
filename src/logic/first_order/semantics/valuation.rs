@@ -2,12 +2,18 @@ use std::collections::HashMap;
 
 use crate::logic::first_order::{Element, terms::Var};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Valuation<E: Element> {
     map: HashMap<Var, E>,
 }
 
 impl<E: Element> Valuation<E> {
+    pub fn undefined() -> Self {
+        Self {
+            map: HashMap::default(),
+        }
+    }
+
     pub fn from<const N: usize>(arr: [(&str, E); N]) -> Valuation<E> {
         let mut v = Self {
             map: HashMap::with_capacity(arr.len()),
