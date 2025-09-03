@@ -1,6 +1,6 @@
 use crate::logic::{
     Atomic,
-    first_order::{Element, Interpretation, Term, TermId, Valuation},
+    first_order::{Element, Model, Term, TermId, Valuation},
 };
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
@@ -39,7 +39,7 @@ impl Relation {
     }
 
     #[allow(non_snake_case)]
-    pub fn eval<E: Element>(&self, I: &Interpretation<E>, v: &Valuation<E>) -> bool {
+    pub fn eval<E: Element>(&self, I: &Model<E>, v: &Valuation<E>) -> bool {
         I.interpret_relation(self, v)
     }
 }
