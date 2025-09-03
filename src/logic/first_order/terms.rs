@@ -111,11 +111,22 @@ impl Term {
         }
     }
 
-
-
     #[allow(non_snake_case)]
     pub fn eval<E: Element, M: Model<E>>(&self, M: &M, v: &Valuation<E>) -> E {
         eval_term(self, M, v)
+    }
+
+    pub fn substitute<S: Fn(Term) -> Term>(self, substitution: &S) -> Self {
+        match self {
+            Term::F(Fun { id, args }) => {
+                let x: Vec<Term> = args
+                    .into_iter()
+                    .map(|arg| arg.substitute(substitution))
+                    .collect();
+                Term::Fun(&id, &x)
+            }
+            Term::V(_) => substitution(self),
+        }
     }
 }
 
@@ -159,7 +170,7 @@ impl<'a> Iterator for TermIteratorD<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::parse::try_parse_term;
+    use crate::logic::{first_order::Term, parse::try_parse_term};
 
     #[test]
     fn term_variables() {
@@ -168,5 +179,37 @@ mod tests {
             .terms_d()
             .count();
         assert_eq!(terms, 11);
+    }
+
+    #[test]
+    fn substitution() {
+        let term = try_parse_term("f(X,g(x,Y))").unwrap();
+        let upper_sub = |t: Term| -> Term {
+            match t {
+                Term::F(_) => t,
+                Term::V(var) => {
+                    let recase: String = var
+                        .id()
+                        .chars()
+                        .map(|c| {
+                            if c.is_uppercase() {
+                                c.to_lowercase().next().unwrap()
+                            } else if c.is_lowercase() {
+                                c.to_uppercase().next().unwrap()
+                            } else {
+                                c
+                            }
+                        })
+                        .collect();
+
+                    Term::Var(&recase)
+                }
+            }
+        };
+        let new_term = term.substitute(&upper_sub);
+
+        let other_term = try_parse_term("f(x,g(X,y))").unwrap();
+
+        assert_eq!(new_term, other_term);
     }
 }
