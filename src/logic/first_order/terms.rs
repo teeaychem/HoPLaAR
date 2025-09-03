@@ -143,3 +143,55 @@ impl std::fmt::Display for Term {
         }
     }
 }
+
+pub struct TermIteratorD<'a> {
+    stack: Vec<&'a Term>,
+    expr: Option<&'a Term>,
+}
+
+impl Term {
+    // An iterator producing the given term and all sub-terms.
+    pub fn terms_d(&'_ self) -> TermIteratorD<'_> {
+        TermIteratorD {
+            stack: Vec::default(),
+            expr: Some(self),
+        }
+    }
+}
+
+impl<'a> Iterator for TermIteratorD<'a> {
+    type Item = &'a Term;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.expr {
+            Some(Term::V(_)) => {
+                let var = self.expr;
+                self.expr = self.stack.pop();
+                var
+            }
+
+            Some(Term::F(Fun { args, .. })) => {
+                let fun = self.expr;
+                self.stack.extend(args.iter().rev());
+                self.expr = self.stack.pop();
+                fun
+            }
+
+            None => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logic::parse::try_parse_term;
+
+    #[test]
+    fn term_variables() {
+        let terms = try_parse_term("f(a,g(b),h(f(a,h(b),c,d)))")
+            .unwrap()
+            .terms_d()
+            .count();
+        assert_eq!(terms, 11);
+    }
+}
