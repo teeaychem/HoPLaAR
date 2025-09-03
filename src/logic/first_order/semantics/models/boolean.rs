@@ -2,46 +2,37 @@ use crate::logic::first_order::{
     InterpretationF, Model, Relation, Valuation, domains::Domain, terms::Fun,
 };
 
-fn interpret_bool_function(fun: &Fun, v: &Valuation<bool>) -> bool {
+fn functions(fun: &Fun, v: &Valuation<bool>) -> bool {
     match (fun.id(), fun.args()) {
         ("0", []) => false,
         ("1", []) => true,
-        ("add", [x, y]) => {
-            let x_val = x.eval(interpret_bool_function, v);
-            let y_val = y.eval(interpret_bool_function, v);
-            x_val != y_val
-        }
-        ("mul", [x, y]) => {
-            let x_val = x.eval(interpret_bool_function, v);
-            let y_val = y.eval(interpret_bool_function, v);
-            x_val && y_val
-        }
+        ("add", [a, b]) => a.eval(functions, v) != b.eval(functions, v),
+        ("mul", [a, b]) => a.eval(functions, v) && b.eval(functions, v),
 
-        _ => todo!("Request for term: {}", fun.id()),
+        _ => todo!("Request to interpret function: {}", fun.id()),
     }
 }
 
 #[allow(non_snake_case)]
-fn interpret_bool_relation(rel: &Relation, I: InterpretationF<bool>, v: &Valuation<bool>) -> bool {
+fn relations(rel: &Relation, I: InterpretationF<bool>, v: &Valuation<bool>) -> bool {
     match (rel.id(), rel.terms()) {
-        ("eq", [x, y]) => {
-            let x_val = x.eval(I, v);
-            let y_val = y.eval(I, v);
-            x_val == y_val
-        }
-        ("is_true", [x]) => x.eval(I, v),
+        ("eq", [a, b]) => a.eval(I, v) == b.eval(I, v),
+        ("is_true", [a]) => a.eval(I, v),
+        ("is_false", [a]) => !a.eval(I, v),
 
-        _ => todo!("Request for relation: {}", rel.id()),
+        _ => todo!("Request to interpret relation: {}", rel.id()),
     }
 }
 
 impl Model<bool> {
     fn boolean() -> Self {
-        Model::from(
-            Domain::from(&[true, false]),
-            interpret_bool_function,
-            interpret_bool_relation,
-        )
+        Model::from(Domain::from(&[true, false]), functions, relations)
+    }
+}
+
+impl Valuation<bool> {
+    fn boolean() -> Self {
+        Self::default()
     }
 }
 
@@ -51,18 +42,22 @@ mod tests {
     use crate::logic::first_order::{Model, Valuation, parse};
 
     #[test]
-    fn valuation_basic() {
-        let m_boolean = Model::boolean();
+    #[allow(non_snake_case)]
+    fn boolean() {
+        let M = Model::boolean();
+        let mut v = Valuation::boolean();
 
-        let mut v = Valuation::from([("x", true), ("y", false)]);
-        let _ = v.insert_id("y", true);
-
-        let expr = parse("exists a is_true(a)");
-        let result = expr.eval(&m_boolean, &mut v);
-        println!("{expr} {result}");
+        let expr = parse("forall x. (eq(x, 0) | eq(x,1))");
+        assert!(expr.eval(&M, &mut v));
 
         let expr = parse("forall a. exists b. ~(is_true(mul(a,b)))");
-        let result = expr.eval(&m_boolean, &mut v);
-        println!("{expr} {result}");
+        assert!(expr.eval(&M, &mut v));
+
+        // As disjunction is exclusive
+        let expr = parse("exists b. ~(is_true(add(1,b)))");
+        assert!(expr.eval(&M, &mut v));
+
+        let expr = parse("forall b. ~(is_true(add(1,b)))");
+        assert!(!expr.eval(&M, &mut v));
     }
 }
