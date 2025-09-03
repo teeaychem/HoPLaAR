@@ -24,23 +24,23 @@ impl Model<bool> for Domain<bool> {
     }
 
     fn functions(&self, f: &Fun, v: &Valuation<bool>) -> bool {
-        match (f.id(), f.args()) {
+        match (f.id.as_str(), f.args.as_slice()) {
             ("0", []) => false,
             ("1", []) => true,
             ("add", [a, b]) => a.eval(self, v) != b.eval(self, v),
             ("mul", [a, b]) => a.eval(self, v) && b.eval(self, v),
 
-            _ => todo!("Request to interpret function: {}", f.id()),
+            _ => todo!("Request to interpret function: {}", f.id),
         }
     }
 
     fn relations(&self, r: &Relation, v: &Valuation<bool>) -> bool {
-        match (r.id(), r.terms()) {
+        match (r.id.as_str(), r.terms.as_slice()) {
             ("eq", [a, b]) => a.eval(self, v) == b.eval(self, v),
             ("is_true", [a]) => a.eval(self, v),
             ("is_false", [a]) => !a.eval(self, v),
 
-            _ => todo!("Request to interpret relation: {}", r.id()),
+            _ => todo!("Request to interpret relation: {}", r.id),
         }
     }
 }

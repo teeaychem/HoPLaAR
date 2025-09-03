@@ -1,4 +1,7 @@
-use crate::logic::{Formula, Quantifier, first_order::FirstOrderFormula};
+use crate::logic::{
+    Formula, Quantifier,
+    first_order::{FirstOrderFormula, Relation, Term},
+};
 
 impl FirstOrderFormula {
     pub fn generalise(self) -> FirstOrderFormula {
@@ -8,6 +11,23 @@ impl FirstOrderFormula {
             formula = Formula::Quantifier(Quantifier::ForAll, var, formula);
         }
         formula
+    }
+
+    pub fn term_substitution<S: Fn(Term) -> Term>(self, substitution: &S) -> FirstOrderFormula {
+        match self {
+            Formula::True | Formula::False => self,
+            Formula::Atom(Relation { id, terms }) => {
+                let fresh = Relation::from(id, terms.into_iter().map(substitution).collect());
+                Formula::Atom(fresh)
+            }
+            Formula::Unary { op, expr } => Formula::Unary(op, expr.term_substitution(substitution)),
+            Formula::Binary { op, lhs, rhs } => Formula::Binary(
+                op,
+                lhs.term_substitution(substitution),
+                rhs.term_substitution(substitution),
+            ),
+            Formula::Quantifier { q, var, expr } => todo!(),
+        }
     }
 }
 

@@ -31,7 +31,7 @@ impl FirstOrderFormula {
         let mut vars: HashSet<Var> = HashSet::default();
 
         for atom in self.atoms_d() {
-            for term in atom.terms() {
+            for term in &atom.terms {
                 for term in term.terms_d() {
                     if let Term::V(var) = term {
                         vars.insert(var.to_owned());
@@ -56,7 +56,7 @@ fn free_variables(formula: &FirstOrderFormula, free: &mut HashSet<Var>) {
     match formula {
         Formula::True | Formula::False => {}
         Formula::Atom(relation) => {
-            for term in relation.terms() {
+            for term in &relation.terms {
                 for subterm in term.terms_d() {
                     if let Term::V(var) = subterm {
                         free.insert(var.to_owned());

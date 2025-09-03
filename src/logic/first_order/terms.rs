@@ -6,18 +6,8 @@ pub type TermId = String;
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Fun {
-    id: TermId,
-    args: Vec<Term>,
-}
-
-impl Fun {
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-
-    pub fn args(&self) -> &[Term] {
-        &self.args
-    }
+    pub id: TermId,
+    pub args: Vec<Term>,
 }
 
 impl std::fmt::Display for Fun {
@@ -41,16 +31,12 @@ impl std::fmt::Display for Fun {
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Var {
-    id: TermId,
+    pub id: TermId,
 }
 
 impl Var {
     pub fn from(id: &str) -> Self {
         Var { id: id.to_owned() }
-    }
-
-    pub fn id(&self) -> &str {
-        &self.id
     }
 
     pub fn variant(&self, taken: &HashSet<Var>) -> Var {
@@ -204,7 +190,7 @@ mod tests {
                 Term::F(_) => t,
                 Term::V(var) => {
                     let recase: String = var
-                        .id()
+                        .id
                         .chars()
                         .map(|c| {
                             if c.is_uppercase() {

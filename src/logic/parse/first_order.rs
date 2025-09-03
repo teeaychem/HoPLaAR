@@ -134,9 +134,9 @@ fn parse_base<I: Iterator<Item = Token>>(
 
             tokens.next_if(|t| matches!(t, Token::Stop));
 
-            variable_ids.insert(var.id().to_owned());
+            variable_ids.insert(var.id.to_owned());
             let expr = parse_base(tokens, variable_ids);
-            variable_ids.remove(var.id());
+            variable_ids.remove(&var.id);
 
             match q {
                 Quantifier::ForAll => FirstOrderFormula::ForAll(var, expr),

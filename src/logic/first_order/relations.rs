@@ -5,8 +5,8 @@ use crate::logic::{
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Relation {
-    id: TermId,
-    terms: Vec<Term>,
+    pub id: TermId,
+    pub terms: Vec<Term>,
 }
 
 impl Relation {
@@ -30,14 +30,6 @@ impl Relation {
 }
 
 impl Relation {
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-
-    pub fn terms(&self) -> &[Term] {
-        &self.terms
-    }
-
     #[allow(non_snake_case)]
     pub fn eval<E: Element, M: Model<E>>(&self, I: &M, v: &Valuation<E>) -> bool {
         I.relations(self, v)

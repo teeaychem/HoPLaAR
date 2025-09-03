@@ -16,10 +16,10 @@ impl<E: Element> Model<E> for Empty<E> {
     }
 
     fn functions(&self, f: &Fun, _: &Valuation<E>) -> E {
-        todo!("Request to interpret function: {}", f.id())
+        todo!("Request to interpret function: {}", f.id)
     }
 
     fn relations(&self, r: &Relation, _: &Valuation<E>) -> bool {
-        todo!("Request to interpret relation: {}", r.id())
+        todo!("Request to interpret relation: {}", r.id)
     }
 }
