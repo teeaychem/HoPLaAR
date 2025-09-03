@@ -123,9 +123,14 @@ fn parse_base<I: Iterator<Item = Token>>(
             let q = *q;
 
             tokens.next();
-            let var = try_parse_term_local(tokens, variable_ids)
-                .expect("Expected quantified variable")
-                .to_variable();
+            let var = match try_parse_term_local(tokens, variable_ids) {
+                Some(Term::V(var)) => var,
+                Some(Term::F(fun)) => {
+                    panic!("Unable to use function / constant '{fun}' as a variable")
+                }
+
+                None => panic!("Expected a variable to follow {q:?}"),
+            };
 
             tokens.next_if(|t| matches!(t, Token::Stop));
 
@@ -188,6 +193,13 @@ pub fn try_parse_relation(str: &str) -> Option<Relation> {
     try_parse_relation_local(&mut tokens, &mut variable_ids)
 }
 
+fn is_const_id(id: &TermId) -> bool {
+    match id.as_str() {
+        "nil" => true,
+        _ => id.chars().all(|c| c.is_numeric()),
+    }
+}
+
 fn try_parse_term_local<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>,
     variable_ids: &mut HashSet<TermId>,
@@ -222,16 +234,16 @@ fn try_parse_term_local<I: Iterator<Item = Token>>(
                 }
             }
             match args.is_empty() {
-                true => Some(Term::cst(&id)),
-                false => Some(Term::fun(&id, args)),
+                true => Some(Term::Cst(&id)),
+                false => Some(Term::Fun(&id, &args)),
             }
         }
 
         _ => {
-            if variable_ids.contains(&id) || !Term::is_const_id(&id) {
-                Some(Term::var(&id))
+            if variable_ids.contains(&id) || !is_const_id(&id) {
+                Some(Term::Var(&id))
             } else {
-                Some(Term::cst(&id))
+                Some(Term::Cst(&id))
             }
         }
     }
@@ -245,8 +257,6 @@ pub fn try_parse_term(str: &str) -> Option<Term> {
 
 #[cfg(test)]
 mod tests {
-
-    use crate::logic::parse::first_order::parse_first_order;
 
     #[test]
     fn debug() {
@@ -284,8 +294,8 @@ mod tests {
         // let tmp = parse_first_order(expr);
         // println!("{tmp}");
 
-        let expr = "~forall x P(f(1)) | exists 1 ~P(1) & R(0,1)";
-        let _ = parse_first_order(expr);
+        // let expr = "~forall x P(f(1)) | exists 1 ~P(1) & R(0,1)";
+        // let _ = parse_first_order(expr);
         // dbg!(&tmp);
         // println!("{tmp}");
     }

@@ -66,31 +66,41 @@ pub enum Term {
     V(Var),
 }
 
+impl std::fmt::Display for Term {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Term::V(var) => write!(f, "{var}"),
+            Term::F(fun) => write!(f, "{fun}"),
+        }
+    }
+}
+
 #[allow(non_snake_case)]
 impl Term {
-    pub fn cst(id: &str) -> Self {
+    pub fn Cst(id: &str) -> Self {
         Term::F(Fun {
             id: id.to_owned(),
             args: Vec::default(),
         })
     }
 
-    pub fn fun(id: &str, args: Vec<Term>) -> Self {
-        Term::F(Fun {
-            id: id.to_owned(),
-            args,
-        })
-    }
-
-    pub fn var(id: &str) -> Self {
+    pub fn Var(id: &str) -> Self {
         Term::V(Var { id: id.to_owned() })
     }
 
-    pub fn fun_slice(id: &str, args: &[Term]) -> Self {
+    pub fn Fun(id: &str, args: &[Term]) -> Self {
         Term::F(Fun {
             id: id.to_owned(),
             args: args.to_vec(),
         })
+    }
+
+    pub fn Fun_unary(op: &str, term: Term) -> Self {
+        Term::Fun(op, &[term])
+    }
+
+    pub fn Fun_binary(op: &str, lhs: Term, rhs: Term) -> Self {
+        Term::Fun(op, &[lhs, rhs])
     }
 }
 
@@ -101,46 +111,11 @@ impl Term {
         }
     }
 
-    pub fn unary(op: &str, term: Term) -> Self {
-        Term::fun_slice(op, &[term])
-    }
 
-    pub fn binary(op: &str, lhs: Term, rhs: Term) -> Self {
-        Term::fun_slice(op, &[lhs, rhs])
-    }
-
-    pub fn is_const_id(id: &TermId) -> bool {
-        match id.as_str() {
-            "nil" => true,
-            _ => id.chars().all(|c| c.is_numeric()),
-        }
-    }
-
-    pub fn to_variable(self) -> Var {
-        match self {
-            Term::V(var) => var,
-            Term::F(Fun { id, args }) => {
-                if args.is_empty() {
-                    Var { id }
-                } else {
-                    panic!("Attempt to convert {id} to variable failed")
-                }
-            }
-        }
-    }
 
     #[allow(non_snake_case)]
-    pub fn eval<E: Element, M: Model<E>>(&self, I: &M, v: &Valuation<E>) -> E {
-        eval_term(self, I, v)
-    }
-}
-
-impl std::fmt::Display for Term {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Term::V(var) => write!(f, "{var}"),
-            Term::F(fun) => write!(f, "{fun}"),
-        }
+    pub fn eval<E: Element, M: Model<E>>(&self, M: &M, v: &Valuation<E>) -> E {
+        eval_term(self, M, v)
     }
 }
 
@@ -150,7 +125,7 @@ pub struct TermIteratorD<'a> {
 }
 
 impl Term {
-    // An iterator producing the given term and all sub-terms.
+    // An iterator of the term and all sub-terms.
     pub fn terms_d(&'_ self) -> TermIteratorD<'_> {
         TermIteratorD {
             stack: Vec::default(),
