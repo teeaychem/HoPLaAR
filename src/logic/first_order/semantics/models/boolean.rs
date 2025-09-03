@@ -1,32 +1,10 @@
 use crate::logic::first_order::{
-    InterpretationF, Model, Relation, Valuation, domains::Domain, terms::Fun,
+    Relation, Valuation, domains::Domain, semantics::model::Model, terms::Fun,
 };
 
-fn functions(fun: &Fun, v: &Valuation<bool>) -> bool {
-    match (fun.id(), fun.args()) {
-        ("0", []) => false,
-        ("1", []) => true,
-        ("add", [a, b]) => a.eval(functions, v) != b.eval(functions, v),
-        ("mul", [a, b]) => a.eval(functions, v) && b.eval(functions, v),
-
-        _ => todo!("Request to interpret function: {}", fun.id()),
-    }
-}
-
-#[allow(non_snake_case)]
-fn relations(rel: &Relation, I: InterpretationF<bool>, v: &Valuation<bool>) -> bool {
-    match (rel.id(), rel.terms()) {
-        ("eq", [a, b]) => a.eval(I, v) == b.eval(I, v),
-        ("is_true", [a]) => a.eval(I, v),
-        ("is_false", [a]) => !a.eval(I, v),
-
-        _ => todo!("Request to interpret relation: {}", rel.id()),
-    }
-}
-
-impl Model<bool> {
+impl Domain<bool> {
     fn boolean() -> Self {
-        Model::from(Domain::from(&[true, false]), functions, relations)
+        Domain::from([true, false].into_iter())
     }
 }
 
@@ -36,15 +14,46 @@ impl Valuation<bool> {
     }
 }
 
+impl Model<bool> for Domain<bool> {
+    fn domain(&self) -> &Domain<bool> {
+        self
+    }
+
+    fn elements(&self) -> &[bool] {
+        self.elements()
+    }
+
+    fn functions(&self, f: &Fun, v: &Valuation<bool>) -> bool {
+        match (f.id(), f.args()) {
+            ("0", []) => false,
+            ("1", []) => true,
+            ("add", [a, b]) => a.eval(self, v) != b.eval(self, v),
+            ("mul", [a, b]) => a.eval(self, v) && b.eval(self, v),
+
+            _ => todo!("Request to interpret function: {}", f.id()),
+        }
+    }
+
+    fn relations(&self, r: &Relation, v: &Valuation<bool>) -> bool {
+        match (r.id(), r.terms()) {
+            ("eq", [a, b]) => a.eval(self, v) == b.eval(self, v),
+            ("is_true", [a]) => a.eval(self, v),
+            ("is_false", [a]) => !a.eval(self, v),
+
+            _ => todo!("Request to interpret relation: {}", r.id()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
-    use crate::logic::first_order::{Model, Valuation, parse};
+    use crate::logic::first_order::{Valuation, domains::Domain, parse};
 
     #[test]
     #[allow(non_snake_case)]
     fn boolean() {
-        let M = Model::boolean();
+        let M = Domain::boolean();
         let mut v = Valuation::boolean();
 
         let expr = parse("forall x. (eq(x, 0) | eq(x,1))");

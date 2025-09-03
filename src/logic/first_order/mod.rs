@@ -2,9 +2,7 @@ mod domains;
 pub use domains::Element;
 
 mod semantics;
-pub use semantics::{
-    InterpretationF, InterpretationR, Model, Valuation, eval_first_order, eval_relation, eval_term,
-};
+pub use semantics::{Model, Valuation, eval_first_order, eval_relation, eval_term};
 
 pub mod terms;
 
@@ -19,11 +17,9 @@ use crate::logic::Formula;
 
 pub type FirstOrderFormula = Formula<Relation>;
 
-pub type InterpretationBool = Model<bool>;
-
 impl FirstOrderFormula {
     #[allow(non_snake_case)]
-    pub fn eval<D: Element>(&self, M: &Model<D>, v: &mut Valuation<D>) -> bool {
+    pub fn eval<E: Element, M: Model<E>>(&self, M: &M, v: &mut Valuation<E>) -> bool {
         eval_first_order(self, M, v)
     }
 }

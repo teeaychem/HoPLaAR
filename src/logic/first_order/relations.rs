@@ -39,8 +39,8 @@ impl Relation {
     }
 
     #[allow(non_snake_case)]
-    pub fn eval<E: Element>(&self, I: &Model<E>, v: &Valuation<E>) -> bool {
-        I.interpret_relation(self, v)
+    pub fn eval<E: Element, M: Model<E>>(&self, I: &M, v: &Valuation<E>) -> bool {
+        I.relations(self, v)
     }
 }
 

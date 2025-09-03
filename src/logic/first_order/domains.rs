@@ -2,22 +2,26 @@ pub trait Element: std::fmt::Debug + std::fmt::Display + Clone {}
 
 impl Element for bool {}
 
+impl Element for usize {}
+
 #[derive(Clone, Debug, Default)]
 pub struct Domain<E> {
     elements: Vec<E>,
 }
 
-impl<E: Element> Domain<E> {
-    pub fn from<const N: usize>(elements: &[E; N]) -> Self {
+impl<I: Iterator<Item = E>, E: Element> From<I> for Domain<E> {
+    fn from(value: I) -> Self {
+        let elements: Vec<E> = value.collect();
+
         if elements.is_empty() {
             panic!("Domains must be non-empty");
         }
 
-        Self {
-            elements: elements.to_vec(),
-        }
+        Self { elements }
     }
+}
 
+impl<E: Element> Domain<E> {
     pub fn elements(&self) -> &[E] {
         &self.elements
     }

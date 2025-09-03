@@ -1,5 +1,5 @@
 mod model;
-pub use model::{InterpretationF, InterpretationR, Model};
+pub use model::Model;
 
 pub mod models;
 
@@ -12,22 +12,26 @@ use crate::logic::{
 };
 
 #[allow(non_snake_case)]
-pub fn eval_term<E: Element>(term: &Term, M: InterpretationF<E>, v: &Valuation<E>) -> E {
+pub fn eval_term<E: Element, M: Model<E>>(term: &Term, M: &M, v: &Valuation<E>) -> E {
     match term {
-        Term::F(fun) => M(fun, v),
+        Term::F(fun) => M.functions(fun, v),
         Term::V(var) => v.get(var).unwrap().clone(),
     }
 }
 
 #[allow(non_snake_case)]
-pub fn eval_relation<E: Element>(relation: &Relation, M: &Model<E>, v: &Valuation<E>) -> bool {
-    M.interpret_relation(relation, v)
+pub fn eval_relation<E: Element, M: Model<E>>(
+    relation: &Relation,
+    M: &M,
+    v: &Valuation<E>,
+) -> bool {
+    M.relations(relation, v)
 }
 
 #[allow(non_snake_case)]
-pub fn eval_first_order<E: Element>(
+pub fn eval_first_order<E: Element, M: Model<E>>(
     formula: &FirstOrderFormula,
-    M: &Model<E>,
+    M: &M,
     v: &mut Valuation<E>,
 ) -> bool {
     match formula {
