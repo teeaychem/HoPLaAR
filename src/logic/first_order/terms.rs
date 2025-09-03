@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::logic::first_order::{Element, Model, Valuation, eval_term};
 
@@ -123,6 +123,49 @@ impl Term {
             }
             Term::V(_) => substitution(self),
         }
+    }
+
+    /// Substitution, which ad-hoc modifications via `check`.
+    /// Specifically, if an key for `v` is present in `check` then cases based on the value:
+    /// - None, then no substitution takes place, even if given by `substitution`.
+    /// - Some(alternative), then alternative is used in place of any directive from `substitution`.
+    ///
+    /// Gentle, after the paradox.
+    pub fn substitute_gently<S: Fn(Term) -> Term>(
+        self,
+        substitution: &S,
+        check: &HashMap<Var, Option<Term>>,
+    ) -> Self {
+        match self {
+            Term::F(Fun { id, args }) => {
+                let x: Vec<Term> = args
+                    .into_iter()
+                    .map(|arg| arg.substitute_gently(substitution, check))
+                    .collect();
+                Term::Fun(&id, &x)
+            }
+
+            Term::V(ref var) => match check.get(var) {
+                Some(Some(out)) => out.clone(),
+                Some(None) => self,
+                None => substitution(self),
+            },
+        }
+    }
+
+    pub fn variables(&self) -> HashSet<Var> {
+        let mut vars = HashSet::default();
+
+        for term in self.terms_d() {
+            match term {
+                Term::F(_) => {}
+                Term::V(var) => {
+                    vars.insert(var.to_owned());
+                }
+            }
+        }
+
+        vars
     }
 }
 
