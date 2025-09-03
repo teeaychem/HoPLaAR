@@ -40,6 +40,38 @@ impl FirstOrderFormula {
 
         vars
     }
+
+    pub fn free_variables(&self) -> HashSet<Var> {
+        let mut free = HashSet::default();
+
+        free_variables(self, &mut free);
+
+        free
+    }
+}
+
+fn free_variables(formula: &FirstOrderFormula, free: &mut HashSet<Var>) {
+    match formula {
+        Formula::True | Formula::False => {}
+        Formula::Atom(relation) => {
+            for term in relation.terms() {
+                for subterm in term.terms_d() {
+                    if let Term::V(var) = subterm {
+                        free.insert(var.to_owned());
+                    }
+                }
+            }
+        }
+        Formula::Unary { expr, .. } => free_variables(expr, free),
+        Formula::Binary { lhs, rhs, .. } => {
+            free_variables(lhs, free);
+            free_variables(rhs, free);
+        }
+        Formula::Quantifier { var, expr, .. } => {
+            free_variables(expr, free);
+            free.remove(var);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -51,7 +83,15 @@ mod tests {
     #[test]
     fn variables() {
         let expr = parse("forall x. (~eq(x, 0) => exists y. eq(mul(x,y), 1)))");
-        let vars = expr.variables();
-        assert_eq!(vars, HashSet::from([Var::from("x"), Var::from("y")]));
+        let var_set = HashSet::from([Var::from("x"), Var::from("y")]);
+
+        assert_eq!(expr.variables(), var_set);
+
+        assert!(expr.free_variables().is_empty());
+
+        let expr = parse("forall x. (~eq(x, 0) => eq(mul(x,y), 1))");
+        assert_eq!(expr.variables(), var_set);
+
+        assert_eq!(HashSet::from([Var::from("y")]), expr.free_variables());
     }
 }
