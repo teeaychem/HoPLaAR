@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 use crate::logic::Atomic;
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
@@ -6,8 +8,15 @@ pub struct Prop {
 }
 
 impl Atomic for Prop {
+    // Waiting for "!"
+    type Quantum = Infallible;
+
     fn id(&self) -> &str {
         &self.id
+    }
+
+    fn variables(&self) -> impl Iterator<Item = Self::Quantum> {
+        std::iter::empty()
     }
 }
 

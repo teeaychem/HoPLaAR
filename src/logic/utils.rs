@@ -72,7 +72,14 @@ impl<A: Atomic> Formula<A> {
                 },
             },
 
-            Quantifier { .. } => todo!(),
+            Quantifier { var, expr, .. } => {
+                for atom in expr.atoms() {
+                    if atom.variables().any(|v| v == *var) {
+                        return self;
+                    }
+                }
+                take(expr)
+            }
 
             _ => self,
         }
@@ -85,7 +92,9 @@ impl<A: Atomic> Formula<A> {
                 Formula::Binary(op, lhs.simplify(), rhs.simplify()).simplify_once()
             }
 
-            Formula::Quantifier { .. } => todo!(),
+            Formula::Quantifier { q, var, expr } => {
+                Formula::Quantifier(q, var, expr.simplify()).simplify_once()
+            }
 
             _ => self,
         }
@@ -195,7 +204,7 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Formula, parse_propositional, propositional::Valuation};
+    use crate::logic::{Formula, parse_first_order, parse_propositional, propositional::Valuation};
 
     #[test]
     fn duals() {
@@ -220,6 +229,24 @@ mod tests {
 
         let expr = parse_propositional("((x ==> y) ==> true) | ~false");
         let expected = parse_propositional("true");
+
+        assert_eq!(expr.simplify(), expected);
+    }
+
+    #[test]
+    fn simplification_quantifier() {
+        let expr = parse_first_order("forall x. eq(P(a), P(b))");
+        let expected = parse_first_order("eq(P(a), P(b))");
+
+        assert_eq!(expr.simplify(), expected);
+
+        let expr = parse_first_order("forall x. (P(a) | ~P(x))");
+        let expected = expr.clone();
+
+        assert_eq!(expr.simplify(), expected);
+
+        let expr = parse_first_order("forall x. (P(a) | true)");
+        let expected = Formula::True;
 
         assert_eq!(expr.simplify(), expected);
     }

@@ -15,9 +15,7 @@ pub use literal::Literal;
 mod normal_form;
 
 mod parse;
-pub use parse::parse_propositional;
-
-use crate::logic::first_order::terms::Var;
+pub use parse::{parse_first_order, parse_propositional};
 
 pub mod propositional;
 
@@ -45,8 +43,12 @@ pub enum Quantifier {
 pub trait Atomic:
     std::fmt::Debug + std::fmt::Display + Clone + std::hash::Hash + Eq + std::cmp::Ord
 {
+    type Quantum: Clone + Eq + std::cmp::Ord + std::fmt::Display;
+
     // A string identifier which uniquely identifier the atom.
     fn id(&self) -> &str;
+
+    fn variables(&self) -> impl Iterator<Item = Self::Quantum>;
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -69,7 +71,7 @@ pub enum Formula<T: Atomic> {
 
     Quantifier {
         q: Quantifier,
-        var: Var,
+        var: T::Quantum,
         expr: Box<Formula<T>>,
     },
 }
@@ -98,7 +100,7 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    pub fn Quantifier(q: Quantifier, var: Var, expr: Formula<A>) -> Self {
+    pub fn Quantifier(q: Quantifier, var: A::Quantum, expr: Formula<A>) -> Self {
         Self::Quantifier {
             q,
             var,
@@ -133,11 +135,11 @@ impl<A: Atomic> Formula<A> {
         Self::Atom(atomic)
     }
 
-    pub fn Exists(var: Var, expr: Formula<A>) -> Self {
+    pub fn Exists(var: A::Quantum, expr: Formula<A>) -> Self {
         Self::Quantifier(Quantifier::Exists, var, expr)
     }
 
-    pub fn ForAll(var: Var, expr: Formula<A>) -> Self {
+    pub fn ForAll(var: A::Quantum, expr: Formula<A>) -> Self {
         Self::Quantifier(Quantifier::ForAll, var, expr)
     }
 }
