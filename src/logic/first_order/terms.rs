@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::logic::first_order::{Element, Model, Valuation, eval_term};
 
 pub type TermId = String;
@@ -49,6 +51,14 @@ impl Var {
 
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    pub fn variant(&self, taken: &HashSet<Var>) -> Var {
+        let mut variant = self.clone();
+        while taken.contains(&variant) {
+            variant.id.push('\'');
+        }
+        variant
     }
 }
 
@@ -170,7 +180,12 @@ impl<'a> Iterator for TermIteratorD<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{first_order::Term, parse::try_parse_term};
+    use std::collections::HashSet;
+
+    use crate::logic::{
+        first_order::{Term, terms::Var},
+        parse::try_parse_term,
+    };
 
     #[test]
     fn term_variables() {
@@ -211,5 +226,18 @@ mod tests {
         let other_term = try_parse_term("f(x,g(X,y))").unwrap();
 
         assert_eq!(new_term, other_term);
+    }
+
+    #[test]
+    fn variants() {
+        let var = Var::from("x");
+        let taken = HashSet::from(["y", "z"].map(Var::from));
+        assert_eq!(var.variant(&taken), Var::from("x"));
+
+        let taken = HashSet::from(["x", "y"].map(Var::from));
+        assert_eq!(var.variant(&taken), Var::from("x'"));
+
+        let taken = HashSet::from(["x", "x'"].map(Var::from));
+        assert_eq!(var.variant(&taken), Var::from("x''"));
     }
 }
