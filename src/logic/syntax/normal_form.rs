@@ -16,8 +16,8 @@ impl<A: Atomic> Formula<A> {
                         let rhs = std::mem::take(rhs);
 
                         match op {
-                            And => Formula::Or(lhs.nnf_basic(), rhs.nnf_basic()),
-                            Or => Formula::And(lhs.nnf_basic(), rhs.nnf_basic()),
+                            And => Formula::Or(lhs.negate().nnf_basic(), rhs.negate().nnf_basic()),
+                            Or => Formula::And(lhs.negate().nnf_basic(), rhs.negate().nnf_basic()),
                             Imp => Formula::And(lhs.nnf_basic(), rhs.negate().nnf_basic()),
                             Iff => {
                                 let a = Formula::And(
@@ -30,7 +30,10 @@ impl<A: Atomic> Formula<A> {
                         }
                     }
 
-                    Quantifier { .. } => todo!(),
+                    Quantifier { q, var, expr } => {
+                        let expr = std::mem::take(expr);
+                        Formula::Quantifier(q.dual(), var.clone(), expr.negate().nnf_basic())
+                    }
 
                     _ => self,
                 },
@@ -51,7 +54,10 @@ impl<A: Atomic> Formula<A> {
                 }
             }
 
-            Quantifier { .. } => todo!(),
+            Quantifier { q, var, expr } => {
+                let expr = std::mem::take(expr);
+                Formula::Quantifier(*q, var.clone(), expr.nnf_basic())
+            }
 
             _ => self,
         }
@@ -112,7 +118,7 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Formula, parse_propositional};
+    use crate::logic::{Formula, parse_first_order, parse_propositional};
 
     #[test]
     fn nnf_simple() {
@@ -120,6 +126,18 @@ mod tests {
         let expr_nnf = expr.clone().nnf();
 
         assert!(Formula::Iff(expr, expr_nnf).tautology())
+    }
+
+    #[test]
+    fn nnf_quantifier() {
+        let expr =
+            parse_first_order("forall x. P(x) => (exists y. Q(y) <=> exists z. (P(z) & Q(z)))");
+
+        let expected = parse_first_order(
+            "exists x. ~P(x) | exists y. Q(y) & exists z. (P(z) & Q(z)) | forall y. ~Q(y) & forall z. (~P(z) | ~Q(z))",
+        );
+
+        assert_eq!(expr.nnf(), expected);
     }
 
     #[test]

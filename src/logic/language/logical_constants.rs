@@ -36,6 +36,15 @@ pub enum Quantifier {
     Exists,
 }
 
+impl Quantifier {
+    pub fn dual(self) -> Self {
+        match self {
+            Self::ForAll => Self::Exists,
+            Self::Exists => Self::ForAll,
+        }
+    }
+}
+
 impl std::fmt::Display for Quantifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
