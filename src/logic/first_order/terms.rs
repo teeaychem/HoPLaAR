@@ -210,7 +210,7 @@ mod tests {
             }
         };
 
-        let substitution = Substitution::from_function(upper_sub);
+        let substitution = Substitution::from_function(Box::new(upper_sub));
 
         let new_term = substitution.apply(term);
 

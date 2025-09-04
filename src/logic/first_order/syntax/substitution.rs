@@ -9,9 +9,9 @@ use crate::logic::{
 };
 
 /// Substitution, which support for ad-hoc modifications.
-pub struct Substitution<S: Fn(Term) -> Term> {
+pub struct Substitution {
     /// The substitution, an arbitrary function from terms to terms.
-    function: S,
+    function: Box<dyn Fn(Term) -> Term>,
     /// Support for ad-hoc modifications.
     /// Specifically, if an key for `v` is present in `interrupt` then cases based on the value:
     /// - None, then no substitution takes place, even if given by `substitution`.
@@ -19,10 +19,19 @@ pub struct Substitution<S: Fn(Term) -> Term> {
     interrupt: HashMap<Var, Option<Term>>,
 }
 
-impl<S: Fn(Term) -> Term> Substitution<S> {
-    pub fn from_function(fun: S) -> Self {
+impl std::default::Default for Substitution {
+    fn default() -> Self {
         Self {
-            function: fun,
+            function: Box::new(|t: Term| -> Term { t }),
+            interrupt: HashMap::default(),
+        }
+    }
+}
+
+impl Substitution {
+    pub fn from_function(fun: Box<dyn Fn(Term) -> Term>) -> Self {
+        Self {
+            function: Box::new(fun),
             interrupt: HashMap::default(),
         }
     }
@@ -65,10 +74,7 @@ impl<S: Fn(Term) -> Term> Substitution<S> {
 }
 
 impl FirstOrderFormula {
-    fn term_substitution<S: Fn(Term) -> Term>(
-        self,
-        substitution: &mut Substitution<S>,
-    ) -> FirstOrderFormula {
+    fn term_substitution(self, substitution: &mut Substitution) -> FirstOrderFormula {
         match self {
             Formula::True | Formula::False => self,
 
@@ -139,14 +145,14 @@ mod tests {
     fn substitution() {
         let var = Term::V(Var::from("y"));
 
-        let substitution_function = |t: Term| -> Term {
+        let substitution_function = move |t: Term| -> Term {
             match &t {
                 y if y == &var => Term::V(Var::from("x")),
                 _ => t,
             }
         };
 
-        let mut substitution = Substitution::from_function(substitution_function);
+        let mut substitution = Substitution::from_function(Box::new(substitution_function));
 
         let expr = parse("forall x. eq(x, y)");
         let expr = expr.term_substitution(&mut substitution);

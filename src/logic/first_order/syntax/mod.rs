@@ -13,45 +13,45 @@ impl FirstOrderFormula {
         formula
     }
 
-    // pub fn pull_quantifiers(mut self) -> FirstOrderFormula {
-    //     use {Formula::*, Quantifier::*};
+    pub fn pull_quantifiers(mut self) -> FirstOrderFormula {
+        use {Formula::*, Quantifier::*};
 
-    //     // Any required variants are generated with respect to the free variables of the formula.
-    //     // As the formula is to be deconstructed, the variables are cached here.
-    //     let fv = self.free_variables();
+        // Any required variants are generated with respect to the free variables of the formula.
+        // As the formula is to be deconstructed, the variables are cached here.
+        let fv = self.free_variables();
 
-    //     match self {
-    //         Binary {
-    //             op,
-    //             ref mut lhs,
-    //             ref mut rhs,
-    //         } => {
-    //             let lhs = *std::mem::take(&mut *lhs);
-    //             let rhs = *std::mem::take(&mut *rhs);
+        match self {
+            Binary {
+                op,
+                ref mut lhs,
+                ref mut rhs,
+            } => {
+                let lhs = *std::mem::take(&mut *lhs);
+                let rhs = *std::mem::take(&mut *rhs);
 
-    //             match (lhs, rhs) {
-    //                 (
-    //                     Quantified {
-    //                         q: ForAll,
-    //                         var: x,
-    //                         expr: p,
-    //                     },
-    //                     Quantified {
-    //                         q: ForAll,
-    //                         var: y,
-    //                         expr: q,
-    //                     },
-    //                 ) => {
-    //                     todo!()
-    //                 }
+                match (lhs, rhs) {
+                    (
+                        Quantified {
+                            q: ForAll,
+                            var: x,
+                            expr: p,
+                        },
+                        Quantified {
+                            q: ForAll,
+                            var: y,
+                            expr: q,
+                        },
+                    ) => {
+                        todo!()
+                    }
 
-    //                 _ => self,
-    //             }
-    //         }
+                    _ => self,
+                }
+            }
 
-    //         _ => self,
-    //     }
-    // }
+            _ => self,
+        }
+    }
 
     // fn pull_quantifier(
     //     fm: FirstOrderFormula,
