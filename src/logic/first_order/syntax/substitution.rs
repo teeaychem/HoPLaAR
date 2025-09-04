@@ -74,7 +74,7 @@ impl Substitution {
 }
 
 impl FirstOrderFormula {
-    fn term_substitution(self, substitution: &mut Substitution) -> FirstOrderFormula {
+    pub fn term_substitution(self, substitution: &mut Substitution) -> FirstOrderFormula {
         match self {
             Formula::True | Formula::False => self,
 
@@ -94,7 +94,7 @@ impl FirstOrderFormula {
                 rhs.term_substitution(substitution),
             ),
 
-            Formula::Quantified { q, var, expr } => {
+            Formula::Quantified { q, var, fm: expr } => {
                 let mut fv = expr.free_variables();
                 fv.remove(&var);
 

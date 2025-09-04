@@ -30,7 +30,7 @@ impl<A: Atomic> Formula<A> {
                         }
                     }
 
-                    Quantified { q, var, expr } => {
+                    Quantified { q, var, fm: expr } => {
                         let expr = std::mem::take(expr);
                         Formula::Quantified(q.dual(), var.clone(), expr.negate().nnf_basic())
                     }
@@ -54,7 +54,7 @@ impl<A: Atomic> Formula<A> {
                 }
             }
 
-            Quantified { q, var, expr } => {
+            Quantified { q, var, fm: expr } => {
                 let expr = std::mem::take(expr);
                 Formula::Quantified(*q, var.clone(), expr.nnf_basic())
             }

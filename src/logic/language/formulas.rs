@@ -21,7 +21,7 @@ pub enum Formula<A: Atomic> {
     Quantified {
         q: Quantifier,
         var: A::Quantum,
-        expr: Box<Formula<A>>,
+        fm: Box<Formula<A>>,
     },
 }
 
@@ -53,7 +53,7 @@ impl<A: Atomic> Formula<A> {
         Self::Quantified {
             q,
             var,
-            expr: Box::new(expr),
+            fm: Box::new(expr),
         }
     }
 }
@@ -171,7 +171,7 @@ impl<A: Atomic> std::fmt::Display for Formula<A> {
                 _ => write!(f, "{lhs} {op} {rhs}"),
             },
 
-            Formula::Quantified { q, var, expr } => write!(f, "{q}{var}({expr})"),
+            Formula::Quantified { q, var, fm: expr } => write!(f, "{q}{var}({expr})"),
         }
     }
 }

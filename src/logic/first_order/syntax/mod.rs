@@ -1,7 +1,10 @@
 mod substitution;
 pub use substitution::Substitution;
 
-use crate::logic::{Formula, Quantifier, first_order::FirstOrderFormula};
+use crate::logic::{
+    Formula, OpBinary, Quantifier,
+    first_order::{FirstOrderFormula, Term},
+};
 
 impl FirstOrderFormula {
     pub fn generalise(self) -> FirstOrderFormula {
@@ -14,11 +17,12 @@ impl FirstOrderFormula {
     }
 
     pub fn pull_quantifiers(mut self) -> FirstOrderFormula {
-        use {Formula::*, Quantifier::*};
+        use {Formula::*, OpBinary::*, Quantifier::*};
 
         // Any required variants are generated with respect to the free variables of the formula.
         // As the formula is to be deconstructed, the variables are cached here.
         let fv = self.free_variables();
+        let mut substitution = Substitution::default();
 
         match self {
             Binary {
@@ -29,20 +33,80 @@ impl FirstOrderFormula {
                 let lhs = *std::mem::take(&mut *lhs);
                 let rhs = *std::mem::take(&mut *rhs);
 
-                match (lhs, rhs) {
+                match (op, lhs, rhs) {
                     (
+                        And,
                         Quantified {
                             q: ForAll,
                             var: x,
-                            expr: p,
+                            fm: p,
                         },
                         Quantified {
                             q: ForAll,
                             var: y,
-                            expr: q,
+                            fm: q,
                         },
                     ) => {
-                        todo!()
+                        let z = x.variant(&fv);
+                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
+                        substitution.add_interrupt(&y, Some(Term::V(z.clone())));
+                        let fresh_p = p.term_substitution(&mut substitution);
+                        let fresh_q = q.term_substitution(&mut substitution);
+
+                        Formula::ForAll(z, Formula::And(fresh_p, fresh_q))
+                    }
+
+                    (
+                        Or,
+                        Quantified {
+                            q: Exists,
+                            var: x,
+                            fm: p,
+                        },
+                        Quantified {
+                            q: Exists,
+                            var: y,
+                            fm: q,
+                        },
+                    ) => {
+                        let z = x.variant(&fv);
+                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
+                        substitution.add_interrupt(&y, Some(Term::V(z.clone())));
+                        let fresh_p = p.term_substitution(&mut substitution);
+                        let fresh_q = q.term_substitution(&mut substitution);
+
+                        Formula::Exists(z, Formula::Or(fresh_p, fresh_q))
+                    }
+
+                    (And, Quantified { q, var: x, fm: p }, unquantified) => {
+                        let z = x.variant(&fv);
+                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
+                        let fresh_p = p.term_substitution(&mut substitution);
+
+                        Formula::Quantified(q, z, Formula::And(unquantified, fresh_p))
+                    }
+
+                    (And, unquantified, Quantified { q, var: x, fm: p }) => {
+                        let z = x.variant(&fv);
+                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
+                        let fresh_p = p.term_substitution(&mut substitution);
+
+                        Formula::Quantified(q, z, Formula::And(fresh_p, unquantified))
+                    }
+
+                    (Or, Quantified { q, var: x, fm: p }, unquantified) => {
+                        let z = x.variant(&fv);
+                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
+                        let fresh_p = p.term_substitution(&mut substitution);
+
+                        Formula::Quantified(q, z, Formula::Or(fresh_p, unquantified))
+                    }
+                    (Or, unquantified, Quantified { q, var: x, fm: p }) => {
+                        let z = x.variant(&fv);
+                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
+                        let fresh_p = p.term_substitution(&mut substitution);
+
+                        Formula::Quantified(q, z, Formula::Or(unquantified, fresh_p))
                     }
 
                     _ => self,
@@ -52,22 +116,6 @@ impl FirstOrderFormula {
             _ => self,
         }
     }
-
-    // fn pull_quantifier(
-    //     fm: FirstOrderFormula,
-    //     a: (bool, Var, FirstOrderFormula),
-    //     b: (bool, Var, FirstOrderFormula),
-    // ) -> (Var, FirstOrderFormula, FirstOrderFormula) {
-    //     // if a.0 {
-    //     //     let substitution = |t: Term| -> Term {
-    //     //         match t {
-    //     //             Term::V(a.1) =>
-    //     //         }
-    //     //     }
-    //     // }
-
-    //     todo!()
-    // }
 }
 
 #[cfg(test)]
@@ -84,5 +132,14 @@ mod tests {
 
         // Ensuring free variables are sorted seems an unreasonable cost.
         assert!(generalisation == q_expr_xy || generalisation == q_expr_yx)
+    }
+
+    #[test]
+    fn pulls() {
+        let fm = parse("P(x) | forall x. ~P(x)");
+        let pulled = fm.pull_quantifiers();
+
+        let expected = parse("forall x'. (P(x) |  ~P(x'))");
+        assert_eq!(pulled, expected);
     }
 }

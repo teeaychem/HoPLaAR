@@ -51,7 +51,7 @@ impl<A: Atomic> Formula<A> {
                 },
             },
 
-            Quantified { var, expr, .. } => {
+            Quantified { var, fm: expr, .. } => {
                 for atom in expr.atoms() {
                     if atom.variables().any(|v| v == *var) {
                         return self;
@@ -71,7 +71,7 @@ impl<A: Atomic> Formula<A> {
                 Formula::Binary(op, lhs.simplify(), rhs.simplify()).simplify_once()
             }
 
-            Formula::Quantified { q, var, expr } => {
+            Formula::Quantified { q, var, fm: expr } => {
                 Formula::Quantified(q, var, expr.simplify()).simplify_once()
             }
 
