@@ -68,6 +68,12 @@ impl Iterator for PropSeq {
     }
 }
 
+impl std::fmt::Display for Prop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::logic::propositional::prop::PropSeq;

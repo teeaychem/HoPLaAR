@@ -2,14 +2,6 @@ use std::collections::HashSet;
 
 use crate::logic::{Atomic, Formula};
 
-pub fn on_atoms<F, A>(f: &F, fm: Formula<A>) -> Formula<A>
-where
-    F: Fn(Formula<A>) -> Formula<A>,
-    A: Atomic,
-{
-    fm.on_atoms(f)
-}
-
 impl<A: Atomic> Formula<A> {
     pub fn on_atoms<F>(mut self, f: &F) -> Self
     where
@@ -35,7 +27,7 @@ impl<A: Atomic> Formula<A> {
     }
 
     pub fn atoms(&self) -> HashSet<A> {
-        self.atoms_d().cloned().collect()
+        self.atoms_dfs().cloned().collect()
     }
 
     pub fn substitute(mut self, atom: &A, fm: &Formula<A>) -> Formula<A> {
@@ -71,7 +63,6 @@ mod tests {
 
     use crate::logic::{
         Atomic, Formula,
-        atoms::on_atoms,
         parse::parse_propositional,
         propositional::{Prop, PropFormula, Valuation},
     };
@@ -83,7 +74,7 @@ mod tests {
             PropFormula::Atom(Prop::from("q")),
         );
         let atom_true = |_: PropFormula| PropFormula::True;
-        expr = on_atoms(&atom_true, expr);
+        expr = expr.on_atoms(&atom_true);
         assert_eq!(expr, PropFormula::And(PropFormula::True, PropFormula::True))
     }
 

@@ -30,7 +30,7 @@ impl FirstOrderFormula {
     pub fn variables(&self) -> HashSet<Var> {
         let mut vars: HashSet<Var> = HashSet::default();
 
-        for atom in self.atoms_d() {
+        for atom in self.atoms_dfs() {
             for term in &atom.terms {
                 for term in term.terms_d() {
                     if let Term::V(var) = term {

@@ -2,12 +2,30 @@ use std::collections::VecDeque;
 
 use crate::logic::{Atomic, Formula};
 
-pub struct AtomIteratorD<'a, T: Atomic> {
-    stack: Vec<&'a Formula<T>>,
-    expr: Option<&'a Formula<T>>,
+impl<A: Atomic> Formula<A> {
+    /// A depth first search iterator over the atoms of `self`.
+    pub fn atoms_dfs(&'_ self) -> AtomIteratorDFS<'_, A> {
+        AtomIteratorDFS {
+            stack: Vec::default(),
+            expr: Some(self),
+        }
+    }
+
+    /// A breadth first search iterator over the atoms of `self`.
+    pub fn atoms_bfs(&'_ self) -> AtomIteratorBFS<'_, A> {
+        AtomIteratorBFS {
+            stack: VecDeque::default(),
+            expr: Some(self),
+        }
+    }
 }
 
-impl<'a, A: Atomic> Iterator for AtomIteratorD<'a, A> {
+pub struct AtomIteratorDFS<'a, A: Atomic> {
+    stack: Vec<&'a Formula<A>>,
+    expr: Option<&'a Formula<A>>,
+}
+
+impl<'a, A: Atomic> Iterator for AtomIteratorDFS<'a, A> {
     type Item = &'a A;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -43,12 +61,12 @@ impl<'a, A: Atomic> Iterator for AtomIteratorD<'a, A> {
     }
 }
 
-pub struct AtomIteratorB<'a, A: Atomic> {
+pub struct AtomIteratorBFS<'a, A: Atomic> {
     stack: VecDeque<&'a Formula<A>>,
     expr: Option<&'a Formula<A>>,
 }
 
-impl<'a, A: Atomic> Iterator for AtomIteratorB<'a, A> {
+impl<'a, A: Atomic> Iterator for AtomIteratorBFS<'a, A> {
     type Item = &'a A;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -103,22 +121,6 @@ impl<'a, A: Atomic> Iterator for AtomIteratorB<'a, A> {
     }
 }
 
-impl<T: Atomic> Formula<T> {
-    pub fn atoms_d(&'_ self) -> AtomIteratorD<'_, T> {
-        AtomIteratorD {
-            stack: Vec::default(),
-            expr: Some(self),
-        }
-    }
-
-    pub fn atoms_b(&'_ self) -> AtomIteratorB<'_, T> {
-        AtomIteratorB {
-            stack: VecDeque::default(),
-            expr: Some(self),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::logic::{parse::parse_propositional, propositional::Prop};
@@ -126,7 +128,7 @@ mod tests {
     #[test]
     fn iter_d() {
         let expr = parse_propositional("(a | (c & d)) & b");
-        let atoms = expr.atoms_d().cloned().collect::<Vec<_>>();
+        let atoms = expr.atoms_dfs().cloned().collect::<Vec<_>>();
         let expected_atoms = vec![
             Prop::from("a"),
             Prop::from("c"),
@@ -139,7 +141,7 @@ mod tests {
     #[test]
     fn iter_b() {
         let expr = parse_propositional("((a => d) | c) & b");
-        let atoms = expr.atoms_b().cloned().collect::<Vec<_>>();
+        let atoms = expr.atoms_bfs().cloned().collect::<Vec<_>>();
         let expected_atoms = vec![
             Prop::from("b"),
             Prop::from("c"),
