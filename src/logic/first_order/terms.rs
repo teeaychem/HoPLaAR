@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use crate::logic::first_order::{Element, Model, Valuation, eval_term};
 
@@ -112,47 +112,6 @@ impl Term {
         eval_term(self, M, v)
     }
 
-    pub fn substitute<S: Fn(Term) -> Term>(self, substitution: &S) -> Self {
-        match self {
-            Term::F(Fun { id, args }) => {
-                let x: Vec<Term> = args
-                    .into_iter()
-                    .map(|arg| arg.substitute(substitution))
-                    .collect();
-                Term::Fun(&id, &x)
-            }
-            Term::V(_) => substitution(self),
-        }
-    }
-
-    /// Substitution, which ad-hoc modifications via `check`.
-    /// Specifically, if an key for `v` is present in `check` then cases based on the value:
-    /// - None, then no substitution takes place, even if given by `substitution`.
-    /// - Some(alternative), then alternative is used in place of any directive from `substitution`.
-    ///
-    /// Gentle, after the paradox.
-    pub fn substitute_gently<S: Fn(Term) -> Term>(
-        self,
-        substitution: &S,
-        check: &HashMap<Var, Option<Term>>,
-    ) -> Self {
-        match self {
-            Term::F(Fun { id, args }) => {
-                let x: Vec<Term> = args
-                    .into_iter()
-                    .map(|arg| arg.substitute_gently(substitution, check))
-                    .collect();
-                Term::Fun(&id, &x)
-            }
-
-            Term::V(ref var) => match check.get(var) {
-                Some(Some(out)) => out.clone(),
-                Some(None) => self,
-                None => substitution(self),
-            },
-        }
-    }
-
     pub fn variables(&self) -> HashSet<Var> {
         let mut vars = HashSet::default();
 
@@ -212,7 +171,7 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::logic::{
-        first_order::{Term, terms::Var},
+        first_order::{Term, syntax::Substitution, terms::Var},
         parse::try_parse_term,
     };
 
@@ -250,7 +209,10 @@ mod tests {
                 }
             }
         };
-        let new_term = term.substitute(&upper_sub);
+
+        let substitution = Substitution::from_function(upper_sub);
+
+        let new_term = substitution.apply(term);
 
         let other_term = try_parse_term("f(x,g(X,y))").unwrap();
 

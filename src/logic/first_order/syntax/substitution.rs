@@ -2,21 +2,72 @@ use std::collections::HashMap;
 
 use crate::logic::{
     Formula,
-    first_order::{FirstOrderFormula, Relation, Term, terms::Var},
+    first_order::{
+        FirstOrderFormula, Relation, Term,
+        terms::{Fun, Var},
+    },
 };
 
-impl FirstOrderFormula {
-    pub fn term_substitution<S: Fn(Term) -> Term>(self, substitution: &S) -> FirstOrderFormula {
-        let mut check = HashMap::default();
-        self.term_substitution_local(substitution, &mut check)
+/// Substitution, which support for ad-hoc modifications.
+pub struct Substitution<S: Fn(Term) -> Term> {
+    /// The substitution, an arbitrary function from terms to terms.
+    function: S,
+    /// Support for ad-hoc modifications.
+    /// Specifically, if an key for `v` is present in `interrupt` then cases based on the value:
+    /// - None, then no substitution takes place, even if given by `substitution`.
+    /// - Some(alternative), then alternative is used in place of any directive from `substitution`.
+    interrupt: HashMap<Var, Option<Term>>,
+}
+
+impl<S: Fn(Term) -> Term> Substitution<S> {
+    pub fn from_function(fun: S) -> Self {
+        Self {
+            function: fun,
+            interrupt: HashMap::default(),
+        }
     }
 
-    /// The `check` argument offers ad-hoc modification of `substitution`.
-    /// See `substitute_gently`.
-    fn term_substitution_local<S: Fn(Term) -> Term>(
+    /// Adds an interrupt to the substitution and returns the existing interrupt.
+    pub fn add_interrupt(&mut self, var: &Var, v: Option<Term>) -> Option<Option<Term>> {
+        self.interrupt.insert(var.clone(), v)
+    }
+
+    /// Applies the substitution, ignoring any interrupts.
+    pub fn apply_function(&self, key: Term) -> Term {
+        match key {
+            Term::F(Fun { id, args }) => {
+                let x: Vec<Term> = args
+                    .into_iter()
+                    .map(|arg| self.apply_function(arg))
+                    .collect();
+                Term::Fun(&id, &x)
+            }
+
+            Term::V(_) => (self.function)(key),
+        }
+    }
+
+    /// Applies the substitution, adhering to any interrupts.
+    pub fn apply(&self, key: Term) -> Term {
+        match key {
+            Term::F(Fun { id, args }) => {
+                let x: Vec<Term> = args.into_iter().map(|arg| self.apply(arg)).collect();
+                Term::Fun(&id, &x)
+            }
+
+            Term::V(ref var) => match self.interrupt.get(var) {
+                Some(Some(out)) => out.clone(),
+                Some(None) => key,
+                None => (self.function)(key),
+            },
+        }
+    }
+}
+
+impl FirstOrderFormula {
+    fn term_substitution<S: Fn(Term) -> Term>(
         self,
-        substitution: &S,
-        check: &mut HashMap<Var, Option<Term>>,
+        substitution: &mut Substitution<S>,
     ) -> FirstOrderFormula {
         match self {
             Formula::True | Formula::False => self,
@@ -24,31 +75,26 @@ impl FirstOrderFormula {
             Formula::Atom(Relation { id, terms }) => {
                 let fresh = Relation::from(
                     id,
-                    terms
-                        .into_iter()
-                        .map(|t| t.substitute_gently(substitution, check))
-                        .collect(),
+                    terms.into_iter().map(|t| substitution.apply(t)).collect(),
                 );
                 Formula::Atom(fresh)
             }
 
-            Formula::Unary { op, expr } => {
-                Formula::Unary(op, expr.term_substitution_local(substitution, check))
-            }
+            Formula::Unary { op, expr } => Formula::Unary(op, expr.term_substitution(substitution)),
 
             Formula::Binary { op, lhs, rhs } => Formula::Binary(
                 op,
-                lhs.term_substitution_local(substitution, check),
-                rhs.term_substitution_local(substitution, check),
+                lhs.term_substitution(substitution),
+                rhs.term_substitution(substitution),
             ),
 
-            Formula::Quantifier { q, var, expr } => {
+            Formula::Quantified { q, var, expr } => {
                 let mut fv = expr.free_variables();
                 fv.remove(&var);
 
                 let fresh_bind = fv.iter().any(|y| {
-                    Term::V(y.clone())
-                        .substitute_gently(substitution, check)
+                    substitution
+                        .apply(Term::V(y.clone()))
                         .variables()
                         .contains(&var)
                 });
@@ -57,10 +103,10 @@ impl FirstOrderFormula {
                     true => {
                         // variable free substitution
 
-                        let out = check.insert(var.clone(), None);
-                        let free_expr = expr.clone().term_substitution_local(substitution, check);
+                        let out = substitution.add_interrupt(&var, None);
+                        let free_expr = expr.clone().term_substitution(substitution);
                         if let Some(shadowed) = out {
-                            check.insert(var.clone(), shadowed);
+                            substitution.add_interrupt(&var, shadowed);
                         }
 
                         let free_fv = free_expr.free_variables();
@@ -72,13 +118,13 @@ impl FirstOrderFormula {
 
                 // fresh variable substitution
 
-                let out = check.insert(var.clone(), Some(Term::V(fresh_var.clone())));
-                let expr = expr.term_substitution_local(substitution, check);
+                let out = substitution.add_interrupt(&var, Some(Term::V(fresh_var.clone())));
+                let expr = expr.term_substitution(substitution);
                 if let Some(shadowed) = out {
-                    check.insert(var.clone(), shadowed);
+                    substitution.add_interrupt(&var, shadowed);
                 }
 
-                Formula::Quantifier(q, fresh_var, expr)
+                Formula::Quantified(q, fresh_var, expr)
             }
         }
     }
@@ -87,26 +133,29 @@ impl FirstOrderFormula {
 #[cfg(test)]
 mod tests {
 
-    use crate::logic::first_order::{Term, parse, terms::Var};
+    use crate::logic::first_order::{Term, parse, syntax::substitution::Substitution, terms::Var};
 
     #[test]
     fn substitution() {
         let var = Term::V(Var::from("y"));
-        let substitution = |t: Term| -> Term {
+
+        let substitution_function = |t: Term| -> Term {
             match &t {
                 y if y == &var => Term::V(Var::from("x")),
                 _ => t,
             }
         };
 
+        let mut substitution = Substitution::from_function(substitution_function);
+
         let expr = parse("forall x. eq(x, y)");
-        let expr = expr.term_substitution(&substitution);
+        let expr = expr.term_substitution(&mut substitution);
 
         let expected = parse("forall x'. eq(x', x)");
         assert_eq!(expr, expected);
 
         let expr = parse("forall x. forall x'. (eq(x, y) => eq(x,x'))");
-        let expr = expr.term_substitution(&substitution);
+        let expr = expr.term_substitution(&mut substitution);
 
         let expected = parse("forall x'. forall x''. (eq(x', x) => eq(x',x''))");
         assert_eq!(expr, expected);

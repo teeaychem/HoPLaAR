@@ -216,7 +216,7 @@ impl BDDGraph {
                 }
             }
 
-            Formula::Quantifier { .. } => todo!(),
+            Formula::Quantified { .. } => todo!(),
         }
     }
 

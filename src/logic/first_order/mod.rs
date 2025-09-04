@@ -69,7 +69,7 @@ fn free_variables(formula: &FirstOrderFormula, free: &mut HashSet<Var>) {
             free_variables(lhs, free);
             free_variables(rhs, free);
         }
-        Formula::Quantifier { var, expr, .. } => {
+        Formula::Quantified { var, expr, .. } => {
             free_variables(expr, free);
             free.remove(var);
         }

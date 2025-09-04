@@ -20,8 +20,8 @@ impl<A: Atomic> Formula<A> {
                 std::mem::take(rhs).on_atoms(f),
             ),
 
-            Formula::Quantifier { q, var, expr } => {
-                Formula::Quantifier(*q, var.to_owned(), std::mem::take(expr).on_atoms(f))
+            Formula::Quantified { q, var, expr } => {
+                Formula::Quantified(*q, var.to_owned(), std::mem::take(expr).on_atoms(f))
             }
         }
     }
@@ -48,7 +48,7 @@ impl<A: Atomic> Formula<A> {
                 std::mem::take(lhs).substitute(atom, fm),
                 std::mem::take(rhs).substitute(atom, fm),
             ),
-            Formula::Quantifier { q, var, expr } => Formula::Quantifier(
+            Formula::Quantified { q, var, expr } => Formula::Quantified(
                 *q,
                 var.to_owned(),
                 std::mem::take(expr).substitute(atom, fm),

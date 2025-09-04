@@ -22,7 +22,7 @@ impl<A: Atomic> Formula<A> {
                 OpBinary::Iff => panic!("Dual of Iff"),
             },
 
-            Formula::Quantifier { q, var, expr } => match q {
+            Formula::Quantified { q, var, expr } => match q {
                 Quantifier::ForAll => Formula::Exists(var, expr.dual()),
                 Quantifier::Exists => Formula::ForAll(var, expr.dual()),
             },
@@ -52,7 +52,7 @@ impl<A: Atomic> std::ops::Not for Formula<A> {
 
             Formula::Binary { .. } => Formula::Not(self),
 
-            Formula::Quantifier { .. } => Formula::Not(self),
+            Formula::Quantified { .. } => Formula::Not(self),
         }
     }
 }

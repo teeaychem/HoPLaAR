@@ -296,7 +296,7 @@ impl<A: Atomic> Formula<A> {
                 }
             }
 
-            Formula::Quantifier { .. } => todo!(),
+            Formula::Quantified { .. } => todo!(),
         }
     }
 }

@@ -18,7 +18,7 @@ pub enum Formula<A: Atomic> {
         rhs: Box<Formula<A>>,
     },
 
-    Quantifier {
+    Quantified {
         q: Quantifier,
         var: A::Quantum,
         expr: Box<Formula<A>>,
@@ -49,8 +49,8 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    pub fn Quantifier(q: Quantifier, var: A::Quantum, expr: Formula<A>) -> Self {
-        Self::Quantifier {
+    pub fn Quantified(q: Quantifier, var: A::Quantum, expr: Formula<A>) -> Self {
+        Self::Quantified {
             q,
             var,
             expr: Box::new(expr),
@@ -85,11 +85,11 @@ impl<A: Atomic> Formula<A> {
     }
 
     pub fn Exists(var: A::Quantum, expr: Formula<A>) -> Self {
-        Self::Quantifier(Quantifier::Exists, var, expr)
+        Self::Quantified(Quantifier::Exists, var, expr)
     }
 
     pub fn ForAll(var: A::Quantum, expr: Formula<A>) -> Self {
-        Self::Quantifier(Quantifier::ForAll, var, expr)
+        Self::Quantified(Quantifier::ForAll, var, expr)
     }
 }
 
@@ -134,7 +134,7 @@ impl<A: Atomic> std::fmt::Display for Formula<A> {
                 | Formula::False
                 | Formula::Atom { .. }
                 | Formula::Unary { .. }
-                | Formula::Quantifier { .. } => write!(f, "{op}{expr}"),
+                | Formula::Quantified { .. } => write!(f, "{op}{expr}"),
 
                 Formula::Binary { .. } => write!(f, "{op}({expr})"),
             },
@@ -171,7 +171,7 @@ impl<A: Atomic> std::fmt::Display for Formula<A> {
                 _ => write!(f, "{lhs} {op} {rhs}"),
             },
 
-            Formula::Quantifier { q, var, expr } => write!(f, "{q}{var}({expr})"),
+            Formula::Quantified { q, var, expr } => write!(f, "{q}{var}({expr})"),
         }
     }
 }

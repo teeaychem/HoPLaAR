@@ -38,7 +38,7 @@ pub fn eval(formula: &PropFormula, valuation: &Valuation) -> bool {
             OpBinary::Iff => lhs.eval(valuation) == rhs.eval(valuation),
         },
 
-        Formula::Quantifier { .. } => todo!(),
+        Formula::Quantified { .. } => todo!(),
     }
 }
 

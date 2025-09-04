@@ -51,7 +51,7 @@ impl<'a, A: Atomic> Iterator for AtomIteratorDFS<'a, A> {
                 self.next()
             }
 
-            Some(Formula::Quantifier { expr, .. }) => {
+            Some(Formula::Quantified { expr, .. }) => {
                 self.expr = Some(expr);
                 self.next()
             }
@@ -111,7 +111,7 @@ impl<'a, A: Atomic> Iterator for AtomIteratorBFS<'a, A> {
                 }
             },
 
-            Some(Formula::Quantifier { expr, .. }) => {
+            Some(Formula::Quantified { expr, .. }) => {
                 self.expr = Some(expr);
                 self.next()
             }

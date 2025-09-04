@@ -44,7 +44,7 @@ impl PropFormula {
                 PropFormula::Atom(def)
             }
 
-            Quantifier { .. } => todo!(),
+            Quantified { .. } => todo!(),
         }
     }
 }

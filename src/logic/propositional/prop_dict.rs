@@ -73,7 +73,7 @@ impl PropDict {
         match formula {
             True | False | Atom { .. } | Unary { .. } => panic!("Unexpected definition"),
 
-            Quantifier { .. } => panic!("Definition of quantifier"),
+            Quantified { .. } => panic!("Definition of quantifier"),
 
             Binary { op, lhs, rhs } => match op {
                 And => {
