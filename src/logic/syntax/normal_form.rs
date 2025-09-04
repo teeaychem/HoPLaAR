@@ -35,6 +35,7 @@ impl<A: Atomic> Formula<A> {
                     _ => self,
                 },
             },
+
             Binary { op, lhs, rhs } => {
                 let lhs = std::mem::take(lhs);
                 let rhs = std::mem::take(rhs);

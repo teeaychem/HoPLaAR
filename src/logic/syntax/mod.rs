@@ -8,16 +8,20 @@ impl<A: Atomic> Formula<A> {
         match self {
             Formula::True => Formula::False,
             Formula::False => Formula::True,
+
             Formula::Atom { .. } => self,
+
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => Formula::Not(expr.dual()),
             },
+
             Formula::Binary { op, lhs, rhs } => match op {
                 OpBinary::And => Formula::Or(lhs.dual(), rhs.dual()),
                 OpBinary::Or => Formula::And(lhs.dual(), rhs.dual()),
                 OpBinary::Imp => panic!("Dual of Imp"),
                 OpBinary::Iff => panic!("Dual of Iff"),
             },
+
             Formula::Quantifier { q, var, expr } => match q {
                 Quantifier::ForAll => Formula::Exists(var, expr.dual()),
                 Quantifier::Exists => Formula::ForAll(var, expr.dual()),
@@ -27,30 +31,6 @@ impl<A: Atomic> Formula<A> {
 }
 
 impl<A: Atomic> Formula<A> {
-    pub fn is_literal(&self) -> bool {
-        match self {
-            Formula::Atom { .. } => true,
-
-            Formula::Unary { op, expr } => {
-                op == &OpUnary::Not && matches!(expr.as_ref(), Formula::Atom { .. })
-            }
-
-            _ => false,
-        }
-    }
-
-    pub fn is_positive_literal(&self) -> bool {
-        matches!(self, Formula::Atom { .. })
-    }
-
-    pub fn is_negative_literal(&self) -> bool {
-        match &self {
-            Formula::Unary { op, expr } => op == &OpUnary::Not && expr.is_positive_literal(),
-
-            _ => false,
-        }
-    }
-
     pub fn negate(self) -> Self {
         !self
     }
@@ -72,7 +52,7 @@ impl<A: Atomic> std::ops::Not for Formula<A> {
 
             Formula::Binary { .. } => Formula::Not(self),
 
-            Formula::Quantifier { .. } => todo!(),
+            Formula::Quantifier { .. } => Formula::Not(self),
         }
     }
 }

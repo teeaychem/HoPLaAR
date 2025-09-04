@@ -1,4 +1,4 @@
-use crate::logic::{Atomic, Formula};
+use crate::logic::{Atomic, Formula, OpUnary};
 
 #[derive(Clone, Debug)]
 pub struct Literal<A> {
@@ -71,6 +71,32 @@ impl<A: Atomic> std::fmt::Display for Literal<A> {
         match self.value {
             true => write!(f, "{}", self.atom),
             false => write!(f, "¬{}", self.atom),
+        }
+    }
+}
+
+impl<A: Atomic> Formula<A> {
+    pub fn is_literal(&self) -> bool {
+        match self {
+            Formula::Atom { .. } => true,
+
+            Formula::Unary { op, expr } => {
+                op == &OpUnary::Not && matches!(expr.as_ref(), Formula::Atom { .. })
+            }
+
+            _ => false,
+        }
+    }
+
+    pub fn is_positive_literal(&self) -> bool {
+        matches!(self, Formula::Atom { .. })
+    }
+
+    pub fn is_negative_literal(&self) -> bool {
+        match &self {
+            Formula::Unary { op, expr } => op == &OpUnary::Not && expr.is_positive_literal(),
+
+            _ => false,
         }
     }
 }
