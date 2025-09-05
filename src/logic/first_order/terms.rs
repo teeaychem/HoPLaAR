@@ -21,11 +21,38 @@ impl Fun {
     pub fn definitionally_eq(&self, other: &Fun) -> bool {
         self.id == other.id && self.args.len() == other.args.len()
     }
+
+    pub fn fresh_variant<'a, T: Iterator<Item = &'a Fun>>(&'a self, taken: T) -> Fun {
+        let mut minimal_variant = None;
+
+        for var in taken {
+            if var.definitionally_eq(self) {
+                if let Some(minimal) = minimal_variant {
+                    minimal_variant = Some(std::cmp::max(minimal, var.variant));
+                } else {
+                    minimal_variant = Some(var.variant)
+                }
+            }
+        }
+
+        if let Some(minimal) = minimal_variant {
+            minimal_variant = Some(minimal + 1);
+        }
+
+        Fun {
+            id: self.id.clone(),
+            variant: minimal_variant.unwrap_or_default(),
+            args: self.args.clone(),
+        }
+    }
 }
 
 impl std::fmt::Display for Fun {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\x1B[1m{}\x1B[0m", self.id)?;
+        if 0 < self.variant {
+            write!(f, "\x1B[1m_{}\x1B[0m", self.variant)?;
+        }
 
         match self.args.as_slice() {
             [] => {}
@@ -39,6 +66,17 @@ impl std::fmt::Display for Fun {
             }
         }
         Ok(())
+    }
+}
+
+impl TryInto<Fun> for Term {
+    type Error = ();
+
+    fn try_into(self) -> Result<Fun, Self::Error> {
+        match self {
+            Term::F(fun) => Ok(fun),
+            Term::V(_) => Err(()),
+        }
     }
 }
 
@@ -56,22 +94,27 @@ impl From<&str> for Var {
 }
 
 impl Var {
-    pub fn variant(&self, taken: &HashSet<Var>) -> Var {
+    pub fn fresh_variant<'a, T: Iterator<Item = &'a Var>>(&'a self, taken: T) -> Var {
         let mut minimal_variant = None;
 
         for var in taken {
             if var.id == self.id {
                 if let Some(minimal) = minimal_variant {
-                    minimal_variant = Some(std::cmp::max(minimal, var.variant) + 1);
+                    minimal_variant = Some(std::cmp::max(minimal, var.variant));
                 } else {
-                    minimal_variant = Some(1)
+                    minimal_variant = Some(var.variant)
                 }
             }
         }
 
+        let variant = match minimal_variant {
+            Some(n) => n + 1,
+            None => 0,
+        };
+
         Var {
             id: self.id.clone(),
-            variant: minimal_variant.unwrap_or_default(),
+            variant,
         }
     }
 }
@@ -83,6 +126,17 @@ impl std::fmt::Display for Var {
             write!(f, "\x1B[3m_{}\x1B[0m", self.variant)?
         }
         Ok(())
+    }
+}
+
+impl TryInto<Var> for Term {
+    type Error = ();
+
+    fn try_into(self) -> Result<Var, Self::Error> {
+        match self {
+            Term::F(_) => Err(()),
+            Term::V(var) => Ok(var),
+        }
     }
 }
 
@@ -249,7 +303,11 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::logic::{
-        first_order::{Term, syntax::Substitution, terms::Var},
+        first_order::{
+            Term,
+            syntax::Substitution,
+            terms::{Fun, Var},
+        },
         parse::try_parse_term,
     };
 
@@ -313,16 +371,29 @@ mod tests {
     }
 
     #[test]
-    fn variants() {
+    fn var_variants() {
         let var = Var::from("x");
 
         let taken = HashSet::from(["y", "z"].map(Var::from));
-        assert_eq!(var.variant(&taken), Var::from("x"));
+        assert_eq!(var.fresh_variant(taken.iter()), Var::from("x"));
 
         let taken = HashSet::from(["x", "y"].map(Var::from));
-        assert_eq!(var.variant(&taken), Var::from("x_1"));
+        assert_eq!(var.fresh_variant(taken.iter()), Var::from("x_1"));
 
         let taken = HashSet::from(["x", "x_1"].map(Var::from));
-        assert_eq!(var.variant(&taken), Var::from("x_2"));
+        assert_eq!(var.fresh_variant(taken.iter()), Var::from("x_2"));
+    }
+
+    #[test]
+    fn fun_variants() {
+        let fun_f_xy: Fun = try_parse_term("f(x,y)").unwrap().try_into().unwrap();
+        let fun_f_yx: Fun = try_parse_term("f(y,x)").unwrap().try_into().unwrap();
+        let fun_f_zz: Fun = try_parse_term("f(z, z)").unwrap().try_into().unwrap();
+
+        let fun_f_one: Fun = try_parse_term("f_1(x,y)").unwrap().try_into().unwrap();
+
+        let variant = fun_f_xy.fresh_variant([fun_f_yx, fun_f_zz].iter());
+
+        assert_eq!(variant, fun_f_one);
     }
 }

@@ -36,7 +36,7 @@ impl FirstOrderFormula {
                         Quantified { q: ForAll, var: x, fm: p },
                         Quantified { q: ForAll, var: y, fm: q },
                     ) => {
-                        let z = x.variant(&fv);
+                        let z = x.fresh_variant(fv.iter());
 
                         substitution.add_interrupt(&x, Some(Term::V(z.clone())));
                         let fresh_p = p.term_substitution(&mut substitution);
@@ -53,7 +53,7 @@ impl FirstOrderFormula {
                         Quantified { q: Exists, var: x, fm: p },
                         Quantified { q: Exists, var: y, fm: q },
                     ) => {
-                        let z = x.variant(&fv);
+                        let z = x.fresh_variant(fv.iter());
                         substitution.add_interrupt(&x, Some(Term::V(z.clone())));
                         let fresh_p = p.term_substitution(&mut substitution);
                         substitution.remove_interrupt(&x);
@@ -67,7 +67,7 @@ impl FirstOrderFormula {
                     // Any binary with only a single quantified side allows pulling the quantifier to the front.
                     // Still, these are split into cases to preserve the order of sides.
                     (_, Quantified { q, var, fm }, unquantified) => {
-                        let z = var.variant(&fv);
+                        let z = var.fresh_variant(fv.iter());
                         substitution.add_interrupt(&var, Some(Term::V(z.clone())));
                         let fresh_fm = fm.term_substitution(&mut substitution);
 
@@ -75,7 +75,7 @@ impl FirstOrderFormula {
                     }
 
                     (_, unquantified, Quantified { q, var, fm }) => {
-                        let z = var.variant(&fv);
+                        let z = var.fresh_variant(fv.iter());
                         substitution.add_interrupt(&var, Some(Term::V(z.clone())));
                         let fresh_fm = fm.term_substitution(&mut substitution);
 

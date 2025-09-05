@@ -121,7 +121,7 @@ impl FirstOrderFormula {
                         }
 
                         let free_fv = free_expr.free_variables();
-                        var.variant(&free_fv)
+                        var.fresh_variant(free_fv.iter())
                     }
 
                     false => var.clone(),
@@ -169,6 +169,9 @@ mod tests {
         let expr = expr.term_substitution(&mut substitution);
 
         let expected = parse("forall x_1. forall x_2. (eq(x_1, x) => eq(x_1, x_2))");
+
+        println!("{expr} {expected}");
+
         assert_eq!(expr, expected);
     }
 }
