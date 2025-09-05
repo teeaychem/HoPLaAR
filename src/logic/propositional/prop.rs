@@ -9,18 +9,24 @@ pub struct Prop {
 
 impl Atomic for Prop {
     // Waiting for "!"
-    type Quantum = Infallible;
     type Part = Infallible;
+
+    type Variable = Infallible;
+    type Function = Infallible;
 
     fn id(&self) -> &str {
         &self.id
     }
 
-    fn variables(&self) -> impl Iterator<Item = Self::Quantum> {
+    fn parts(&self) -> impl Iterator<Item = &Self::Part> {
         std::iter::empty()
     }
 
-    fn parts(&self) -> impl Iterator<Item = &Self::Part> {
+    fn variables(&self) -> impl Iterator<Item = &Self::Variable> {
+        std::iter::empty()
+    }
+
+    fn functions(&self) -> impl Iterator<Item = &Self::Function> {
         std::iter::empty()
     }
 }

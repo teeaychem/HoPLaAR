@@ -126,7 +126,7 @@ mod tests {
         let q_expr_xy = parse("forall x. forall y. (R(x,y) => exists z. (R(x,z) & R(z,y)))");
         let q_expr_yx = parse("forall y. forall x. (R(x,y) => exists z. (R(x,z) & R(z,y)))");
 
-        // Ensuring free variables are sorted seems an unreasonable cost.
+        // Ensuring free variables are sorted seems unreasonable.
         assert!(generalisation == q_expr_xy || generalisation == q_expr_yx)
     }
 

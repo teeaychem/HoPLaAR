@@ -126,6 +126,21 @@ impl Term {
 
         vars
     }
+
+    pub fn functions(&self) -> HashSet<Fun> {
+        let mut vars = HashSet::default();
+
+        for term in self.terms_d() {
+            match term {
+                Term::F(fun) => {
+                    vars.insert(fun.to_owned());
+                }
+                Term::V(_) => {}
+            }
+        }
+
+        vars
+    }
 }
 
 pub struct TermIteratorD<'a> {

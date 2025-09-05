@@ -20,7 +20,7 @@ pub enum Formula<A: Atomic> {
 
     Quantified {
         q: Quantifier,
-        var: A::Quantum,
+        var: A::Variable,
         fm: Box<Formula<A>>,
     },
 }
@@ -49,7 +49,7 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    pub fn Quantified(q: Quantifier, var: A::Quantum, expr: Formula<A>) -> Self {
+    pub fn Quantified(q: Quantifier, var: A::Variable, expr: Formula<A>) -> Self {
         Self::Quantified {
             q,
             var,
@@ -84,11 +84,11 @@ impl<A: Atomic> Formula<A> {
         Self::Atom(atomic)
     }
 
-    pub fn Exists(var: A::Quantum, expr: Formula<A>) -> Self {
+    pub fn Exists(var: A::Variable, expr: Formula<A>) -> Self {
         Self::Quantified(Quantifier::Exists, var, expr)
     }
 
-    pub fn ForAll(var: A::Quantum, expr: Formula<A>) -> Self {
+    pub fn ForAll(var: A::Variable, expr: Formula<A>) -> Self {
         Self::Quantified(Quantifier::ForAll, var, expr)
     }
 }

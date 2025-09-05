@@ -6,6 +6,8 @@ pub mod formula_set;
 pub mod iterators;
 
 mod language;
+use std::{cmp, fmt::Display, hash};
+
 pub use language::{
     formulas::Formula,
     literals::Literal,
@@ -19,16 +21,20 @@ pub mod propositional;
 
 mod syntax;
 
-pub trait Atomic:
-    std::fmt::Debug + std::fmt::Display + Clone + std::hash::Hash + Eq + std::cmp::Ord
-{
-    type Quantum: Clone + Eq + std::cmp::Ord + std::fmt::Display + std::hash::Hash;
-    type Part: Clone + Eq + std::cmp::Ord + std::fmt::Display;
+pub trait Atomic: std::fmt::Debug + Display + Clone + hash::Hash + Eq + cmp::Ord {
+
+    type Variable: Clone + Eq + cmp::Ord + Display + hash::Hash;
+    type Function: Clone + Eq + cmp::Ord + Display + hash::Hash;
+
+
+    type Part: Clone + Eq + cmp::Ord + Display;
 
     // A string identifier which uniquely identifier the atom.
     fn id(&self) -> &str;
 
     fn parts(&self) -> impl Iterator<Item = &Self::Part>;
 
-    fn variables(&self) -> impl Iterator<Item = Self::Quantum>;
+    fn variables(&self) -> impl Iterator<Item = &Self::Variable>;
+
+    fn functions(&self) -> impl Iterator<Item = &Self::Function>;
 }

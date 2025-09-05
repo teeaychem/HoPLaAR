@@ -1,6 +1,9 @@
 use crate::logic::{
     Atomic,
-    first_order::{Element, Model, Term, TermId, Valuation, terms::Var},
+    first_order::{
+        Element, Model, Term, TermId, Valuation,
+        terms::{Fun, Var},
+    },
 };
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
@@ -53,21 +56,30 @@ impl std::fmt::Display for Relation {
 }
 
 impl Atomic for Relation {
-    type Quantum = Var;
     type Part = Term;
+
+    type Variable = Var;
+    type Function = Fun;
 
     fn id(&self) -> &str {
         &self.id
     }
 
-    fn variables(&self) -> impl Iterator<Item = Self::Quantum> {
-        self.terms
-            .iter()
-            .map(|term| term.variables().into_iter())
-            .flatten()
-    }
-
     fn parts(&self) -> impl Iterator<Item = &Self::Part> {
         self.terms.iter().flat_map(|t| t.terms_d())
+    }
+
+    fn variables(&self) -> impl Iterator<Item = &Self::Variable> {
+        self.parts().flat_map(|term| match term {
+            Term::F(_) => None,
+            Term::V(var) => Some(var),
+        })
+    }
+
+    fn functions(&self) -> impl Iterator<Item = &Self::Function> {
+        self.parts().flat_map(|term| match term {
+            Term::F(fun) => Some(fun),
+            Term::V(_) => None,
+        })
     }
 }
