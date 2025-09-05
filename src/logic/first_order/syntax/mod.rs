@@ -1,11 +1,14 @@
 mod substitution;
+use std::collections::HashSet;
+
 pub use substitution::Substitution;
 
 use crate::logic::{
     Formula, OpBinary, Quantifier,
-    first_order::{FirstOrderFormula, Term},
+    first_order::{FirstOrderFormula, Term, terms::Fun},
 };
 
+/// Generalisation
 impl FirstOrderFormula {
     pub fn generalise(self) -> FirstOrderFormula {
         let fv = self.free_variables();
@@ -16,6 +19,17 @@ impl FirstOrderFormula {
         formula
     }
 
+    pub fn specialise(self) -> FirstOrderFormula {
+        use Quantifier::*;
+        match self {
+            Formula::Quantified { q: ForAll, fm, .. } => fm.specialise(),
+            _ => self,
+        }
+    }
+}
+
+/// Prenex normal form
+impl FirstOrderFormula {
     #[rustfmt::skip]
     pub fn pull_quantifiers(mut self) -> FirstOrderFormula {
         use {Formula::*, OpBinary::*, Quantifier::*};
@@ -114,6 +128,66 @@ impl FirstOrderFormula {
     }
 }
 
+/// Skolemization
+impl FirstOrderFormula {
+    fn skolem(self, taken: &mut HashSet<Fun>) -> FirstOrderFormula {
+        match &self {
+            Formula::True | Formula::False | Formula::Atom(_) | Formula::Unary { .. } => self,
+            Formula::Binary { op, lhs, rhs } => {
+                //
+                match op {
+                    OpBinary::And | OpBinary::Or => {
+                        let lhs = lhs.clone().skolem(taken);
+                        let rhs = rhs.clone().skolem(taken);
+                        Formula::Binary(*op, lhs, rhs)
+                    }
+
+                    OpBinary::Imp | OpBinary::Iff => self,
+                }
+            }
+            Formula::Quantified { q, var, fm } => {
+                //
+                match q {
+                    Quantifier::ForAll => Formula::ForAll(var.clone(), fm.clone().skolem(taken)),
+                    Quantifier::Exists => {
+                        //
+                        let xs = self.free_variables();
+
+                        // var would include ANSI markup, so use var.id
+                        let id = match xs.is_empty() {
+                            true => format!("c_{}", var.id),
+                            false => format!("f_{}", var.id),
+                        };
+
+                        let fresh_f = Fun {
+                            id,
+                            variant: 0,
+                            args: xs.iter().map(|x| Term::V(x.clone())).collect(),
+                        };
+
+                        let fresh_f = fresh_f.fresh_variant(taken.iter());
+                        taken.insert(fresh_f.clone());
+
+                        let mut substitution = Substitution::default();
+                        substitution.add_interrupt(var, Some(Term::F(fresh_f)));
+                        let fm = fm.clone().term_substitution(&mut substitution);
+                        fm.skolem(taken)
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn skolemize_basic(self) -> FirstOrderFormula {
+        let mut taken = self.functions();
+        self.nnf().skolem(&mut taken)
+    }
+
+    pub fn skolemize(self) -> FirstOrderFormula {
+        self.skolemize_basic().prenex_normal_form().specialise()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::logic::first_order::parse;
@@ -151,5 +225,34 @@ mod tests {
         let expected = parse("exists x. forall z. (~P(x) & ~R(y) | Q(x) | ~P(z) | ~Q(z))");
 
         assert_eq!(pnf, expected);
+    }
+
+    #[test]
+    fn skolemization_a() {
+        let fm =
+            parse("exists y. (lt(x, y) => forall u. (exists v. lt(times(x, u), times(y, v))))");
+
+        let expected_xu = parse("~lt(x, f_y(x)) | lt(times(x, u), times(f_y(x), f_v(x, u)))");
+        let expected_ux = parse("~lt(x, f_y(x)) | lt(times(x, u), times(f_y(x), f_v(u, x)))");
+
+        let sk = fm.skolemize();
+
+        if sk != expected_xu {
+            assert_eq!(sk, expected_ux);
+        } else {
+            assert_eq!(sk, expected_xu);
+        }
+    }
+
+    #[test]
+    fn skolemization_b() {
+        let fm =
+            parse("forall x. (P(x) => exists y. exists z. (Q(y | ~(exists z. (P(z) & Q(z))))))");
+        // Note, c_y is a constant function
+        let expected = parse("~P(x) | Q(c_y()) | ~P(z) | ~Q(z)");
+
+        let sk = fm.clone().skolemize();
+
+        assert_eq!(sk, expected);
     }
 }

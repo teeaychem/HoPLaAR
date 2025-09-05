@@ -279,17 +279,21 @@ impl<'a> Iterator for TermIteratorD<'a> {
 
 /// Splits a trailing `_[\d+]` from an otherwise non-empty `value` and returns the prefix and digits as a pair.
 pub fn id_and_variant(value: &str) -> (String, usize) {
-    let mut parts = value.split('_').peekable();
+    let mut parts = value.split('_').enumerate().peekable();
     let mut variant = 0;
 
     let mut base_id = String::default();
-    while let Some(part) = parts.next() {
+    while let Some((idx, part)) = parts.next() {
         if parts.peek().is_none()
             && !base_id.is_empty()
             && let Ok(id_variant) = part.parse::<usize>()
         {
             variant = id_variant;
             break;
+        }
+
+        if idx != 0 {
+            base_id.push('_');
         }
 
         base_id.push_str(part);

@@ -17,7 +17,10 @@ pub use relations::Relation;
 
 pub use crate::logic::parse::parse_first_order as parse;
 
-use crate::logic::{Formula, first_order::terms::Var};
+use crate::logic::{
+    Formula,
+    first_order::terms::{Fun, Var},
+};
 
 pub type FirstOrderFormula = Formula<Relation>;
 
@@ -41,6 +44,23 @@ impl FirstOrderFormula {
         }
 
         vars
+    }
+
+    // TODO: Revise
+    pub fn functions(&self) -> HashSet<Fun> {
+        let mut funs: HashSet<Fun> = HashSet::default();
+
+        for atom in self.atoms_dfs() {
+            for term in &atom.terms {
+                for term in term.terms_d() {
+                    if let Term::F(fun) = term {
+                        funs.insert(fun.to_owned());
+                    }
+                }
+            }
+        }
+
+        funs
     }
 }
 
