@@ -51,13 +51,12 @@ impl<A: Atomic> Formula<A> {
                 },
             },
 
-            Quantified { var, fm: expr, .. } => {
-                for atom in expr.atoms() {
-                    if atom.variables().any(|v| v == *var) {
-                        return self;
-                    }
+            Quantified { var, fm, .. } => {
+                if fm.free_variables().iter().any(|v| v == var) {
+                    return self;
                 }
-                take(expr)
+
+                take(fm)
             }
 
             _ => self,

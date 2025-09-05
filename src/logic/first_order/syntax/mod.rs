@@ -16,6 +16,7 @@ impl FirstOrderFormula {
         formula
     }
 
+    #[rustfmt::skip]
     pub fn pull_quantifiers(mut self) -> FirstOrderFormula {
         use {Formula::*, OpBinary::*, Quantifier::*};
 
@@ -25,96 +26,91 @@ impl FirstOrderFormula {
         let mut substitution = Substitution::default();
 
         match self {
-            Binary {
-                op,
-                ref mut lhs,
-                ref mut rhs,
-            } => {
+            Binary { op, ref mut lhs, ref mut rhs } => {
                 let lhs = *std::mem::take(&mut *lhs);
                 let rhs = *std::mem::take(&mut *rhs);
 
-                match (op, lhs, rhs) {
+                match (op, lhs.clone(), rhs.clone()) {
                     (
                         And,
-                        Quantified {
-                            q: ForAll,
-                            var: x,
-                            fm: p,
-                        },
-                        Quantified {
-                            q: ForAll,
-                            var: y,
-                            fm: q,
-                        },
+                        Quantified { q: ForAll, var: x, fm: p },
+                        Quantified { q: ForAll, var: y, fm: q },
                     ) => {
                         let z = x.variant(&fv);
+
                         substitution.add_interrupt(&x, Some(Term::V(z.clone())));
-                        substitution.add_interrupt(&y, Some(Term::V(z.clone())));
                         let fresh_p = p.term_substitution(&mut substitution);
+                        substitution.remove_interrupt(&x);
+
+                        substitution.add_interrupt(&y, Some(Term::V(z.clone())));
                         let fresh_q = q.term_substitution(&mut substitution);
 
-                        Formula::ForAll(z, Formula::And(fresh_p, fresh_q))
+                        Formula::ForAll(z, Formula::And(fresh_p, fresh_q).pull_quantifiers())
                     }
 
                     (
                         Or,
-                        Quantified {
-                            q: Exists,
-                            var: x,
-                            fm: p,
-                        },
-                        Quantified {
-                            q: Exists,
-                            var: y,
-                            fm: q,
-                        },
+                        Quantified { q: Exists, var: x, fm: p },
+                        Quantified { q: Exists, var: y, fm: q },
                     ) => {
                         let z = x.variant(&fv);
                         substitution.add_interrupt(&x, Some(Term::V(z.clone())));
-                        substitution.add_interrupt(&y, Some(Term::V(z.clone())));
                         let fresh_p = p.term_substitution(&mut substitution);
+                        substitution.remove_interrupt(&x);
+
+                        substitution.add_interrupt(&y, Some(Term::V(z.clone())));
                         let fresh_q = q.term_substitution(&mut substitution);
 
-                        Formula::Exists(z, Formula::Or(fresh_p, fresh_q))
+                        Formula::Exists(z, Formula::Or(fresh_p, fresh_q).pull_quantifiers())
                     }
 
-                    (And, Quantified { q, var: x, fm: p }, unquantified) => {
-                        let z = x.variant(&fv);
-                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
-                        let fresh_p = p.term_substitution(&mut substitution);
+                    // Any binary with only a single quantified side allows pulling the quantifier to the front.
+                    // Still, these are split into cases to preserve the order of sides.
+                    (_, Quantified { q, var, fm }, unquantified) => {
+                        let z = var.variant(&fv);
+                        substitution.add_interrupt(&var, Some(Term::V(z.clone())));
+                        let fresh_fm = fm.term_substitution(&mut substitution);
 
-                        Formula::Quantified(q, z, Formula::And(unquantified, fresh_p))
+                        Formula::Quantified(q, z, Formula::Binary(op, fresh_fm, unquantified).pull_quantifiers())
                     }
 
-                    (And, unquantified, Quantified { q, var: x, fm: p }) => {
-                        let z = x.variant(&fv);
-                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
-                        let fresh_p = p.term_substitution(&mut substitution);
+                    (_, unquantified, Quantified { q, var, fm }) => {
+                        let z = var.variant(&fv);
+                        substitution.add_interrupt(&var, Some(Term::V(z.clone())));
+                        let fresh_fm = fm.term_substitution(&mut substitution);
 
-                        Formula::Quantified(q, z, Formula::And(fresh_p, unquantified))
+                        Formula::Quantified(q, z, Formula::Binary(op, unquantified, fresh_fm).pull_quantifiers())
                     }
 
-                    (Or, Quantified { q, var: x, fm: p }, unquantified) => {
-                        let z = x.variant(&fv);
-                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
-                        let fresh_p = p.term_substitution(&mut substitution);
-
-                        Formula::Quantified(q, z, Formula::Or(fresh_p, unquantified))
-                    }
-                    (Or, unquantified, Quantified { q, var: x, fm: p }) => {
-                        let z = x.variant(&fv);
-                        substitution.add_interrupt(&x, Some(Term::V(z.clone())));
-                        let fresh_p = p.term_substitution(&mut substitution);
-
-                        Formula::Quantified(q, z, Formula::Or(unquantified, fresh_p))
-                    }
-
-                    _ => self,
+                    _ => Formula::Binary(op, lhs, rhs),
                 }
             }
 
             _ => self,
         }
+    }
+
+    pub fn prenex(mut self) -> FirstOrderFormula {
+        match self {
+            Formula::True | Formula::False | Formula::Atom(_) | Formula::Unary { .. } => self,
+            Formula::Binary {
+                op,
+                ref mut lhs,
+                ref mut rhs,
+            } => match op {
+                OpBinary::And | OpBinary::Or => {
+                    let lhs = std::mem::take(lhs);
+                    let rhs = std::mem::take(rhs);
+                    Formula::Binary(op, lhs.prenex(), rhs.prenex()).pull_quantifiers()
+                }
+                OpBinary::Imp | OpBinary::Iff => self,
+            },
+            Formula::Quantified { q, var, fm } => Formula::Quantified(q, var, fm.prenex()),
+        }
+    }
+
+    pub fn prenex_normal_form(self) -> FirstOrderFormula {
+        self.simplify().nnf().prenex()
     }
 }
 
@@ -140,6 +136,20 @@ mod tests {
         let pulled = fm.pull_quantifiers();
 
         let expected = parse("forall x'. (P(x) |  ~P(x'))");
+
         assert_eq!(pulled, expected);
+    }
+
+    #[test]
+    fn prenex_normal_form() {
+        let fm = parse(
+            "(forall x. (P(x) | R(y))) => exists y. (exists z. (Q(y) | ~(exists z. (P(z) & Q(z)))))",
+        );
+
+        let pnf = fm.prenex_normal_form();
+
+        let expected = parse("exists x. forall z. (~P(x) & ~R(y) | Q(x) | ~P(z) | ~Q(z))");
+
+        assert_eq!(pnf, expected);
     }
 }

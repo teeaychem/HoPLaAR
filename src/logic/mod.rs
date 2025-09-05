@@ -1,3 +1,10 @@
+mod etc;
+
+pub mod first_order;
+
+pub mod formula_set;
+pub mod iterators;
+
 mod language;
 pub use language::{
     formulas::Formula,
@@ -5,25 +12,23 @@ pub use language::{
     logical_constants::{OpBinary, OpUnary, Quantifier},
 };
 
-pub mod first_order;
-
-pub mod formula_set;
-pub mod iterators;
-
-mod syntax;
-
 mod parse;
 pub use parse::{parse_first_order, parse_propositional};
 
 pub mod propositional;
 
+mod syntax;
+
 pub trait Atomic:
     std::fmt::Debug + std::fmt::Display + Clone + std::hash::Hash + Eq + std::cmp::Ord
 {
-    type Quantum: Clone + Eq + std::cmp::Ord + std::fmt::Display;
+    type Quantum: Clone + Eq + std::cmp::Ord + std::fmt::Display + std::hash::Hash;
+    type Part: Clone + Eq + std::cmp::Ord + std::fmt::Display;
 
     // A string identifier which uniquely identifier the atom.
     fn id(&self) -> &str;
+
+    fn parts(&self) -> impl Iterator<Item = &Self::Part>;
 
     fn variables(&self) -> impl Iterator<Item = Self::Quantum>;
 }

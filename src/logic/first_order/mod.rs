@@ -42,39 +42,6 @@ impl FirstOrderFormula {
 
         vars
     }
-
-    pub fn free_variables(&self) -> HashSet<Var> {
-        free_variables(self)
-    }
-}
-
-fn free_variables(formula: &FirstOrderFormula) -> HashSet<Var> {
-    match formula {
-        Formula::True | Formula::False => HashSet::default(),
-        Formula::Atom(relation) => {
-            let mut free = HashSet::default();
-
-            for term in &relation.terms {
-                for subterm in term.terms_d() {
-                    if let Term::V(var) = subterm {
-                        free.insert(var.to_owned());
-                    }
-                }
-            }
-
-            free
-        }
-        Formula::Unary { expr, .. } => free_variables(expr),
-        Formula::Binary { lhs, rhs, .. } => free_variables(lhs)
-            .into_iter()
-            .chain(free_variables(rhs))
-            .collect(),
-        Formula::Quantified { var, fm: expr, .. } => {
-            let mut free = free_variables(expr);
-            free.remove(var);
-            free
-        }
-    }
 }
 
 #[cfg(test)]

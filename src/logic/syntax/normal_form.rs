@@ -1,7 +1,7 @@
 use crate::logic::{Atomic, Formula, OpBinary, OpUnary};
 
 impl<A: Atomic> Formula<A> {
-    fn nnf_basic(mut self) -> Self {
+    pub fn nnf_basic(mut self) -> Self {
         use {Formula::*, OpBinary::*, OpUnary::*};
 
         match &mut self {
@@ -54,8 +54,8 @@ impl<A: Atomic> Formula<A> {
                 }
             }
 
-            Quantified { q, var, fm: expr } => {
-                let expr = std::mem::take(expr);
+            Quantified { q, var, fm } => {
+                let expr = std::mem::take(fm);
                 Formula::Quantified(*q, var.clone(), expr.nnf_basic())
             }
 
@@ -137,7 +137,9 @@ mod tests {
             "exists x. ~P(x) | exists y. Q(y) & exists z. (P(z) & Q(z)) | forall y. ~Q(y) & forall z. (~P(z) | ~Q(z))",
         );
 
-        assert_eq!(expr.nnf(), expected);
+        let nnf = expr.nnf();
+
+        assert_eq!(nnf, expected);
     }
 
     #[test]

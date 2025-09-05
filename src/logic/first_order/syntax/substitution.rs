@@ -41,6 +41,11 @@ impl Substitution {
         self.interrupt.insert(var.clone(), v)
     }
 
+    /// Adds an interrupt to the substitution and returns the existing interrupt.
+    pub fn remove_interrupt(&mut self, var: &Var) -> Option<Option<Term>> {
+        self.interrupt.remove(var)
+    }
+
     /// Applies the substitution, ignoring any interrupts.
     pub fn apply_function(&self, key: Term) -> Term {
         match key {

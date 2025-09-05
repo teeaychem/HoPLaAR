@@ -54,6 +54,7 @@ impl std::fmt::Display for Relation {
 
 impl Atomic for Relation {
     type Quantum = Var;
+    type Part = Term;
 
     fn id(&self) -> &str {
         &self.id
@@ -64,5 +65,9 @@ impl Atomic for Relation {
             .iter()
             .map(|term| term.variables().into_iter())
             .flatten()
+    }
+
+    fn parts(&self) -> impl Iterator<Item = &Self::Part> {
+        self.terms.iter().flat_map(|t| t.terms_d())
     }
 }
