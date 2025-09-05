@@ -57,17 +57,32 @@ impl From<&str> for Var {
 
 impl Var {
     pub fn variant(&self, taken: &HashSet<Var>) -> Var {
-        let mut variant = self.clone();
-        while taken.contains(&variant) {
-            variant.id.push('\'');
+        let mut minimal_variant = None;
+
+        for var in taken {
+            if var.id == self.id {
+                if let Some(minimal) = minimal_variant {
+                    minimal_variant = Some(std::cmp::max(minimal, var.variant) + 1);
+                } else {
+                    minimal_variant = Some(1)
+                }
+            }
         }
-        variant
+
+        Var {
+            id: self.id.clone(),
+            variant: minimal_variant.unwrap_or_default(),
+        }
     }
 }
 
 impl std::fmt::Display for Var {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\x1B[3m{}\x1B[0m", self.id)
+        write!(f, "\x1B[3m{}\x1B[0m", self.id)?;
+        if 0 < self.variant {
+            write!(f, "\x1B[3m_{}\x1B[0m", self.variant)?
+        }
+        Ok(())
     }
 }
 
@@ -300,13 +315,14 @@ mod tests {
     #[test]
     fn variants() {
         let var = Var::from("x");
+
         let taken = HashSet::from(["y", "z"].map(Var::from));
         assert_eq!(var.variant(&taken), Var::from("x"));
 
         let taken = HashSet::from(["x", "y"].map(Var::from));
-        assert_eq!(var.variant(&taken), Var::from("x'"));
+        assert_eq!(var.variant(&taken), Var::from("x_1"));
 
-        let taken = HashSet::from(["x", "x'"].map(Var::from));
-        assert_eq!(var.variant(&taken), Var::from("x''"));
+        let taken = HashSet::from(["x", "x_1"].map(Var::from));
+        assert_eq!(var.variant(&taken), Var::from("x_2"));
     }
 }

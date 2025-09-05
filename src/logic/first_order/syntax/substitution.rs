@@ -162,13 +162,13 @@ mod tests {
         let expr = parse("forall x. eq(x, y)");
         let expr = expr.term_substitution(&mut substitution);
 
-        let expected = parse("forall x'. eq(x', x)");
+        let expected = parse("forall x_1. eq(x_1, x)");
         assert_eq!(expr, expected);
 
-        let expr = parse("forall x. forall x'. (eq(x, y) => eq(x,x'))");
+        let expr = parse("forall x. forall x_1. (eq(x, y) => eq(x,x_1))");
         let expr = expr.term_substitution(&mut substitution);
 
-        let expected = parse("forall x'. forall x''. (eq(x', x) => eq(x',x''))");
+        let expected = parse("forall x_1. forall x_2. (eq(x_1, x) => eq(x_1, x_2))");
         assert_eq!(expr, expected);
     }
 }

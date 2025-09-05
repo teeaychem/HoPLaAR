@@ -135,7 +135,7 @@ mod tests {
         let fm = parse("P(x) | forall x. ~P(x)");
         let pulled = fm.pull_quantifiers();
 
-        let expected = parse("forall x'. (P(x) |  ~P(x'))");
+        let expected = parse("forall x_1. (P(x) |  ~P(x_1))");
 
         assert_eq!(pulled, expected);
     }
