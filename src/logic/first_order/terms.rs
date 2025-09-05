@@ -4,10 +4,23 @@ use crate::logic::first_order::{Element, Model, Valuation, eval_term};
 
 pub type TermId = String;
 
+/// Functions (and constants)
+///
+/// As functions are always applied,
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Fun {
     pub id: TermId,
+    pub variant: usize,
     pub args: Vec<Term>,
+}
+
+impl Fun {
+    /// Returns true if `self` and `other` are the same function.
+    ///
+    /// Definitional equality is distinct from equality between instances of Fun, as instances of Fun specify the arguments passed to a function definition.
+    pub fn definitionally_eq(&self, other: &Fun) -> bool {
+        self.id == other.id && self.args.len() == other.args.len()
+    }
 }
 
 impl std::fmt::Display for Fun {
@@ -32,13 +45,17 @@ impl std::fmt::Display for Fun {
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Var {
     pub id: TermId,
+    pub variant: usize,
+}
+
+impl From<&str> for Var {
+    fn from(value: &str) -> Self {
+        let (id, variant) = id_and_variant(value);
+        Var { id, variant }
+    }
 }
 
 impl Var {
-    pub fn from(id: &str) -> Self {
-        Var { id: id.to_owned() }
-    }
-
     pub fn variant(&self, taken: &HashSet<Var>) -> Var {
         let mut variant = self.clone();
         while taken.contains(&variant) {
@@ -73,37 +90,47 @@ impl std::fmt::Display for Term {
 
 #[allow(non_snake_case)]
 impl Term {
-    pub fn Cst(id: &str) -> Self {
+    pub fn Cst(value: &str) -> Self {
+        let (id, variant) = id_and_variant(value);
         Term::F(Fun {
-            id: id.to_owned(),
+            id,
+            variant,
             args: Vec::default(),
         })
     }
 
     pub fn Var(id: &str) -> Self {
-        Term::V(Var { id: id.to_owned() })
+        Term::V(Var::from(id))
     }
 
-    pub fn Fun(id: &str, args: &[Term]) -> Self {
+    pub fn Fun(str_id: &str, args: &[Term]) -> Self {
+        let (id, variant) = id_and_variant(str_id);
         Term::F(Fun {
-            id: id.to_owned(),
+            id,
+            variant,
             args: args.to_vec(),
         })
     }
 
-    pub fn Fun_unary(op: &str, term: Term) -> Self {
-        Term::Fun(op, &[term])
+    pub fn Fun_unary(str_id: &str, term: Term) -> Self {
+        Term::Fun(str_id, &[term])
     }
 
-    pub fn Fun_binary(op: &str, lhs: Term, rhs: Term) -> Self {
-        Term::Fun(op, &[lhs, rhs])
+    pub fn Fun_binary(str_id: &str, lhs: Term, rhs: Term) -> Self {
+        Term::Fun(str_id, &[lhs, rhs])
     }
 }
 
 impl Term {
     pub fn id(&self) -> &str {
         match self {
-            Term::V(Var { id }) | Term::F(Fun { id, .. }) => id,
+            Term::V(Var { id, .. }) | Term::F(Fun { id, .. }) => id,
+        }
+    }
+
+    pub fn variant(&self) -> usize {
+        match self {
+            Term::V(Var { variant, .. }) | Term::F(Fun { variant, .. }) => *variant,
         }
     }
 
@@ -181,6 +208,27 @@ impl<'a> Iterator for TermIteratorD<'a> {
     }
 }
 
+/// Splits a trailing `_[\d+]` from an otherwise non-empty `value` and returns the prefix and digits as a pair.
+pub fn id_and_variant(value: &str) -> (String, usize) {
+    let mut parts = value.split('_').peekable();
+    let mut variant = 0;
+
+    let mut base_id = String::default();
+    while let Some(part) = parts.next() {
+        if parts.peek().is_none()
+            && !base_id.is_empty()
+            && let Ok(id_variant) = part.parse::<usize>()
+        {
+            variant = id_variant;
+            break;
+        }
+
+        base_id.push_str(part);
+    }
+
+    (base_id, variant)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -189,6 +237,21 @@ mod tests {
         first_order::{Term, syntax::Substitution, terms::Var},
         parse::try_parse_term,
     };
+
+    #[test]
+    fn ids_and_variants() {
+        let v23 = Var::from("v_23");
+        assert_eq!(v23.id, "v");
+        assert_eq!(v23.variant, 23);
+
+        let one = Term::Cst("1");
+        assert_eq!(one.id(), "1");
+        assert_eq!(one.variant(), 0);
+
+        let one = Term::Cst("1_1");
+        assert_eq!(one.id(), "1");
+        assert_eq!(one.variant(), 1);
+    }
 
     #[test]
     fn term_variables() {

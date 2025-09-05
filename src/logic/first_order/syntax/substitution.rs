@@ -49,7 +49,7 @@ impl Substitution {
     /// Applies the substitution, ignoring any interrupts.
     pub fn apply_function(&self, key: Term) -> Term {
         match key {
-            Term::F(Fun { id, args }) => {
+            Term::F(Fun { id, args, .. }) => {
                 let x: Vec<Term> = args
                     .into_iter()
                     .map(|arg| self.apply_function(arg))
@@ -64,7 +64,7 @@ impl Substitution {
     /// Applies the substitution, adhering to any interrupts.
     pub fn apply(&self, key: Term) -> Term {
         match key {
-            Term::F(Fun { id, args }) => {
+            Term::F(Fun { id, args, .. }) => {
                 let x: Vec<Term> = args.into_iter().map(|arg| self.apply(arg)).collect();
                 Term::Fun(&id, &x)
             }
