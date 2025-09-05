@@ -171,7 +171,7 @@ impl<A: Atomic> std::fmt::Display for Formula<A> {
                 _ => write!(f, "{lhs} {op} {rhs}"),
             },
 
-            Formula::Quantified { q, var, fm: expr } => write!(f, "{q}{var}({expr})"),
+            Formula::Quantified { q, var, fm } => write!(f, "{q}{var}({fm})"),
         }
     }
 }

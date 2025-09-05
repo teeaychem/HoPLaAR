@@ -28,8 +28,8 @@ fn free_variables<A: Atomic>(formula: &Formula<A>) -> HashSet<A::Variable> {
             .chain(free_variables(rhs))
             .collect(),
 
-        Formula::Quantified { var, fm: expr, .. } => {
-            let mut free = free_variables(expr);
+        Formula::Quantified { var, fm, .. } => {
+            let mut free = free_variables(fm);
             free.remove(var);
             free
         }

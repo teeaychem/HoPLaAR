@@ -10,7 +10,7 @@ use crate::logic::{
 
 /// Generalisation
 impl FirstOrderFormula {
-    pub fn generalise(self) -> FirstOrderFormula {
+    pub fn generalize(self) -> FirstOrderFormula {
         let fv = self.free_variables();
         let mut formula = self;
         for var in fv {
@@ -19,10 +19,10 @@ impl FirstOrderFormula {
         formula
     }
 
-    pub fn specialise(self) -> FirstOrderFormula {
+    pub fn specialize(self) -> FirstOrderFormula {
         use Quantifier::*;
         match self {
-            Formula::Quantified { q: ForAll, fm, .. } => fm.specialise(),
+            Formula::Quantified { q: ForAll, fm, .. } => fm.specialize(),
             _ => self,
         }
     }
@@ -124,7 +124,7 @@ impl FirstOrderFormula {
     }
 
     pub fn prenex_normal_form(self) -> FirstOrderFormula {
-        self.simplify().nnf().prenex()
+        self.simplify().negation_normal_form().prenex()
     }
 }
 
@@ -180,11 +180,11 @@ impl FirstOrderFormula {
 
     pub fn skolemize_basic(self) -> FirstOrderFormula {
         let mut taken = self.functions();
-        self.nnf().skolem(&mut taken)
+        self.negation_normal_form().skolem(&mut taken)
     }
 
     pub fn skolemize(self) -> FirstOrderFormula {
-        self.skolemize_basic().prenex_normal_form().specialise()
+        self.skolemize_basic().prenex_normal_form().specialize()
     }
 }
 
@@ -193,9 +193,9 @@ mod tests {
     use crate::logic::first_order::parse;
 
     #[test]
-    fn generalisation() {
+    fn generalization() {
         let expr = parse("R(x,y) => exists z. (R(x,z) & R(z,y))");
-        let generalisation = expr.generalise();
+        let generalisation = expr.generalize();
 
         let q_expr_xy = parse("forall x. forall y. (R(x,y) => exists z. (R(x,z) & R(z,y)))");
         let q_expr_yx = parse("forall y. forall x. (R(x,y) => exists z. (R(x,z) & R(z,y)))");

@@ -70,8 +70,8 @@ impl<A: Atomic> Formula<A> {
                 Formula::Binary(op, lhs.simplify(), rhs.simplify()).simplify_once()
             }
 
-            Formula::Quantified { q, var, fm: expr } => {
-                Formula::Quantified(q, var, expr.simplify()).simplify_once()
+            Formula::Quantified { q, var, fm } => {
+                Formula::Quantified(q, var, fm.simplify()).simplify_once()
             }
 
             _ => self,

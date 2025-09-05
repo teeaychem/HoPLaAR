@@ -99,8 +99,8 @@ impl FirstOrderFormula {
                 rhs.term_substitution(substitution),
             ),
 
-            Formula::Quantified { q, var, fm: expr } => {
-                let mut fv = expr.free_variables();
+            Formula::Quantified { q, var, fm } => {
+                let mut fv = fm.free_variables();
                 fv.remove(&var);
 
                 let fresh_bind = fv.iter().any(|y| {
@@ -115,7 +115,7 @@ impl FirstOrderFormula {
                         // variable free substitution
 
                         let out = substitution.add_interrupt(&var, None);
-                        let free_expr = expr.clone().term_substitution(substitution);
+                        let free_expr = fm.clone().term_substitution(substitution);
                         if let Some(shadowed) = out {
                             substitution.add_interrupt(&var, shadowed);
                         }
@@ -130,7 +130,7 @@ impl FirstOrderFormula {
                 // fresh variable substitution
 
                 let out = substitution.add_interrupt(&var, Some(Term::V(fresh_var.clone())));
-                let expr = expr.term_substitution(substitution);
+                let expr = fm.term_substitution(substitution);
                 if let Some(shadowed) = out {
                     substitution.add_interrupt(&var, shadowed);
                 }

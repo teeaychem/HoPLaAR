@@ -51,7 +51,7 @@ pub fn eval_first_order<E: Element, M: Model<E>>(
             OpBinary::Iff => lhs.eval(M, v) == rhs.eval(M, v),
         },
 
-        Formula::Quantified { q, var, fm: expr } => {
+        Formula::Quantified { q, var, fm } => {
             let shadowed_value = v.get(var).cloned();
             let mut value = match q {
                 Quantifier::ForAll => true,
@@ -60,7 +60,7 @@ pub fn eval_first_order<E: Element, M: Model<E>>(
 
             for element in M.elements() {
                 v.insert(var.clone(), element.clone());
-                if expr.eval(M, v) != value {
+                if fm.eval(M, v) != value {
                     value = !value;
                     break;
                 }

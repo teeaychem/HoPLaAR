@@ -22,9 +22,9 @@ impl<A: Atomic> Formula<A> {
                 OpBinary::Iff => panic!("Dual of Iff"),
             },
 
-            Formula::Quantified { q, var, fm: expr } => match q {
-                Quantifier::ForAll => Formula::Exists(var, expr.dual()),
-                Quantifier::Exists => Formula::ForAll(var, expr.dual()),
+            Formula::Quantified { q, var, fm } => match q {
+                Quantifier::ForAll => Formula::Exists(var, fm.dual()),
+                Quantifier::Exists => Formula::ForAll(var, fm.dual()),
             },
         }
     }
