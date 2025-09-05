@@ -90,14 +90,20 @@ impl<A: Atomic> Formula<A> {
     }
 
     pub fn raw_dnf(mut self) -> Self {
-        use {Formula::*, OpBinary::*, std::mem::take};
+        use {Formula::*, OpBinary::*};
 
         match &mut self {
             Binary { op: And, lhs, rhs } => {
-                Formula::And(take(lhs).raw_dnf(), take(rhs).raw_dnf()).distribute()
+                let lhs = std::mem::take(lhs).raw_dnf();
+                let rhs = std::mem::take(rhs).raw_dnf();
+                Formula::And(lhs, rhs).distribute()
             }
 
-            Binary { op: Or, lhs, rhs } => Formula::Or(take(lhs).raw_dnf(), take(rhs).raw_dnf()),
+            Binary { op: Or, lhs, rhs } => {
+                let lhs = std::mem::take(lhs).raw_dnf();
+                let rhs = std::mem::take(rhs).raw_dnf();
+                Formula::Or(lhs, rhs)
+            }
 
             _ => self,
         }
