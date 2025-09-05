@@ -58,35 +58,32 @@ impl<A: Atomic> std::ops::Not for Formula<A> {
 }
 
 impl<A: Atomic> Formula<A> {
-    pub fn distribute(mut self) -> Self {
-        use {Formula::*, OpBinary::*, std::mem::take};
+    pub fn distribute(self) -> Self {
+        use {Formula::*, OpBinary::*};
 
-        match &mut self {
-            Binary {
-                op: And,
-                lhs: a,
-                rhs: b,
-            } => match (a.as_mut(), b.as_mut()) {
-                (_, Binary { op: Or, lhs, rhs }) => {
-                    let a = *take(a);
+        match &self {
+            Binary { op: And, lhs, rhs } => {
+                let outer_lhs = &**lhs;
+                let outer_rhs = &**rhs;
 
-                    let lhs = Formula::And(a.clone(), *take(lhs));
-                    let rhs = Formula::And(a, *take(rhs));
+                match (outer_lhs, outer_rhs) {
+                    (_, Binary { op: Or, lhs, rhs }) => {
+                        let lhs = Formula::And(outer_lhs.clone(), *lhs.clone());
+                        let rhs = Formula::And(outer_lhs.clone(), *rhs.clone());
 
-                    Formula::Or(lhs.distribute(), rhs.distribute())
+                        Formula::Or(lhs.distribute(), rhs.distribute())
+                    }
+
+                    (Binary { op: Or, lhs, rhs }, _) => {
+                        let lhs = Formula::And(*lhs.clone(), outer_rhs.clone());
+                        let rhs = Formula::And(*rhs.clone(), outer_rhs.clone());
+
+                        Formula::Or(lhs.distribute(), rhs.distribute())
+                    }
+
+                    _ => self,
                 }
-
-                (Binary { op: Or, lhs, rhs }, _) => {
-                    let b = *take(b);
-
-                    let lhs = Formula::And(*take(lhs), b.clone());
-                    let rhs = Formula::And(*take(rhs), b);
-
-                    Formula::Or(lhs.distribute(), rhs.distribute())
-                }
-
-                _ => self,
-            },
+            }
 
             _ => self,
         }
