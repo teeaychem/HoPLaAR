@@ -15,7 +15,7 @@ pub use language::{
 };
 
 mod parse;
-pub use parse::{parse_first_order, parse_propositional};
+pub use parse::parse_propositional;
 
 pub mod propositional;
 

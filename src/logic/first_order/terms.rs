@@ -306,13 +306,10 @@ pub fn id_and_variant(value: &str) -> (String, usize) {
 mod tests {
     use std::collections::HashSet;
 
-    use crate::logic::{
-        first_order::{
-            Term,
-            syntax::Substitution,
-            terms::{Fun, Var},
-        },
-        parse::try_parse_term,
+    use crate::logic::first_order::{
+        Term,
+        syntax::Substitution,
+        terms::{Fun, Var},
     };
 
     #[test]
@@ -332,7 +329,7 @@ mod tests {
 
     #[test]
     fn term_variables() {
-        let terms = try_parse_term("f(a,g(b),h(f(a,h(b),c,d)))")
+        let terms = Term::try_from("f(a,g(b),h(f(a,h(b),c,d)))")
             .unwrap()
             .terms_d()
             .count();
@@ -341,7 +338,7 @@ mod tests {
 
     #[test]
     fn substitution() {
-        let term = try_parse_term("f(X,g(x,Y))").unwrap();
+        let term = Term::try_from("f(X,g(x,Y))").unwrap();
         let upper_sub = |t: Term| -> Term {
             match t {
                 Term::F(_) => t,
@@ -369,7 +366,7 @@ mod tests {
 
         let new_term = substitution.apply(term);
 
-        let other_term = try_parse_term("f(x,g(X,y))").unwrap();
+        let other_term = Term::try_from("f(x,g(X,y))").unwrap();
 
         assert_eq!(new_term, other_term);
     }
@@ -390,11 +387,11 @@ mod tests {
 
     #[test]
     fn fun_variants() {
-        let fun_f_xy: Fun = try_parse_term("f(x,y)").unwrap().try_into().unwrap();
-        let fun_f_yx: Fun = try_parse_term("f(y,x)").unwrap().try_into().unwrap();
-        let fun_f_zz: Fun = try_parse_term("f(z, z)").unwrap().try_into().unwrap();
+        let fun_f_xy: Fun = Term::try_from("f(x,y)").unwrap().try_into().unwrap();
+        let fun_f_yx: Fun = Term::try_from("f(y,x)").unwrap().try_into().unwrap();
+        let fun_f_zz: Fun = Term::try_from("f(z, z)").unwrap().try_into().unwrap();
 
-        let fun_f_one: Fun = try_parse_term("f_1(x,y)").unwrap().try_into().unwrap();
+        let fun_f_one: Fun = Term::try_from("f_1(x,y)").unwrap().try_into().unwrap();
 
         let variant = fun_f_xy.fresh_variant([fun_f_yx, fun_f_zz].iter());
 

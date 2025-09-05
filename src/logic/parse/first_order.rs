@@ -5,10 +5,12 @@ use crate::logic::{
     parse::{Quantifier, Token, lex},
 };
 
-pub fn parse_first_order(str: &str) -> FirstOrderFormula {
-    let mut tokens = lex(str).into_iter().peekable();
-    let mut variable_ids = HashSet::default();
-    parse_iff(&mut tokens, &mut variable_ids)
+impl From<&str> for FirstOrderFormula {
+    fn from(value: &str) -> Self {
+        let mut tokens = lex(value).into_iter().peekable();
+        let mut variable_ids = HashSet::default();
+        parse_iff(&mut tokens, &mut variable_ids)
+    }
 }
 
 fn parse_iff<I: Iterator<Item = Token>>(
@@ -187,10 +189,17 @@ pub fn try_parse_relation_local<I: Iterator<Item = Token>>(
     Some(Relation::from(id, terms))
 }
 
-pub fn try_parse_relation(str: &str) -> Option<Relation> {
-    let mut tokens = lex(str).into_iter().peekable();
-    let mut variable_ids = HashSet::default();
-    try_parse_relation_local(&mut tokens, &mut variable_ids)
+impl TryFrom<&str> for Relation {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut tokens = lex(value).into_iter().peekable();
+        let mut variable_ids = HashSet::default();
+        match try_parse_relation_local(&mut tokens, &mut variable_ids) {
+            Some(relation) => Ok(relation),
+            None => Err(()),
+        }
+    }
 }
 
 fn is_const_id(id: &TermId) -> bool {
@@ -249,10 +258,17 @@ fn try_parse_term_local<I: Iterator<Item = Token>>(
     }
 }
 
-pub fn try_parse_term(str: &str) -> Option<Term> {
-    let mut tokens = lex(str).into_iter().peekable();
-    let mut variable_ids = HashSet::default();
-    try_parse_term_local(&mut tokens, &mut variable_ids)
+impl TryFrom<&str> for Term {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut tokens = lex(value).into_iter().peekable();
+        let mut variable_ids = HashSet::default();
+        match try_parse_term_local(&mut tokens, &mut variable_ids) {
+            Some(term) => Ok(term),
+            None => Err(()),
+        }
+    }
 }
 
 #[cfg(test)]

@@ -78,15 +78,15 @@ pub fn eval_first_order<E: Element, M: Model<E>>(
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::first_order::{Valuation, domains::Domain, parse};
+    use crate::logic::first_order::{FirstOrderFormula, Valuation, domains::Domain};
 
     #[test]
     fn scope() {
         let model = Domain::boolean();
         let mut v = Valuation::undefined();
 
-        let narrow = parse("forall x. eq(x, 0) => eq(1,0)");
-        let wide = parse("forall x. (eq(x, 0) => eq(1,0))");
+        let narrow = FirstOrderFormula::from("forall x. eq(x, 0) => eq(1,0)");
+        let wide = FirstOrderFormula::from("forall x. (eq(x, 0) => eq(1,0))");
 
         assert!(narrow.eval(&model, &mut v));
         assert!(!wide.eval(&model, &mut v));

@@ -151,7 +151,7 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Formula, parse_first_order, parse_propositional};
+    use crate::logic::{Formula, first_order::FirstOrderFormula, parse_propositional};
 
     #[test]
     fn nnf_simple() {
@@ -163,10 +163,11 @@ mod tests {
 
     #[test]
     fn nnf_quantifier() {
-        let expr =
-            parse_first_order("forall x. P(x) => (exists y. Q(y) <=> exists z. (P(z) & Q(z)))");
+        let expr = FirstOrderFormula::from(
+            "forall x. P(x) => (exists y. Q(y) <=> exists z. (P(z) & Q(z)))",
+        );
 
-        let expected = parse_first_order(
+        let expected = FirstOrderFormula::from(
             "exists x. ~P(x) | exists y. Q(y) & exists z. (P(z) & Q(z)) | forall y. ~Q(y) & forall z. (~P(z) | ~Q(z))",
         );
 

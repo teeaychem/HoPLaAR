@@ -190,15 +190,17 @@ impl FirstOrderFormula {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::first_order::parse;
+    use crate::logic::first_order::FirstOrderFormula;
 
     #[test]
     fn generalization() {
-        let expr = parse("R(x,y) => exists z. (R(x,z) & R(z,y))");
+        let expr = FirstOrderFormula::from("R(x,y) => exists z. (R(x,z) & R(z,y))");
         let generalisation = expr.generalize();
 
-        let q_expr_xy = parse("forall x. forall y. (R(x,y) => exists z. (R(x,z) & R(z,y)))");
-        let q_expr_yx = parse("forall y. forall x. (R(x,y) => exists z. (R(x,z) & R(z,y)))");
+        let q_expr_xy =
+            FirstOrderFormula::from("forall x. forall y. (R(x,y) => exists z. (R(x,z) & R(z,y)))");
+        let q_expr_yx =
+            FirstOrderFormula::from("forall y. forall x. (R(x,y) => exists z. (R(x,z) & R(z,y)))");
 
         // Ensuring free variables are sorted seems unreasonable.
         assert!(generalisation == q_expr_xy || generalisation == q_expr_yx)
@@ -206,34 +208,38 @@ mod tests {
 
     #[test]
     fn pulls() {
-        let fm = parse("P(x) | forall x. ~P(x)");
+        let fm = FirstOrderFormula::from("P(x) | forall x. ~P(x)");
         let pulled = fm.pull_quantifiers();
 
-        let expected = parse("forall x_1. (P(x) |  ~P(x_1))");
+        let expected = FirstOrderFormula::from("forall x_1. (P(x) |  ~P(x_1))");
 
         assert_eq!(pulled, expected);
     }
 
     #[test]
     fn prenex_normal_form() {
-        let fm = parse(
+        let fm = FirstOrderFormula::from(
             "(forall x. (P(x) | R(y))) => exists y. (exists z. (Q(y) | ~(exists z. (P(z) & Q(z)))))",
         );
 
         let pnf = fm.prenex_normal_form();
 
-        let expected = parse("exists x. forall z. (~P(x) & ~R(y) | Q(x) | ~P(z) | ~Q(z))");
+        let expected =
+            FirstOrderFormula::from("exists x. forall z. (~P(x) & ~R(y) | Q(x) | ~P(z) | ~Q(z))");
 
         assert_eq!(pnf, expected);
     }
 
     #[test]
     fn skolemization_a() {
-        let fm =
-            parse("exists y. (lt(x, y) => forall u. (exists v. lt(times(x, u), times(y, v))))");
+        let fm = FirstOrderFormula::from(
+            "exists y. (lt(x, y) => forall u. (exists v. lt(times(x, u), times(y, v))))",
+        );
 
-        let expected_xu = parse("~lt(x, f_y(x)) | lt(times(x, u), times(f_y(x), f_v(x, u)))");
-        let expected_ux = parse("~lt(x, f_y(x)) | lt(times(x, u), times(f_y(x), f_v(u, x)))");
+        let expected_xu =
+            FirstOrderFormula::from("~lt(x, f_y(x)) | lt(times(x, u), times(f_y(x), f_v(x, u)))");
+        let expected_ux =
+            FirstOrderFormula::from("~lt(x, f_y(x)) | lt(times(x, u), times(f_y(x), f_v(u, x)))");
 
         let sk = fm.skolemize();
 
@@ -246,10 +252,11 @@ mod tests {
 
     #[test]
     fn skolemization_b() {
-        let fm =
-            parse("forall x. (P(x) => exists y. exists z. (Q(y | ~(exists z. (P(z) & Q(z))))))");
+        let fm = FirstOrderFormula::from(
+            "forall x. (P(x) => exists y. exists z. (Q(y | ~(exists z. (P(z) & Q(z))))))",
+        );
         // Note, c_y is a constant function
-        let expected = parse("~P(x) | Q(c_y()) | ~P(z) | ~Q(z)");
+        let expected = FirstOrderFormula::from("~P(x) | Q(c_y()) | ~P(z) | ~Q(z)");
 
         let sk = fm.clone().skolemize();
 

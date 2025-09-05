@@ -15,8 +15,6 @@ pub use terms::{Term, TermId};
 mod relations;
 pub use relations::Relation;
 
-pub use crate::logic::parse::parse_first_order as parse;
-
 use crate::logic::{
     Formula,
     first_order::terms::{Fun, Var},
@@ -68,18 +66,18 @@ impl FirstOrderFormula {
 mod tests {
     use std::collections::HashSet;
 
-    use crate::logic::first_order::{parse, terms::Var};
+    use crate::logic::first_order::{FirstOrderFormula, terms::Var};
 
     #[test]
     fn variables() {
-        let expr = parse("forall x. (~eq(x, 0) => exists y. eq(mul(x,y), 1)))");
+        let expr = FirstOrderFormula::from("forall x. (~eq(x, 0) => exists y. eq(mul(x,y), 1)))");
         let var_set = HashSet::from([Var::from("x"), Var::from("y")]);
 
         assert_eq!(expr.variables(), var_set);
 
         assert!(expr.free_variables().is_empty());
 
-        let expr = parse("forall x. (~eq(x, 0) => eq(mul(x,y), 1))");
+        let expr = FirstOrderFormula::from("forall x. (~eq(x, 0) => eq(mul(x,y), 1))");
         assert_eq!(expr.variables(), var_set);
 
         assert_eq!(HashSet::from([Var::from("y")]), expr.free_variables());

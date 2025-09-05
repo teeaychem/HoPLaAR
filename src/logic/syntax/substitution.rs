@@ -81,7 +81,7 @@ impl<A: Atomic> Formula<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Formula, parse_first_order, parse_propositional};
+    use crate::logic::{Formula, first_order::FirstOrderFormula, parse_propositional};
 
     #[test]
     fn simplification() {
@@ -98,17 +98,17 @@ mod tests {
 
     #[test]
     fn simplification_quantifier() {
-        let expr = parse_first_order("forall x. eq(P(a), P(b))");
-        let expected = parse_first_order("eq(P(a), P(b))");
+        let expr = FirstOrderFormula::from("forall x. eq(P(a), P(b))");
+        let expected = FirstOrderFormula::from("eq(P(a), P(b))");
 
         assert_eq!(expr.simplify(), expected);
 
-        let expr = parse_first_order("forall x. (P(a) | ~P(x))");
+        let expr = FirstOrderFormula::from("forall x. (P(a) | ~P(x))");
         let expected = expr.clone();
 
         assert_eq!(expr.simplify(), expected);
 
-        let expr = parse_first_order("forall x. (P(a) | true)");
+        let expr = FirstOrderFormula::from("forall x. (P(a) | true)");
         let expected = Formula::True;
 
         assert_eq!(expr.simplify(), expected);

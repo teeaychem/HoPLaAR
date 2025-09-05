@@ -144,7 +144,9 @@ impl FirstOrderFormula {
 #[cfg(test)]
 mod tests {
 
-    use crate::logic::first_order::{Term, parse, syntax::substitution::Substitution, terms::Var};
+    use crate::logic::first_order::{
+        FirstOrderFormula, Term, syntax::substitution::Substitution, terms::Var,
+    };
 
     #[test]
     fn substitution() {
@@ -159,16 +161,17 @@ mod tests {
 
         let mut substitution = Substitution::from_function(Box::new(substitution_function));
 
-        let expr = parse("forall x. eq(x, y)");
+        let expr = FirstOrderFormula::from("forall x. eq(x, y)");
         let expr = expr.term_substitution(&mut substitution);
 
-        let expected = parse("forall x_1. eq(x_1, x)");
+        let expected = FirstOrderFormula::from("forall x_1. eq(x_1, x)");
         assert_eq!(expr, expected);
 
-        let expr = parse("forall x. forall x_1. (eq(x, y) => eq(x,x_1))");
+        let expr = FirstOrderFormula::from("forall x. forall x_1. (eq(x, y) => eq(x,x_1))");
         let expr = expr.term_substitution(&mut substitution);
 
-        let expected = parse("forall x_1. forall x_2. (eq(x_1, x) => eq(x_1, x_2))");
+        let expected =
+            FirstOrderFormula::from("forall x_1. forall x_2. (eq(x_1, x) => eq(x_1, x_2))");
 
         println!("{expr} {expected}");
 

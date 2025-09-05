@@ -54,16 +54,18 @@ impl Model<usize> for Modulo {
 #[cfg(test)]
 mod tests {
 
-    use crate::logic::first_order::{Valuation, parse, semantics::models::modulo::Modulo};
+    use crate::logic::first_order::{
+        FirstOrderFormula, Valuation, semantics::models::modulo::Modulo,
+    };
 
     #[test]
     fn simple() {
         let mut v = Valuation::modulo();
 
-        let expr = parse("forall x. (eq(x, 0) | eq(x,1))");
+        let expr = FirstOrderFormula::from("forall x. (eq(x, 0) | eq(x,1))");
         assert!(expr.eval(&Modulo::n(2), &mut v));
 
-        let expr = parse("forall x. (eq(x, 0) | eq(x,1))");
+        let expr = FirstOrderFormula::from("forall x. (eq(x, 0) | eq(x,1))");
         assert!(!expr.eval(&Modulo::n(3), &mut v));
     }
 
@@ -71,7 +73,7 @@ mod tests {
     fn inverse() {
         let mut v = Valuation::modulo();
 
-        let expr = parse("forall x. (~eq(x, 0) => exists y. eq(mul(x,y), 1)))");
+        let expr = FirstOrderFormula::from("forall x. (~eq(x, 0) => exists y. eq(mul(x,y), 1)))");
 
         let ok: Vec<usize> = (1_usize..45)
             .filter(|&n| expr.eval(&Modulo::n(n), &mut v))
