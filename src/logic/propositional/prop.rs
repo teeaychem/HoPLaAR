@@ -11,8 +11,9 @@ impl Atomic for Prop {
     // Waiting for "!"
     type Part = Infallible;
 
-    type Variable = Infallible;
+    type Constant = Infallible;
     type Function = Infallible;
+    type Variable = Infallible;
 
     fn id(&self) -> &str {
         &self.id
@@ -22,11 +23,15 @@ impl Atomic for Prop {
         std::iter::empty()
     }
 
-    fn variables(&self) -> impl Iterator<Item = &Self::Variable> {
+    fn constants(&self) -> impl Iterator<Item = &Self::Constant> {
         std::iter::empty()
     }
 
     fn functions(&self) -> impl Iterator<Item = &Self::Function> {
+        std::iter::empty()
+    }
+
+    fn variables(&self) -> impl Iterator<Item = &Self::Variable> {
         std::iter::empty()
     }
 }

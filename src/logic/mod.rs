@@ -22,10 +22,9 @@ pub mod propositional;
 mod syntax;
 
 pub trait Atomic: std::fmt::Debug + Display + Clone + hash::Hash + Eq + cmp::Ord {
-
-    type Variable: Clone + Eq + cmp::Ord + Display + hash::Hash;
+    type Constant: Clone + Eq + cmp::Ord + Display + hash::Hash;
     type Function: Clone + Eq + cmp::Ord + Display + hash::Hash;
-
+    type Variable: Clone + Eq + cmp::Ord + Display + hash::Hash;
 
     type Part: Clone + Eq + cmp::Ord + Display;
 
@@ -34,7 +33,9 @@ pub trait Atomic: std::fmt::Debug + Display + Clone + hash::Hash + Eq + cmp::Ord
 
     fn parts(&self) -> impl Iterator<Item = &Self::Part>;
 
-    fn variables(&self) -> impl Iterator<Item = &Self::Variable>;
+    fn constants(&self) -> impl Iterator<Item = &Self::Constant>;
 
     fn functions(&self) -> impl Iterator<Item = &Self::Function>;
+
+    fn variables(&self) -> impl Iterator<Item = &Self::Variable>;
 }

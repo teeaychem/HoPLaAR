@@ -58,8 +58,9 @@ impl std::fmt::Display for Relation {
 impl Atomic for Relation {
     type Part = Term;
 
-    type Variable = Var;
+    type Constant = Fun;
     type Function = Fun;
+    type Variable = Var;
 
     fn id(&self) -> &str {
         &self.id
@@ -69,17 +70,30 @@ impl Atomic for Relation {
         self.terms.iter().flat_map(|t| t.terms_d())
     }
 
-    fn variables(&self) -> impl Iterator<Item = &Self::Variable> {
+    fn constants(&self) -> impl Iterator<Item = &Self::Constant> {
         self.parts().flat_map(|term| match term {
-            Term::F(_) => None,
-            Term::V(var) => Some(var),
+            Term::F(fun) => match fun.args.len() {
+                0 => Some(fun),
+                _ => None,
+            },
+            Term::V(_) => None,
         })
     }
 
     fn functions(&self) -> impl Iterator<Item = &Self::Function> {
         self.parts().flat_map(|term| match term {
-            Term::F(fun) => Some(fun),
+            Term::F(fun) => match fun.args.len() {
+                0 => None,
+                _ => Some(fun),
+            },
             Term::V(_) => None,
+        })
+    }
+
+    fn variables(&self) -> impl Iterator<Item = &Self::Variable> {
+        self.parts().flat_map(|term| match term {
+            Term::F(_) => None,
+            Term::V(var) => Some(var),
         })
     }
 }
