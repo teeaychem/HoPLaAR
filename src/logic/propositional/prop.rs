@@ -97,13 +97,13 @@ mod tests {
     #[test]
     fn prop_sequences() {
         let mut props = PropSeq::default();
-        assert_eq!(format!("{}", props.next().unwrap()), "p_0");
+        assert!(props.next().is_some_and(|p| format!("{p}") == "p_0"));
         props.nth(4);
-        assert_eq!(format!("{}", props.next().unwrap()), "p_6");
+        assert!(props.next().is_some_and(|p| format!("{p}") == "p_6"));
 
         let mut props = PropSeq::new("prop");
-        assert_eq!(format!("{}", props.next().unwrap()), "prop_0");
+        assert!(props.next().is_some_and(|p| format!("{p}") == "prop_0"));
         props.nth(6);
-        assert_eq!(format!("{}", props.next().unwrap()), "prop_8");
+        assert!(props.next().is_some_and(|p| format!("{p}") == "prop_8"));
     }
 }

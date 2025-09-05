@@ -15,7 +15,7 @@ use crate::logic::{
 pub fn eval_term<E: Element, M: Model<E>>(term: &Term, M: &M, v: &Valuation<E>) -> E {
     match term {
         Term::F(fun) => M.functions(fun, v),
-        Term::V(var) => v.get(var).unwrap().clone(),
+        Term::V(var) => v.get(var).expect("No valuation for {var}").clone(),
     }
 }
 
@@ -82,13 +82,13 @@ mod tests {
 
     #[test]
     fn scope() {
-        let m = Domain::boolean();
+        let model = Domain::boolean();
         let mut v = Valuation::undefined();
 
         let narrow = parse("forall x. eq(x, 0) => eq(1,0)");
         let wide = parse("forall x. (eq(x, 0) => eq(1,0))");
 
-        assert!(narrow.eval(&m, &mut v));
-        assert!(!wide.eval(&m, &mut v));
+        assert!(narrow.eval(&model, &mut v));
+        assert!(!wide.eval(&model, &mut v));
     }
 }
