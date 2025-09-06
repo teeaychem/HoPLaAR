@@ -16,7 +16,7 @@ mod relations;
 pub use relations::Relation;
 
 use crate::logic::{
-    Formula,
+    Atomic, Formula,
     first_order::terms::{Fun, Var},
 };
 
@@ -44,17 +44,12 @@ impl FirstOrderFormula {
         vars
     }
 
-    // TODO: Revise
     pub fn functions(&self) -> HashSet<Fun> {
         let mut funs: HashSet<Fun> = HashSet::default();
 
         for atom in self.atoms_dfs() {
-            for term in &atom.terms {
-                for term in term.terms_d() {
-                    if let Term::F(fun) = term {
-                        funs.insert(fun.to_owned());
-                    }
-                }
+            for function in atom.functions() {
+                funs.insert(function.to_owned());
             }
         }
 
