@@ -21,10 +21,14 @@ pub mod propositional;
 
 mod syntax;
 
+pub trait Variable: Clone + Eq + cmp::Ord + Display + hash::Hash {
+    fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, ansi: bool) -> std::fmt::Result;
+}
+
 pub trait Atomic: std::fmt::Debug + Display + Clone + hash::Hash + Eq + cmp::Ord {
     type Constant: Clone + Eq + cmp::Ord + Display + hash::Hash;
     type Function: Clone + Eq + cmp::Ord + Display + hash::Hash;
-    type Variable: Clone + Eq + cmp::Ord + Display + hash::Hash;
+    type Variable: Variable;
 
     type Part: Clone + Eq + cmp::Ord + Display;
 

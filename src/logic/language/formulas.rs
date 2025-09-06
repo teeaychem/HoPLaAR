@@ -1,4 +1,4 @@
-use crate::logic::{Atomic, OpBinary, OpUnary, Quantifier};
+use crate::logic::{Atomic, OpBinary, OpUnary, Quantifier, Variable};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum Formula<A: Atomic> {
@@ -131,10 +131,7 @@ impl<A: Atomic> Formula<A> {
                 write!(f, "⊥")
             }
 
-            Formula::Atom(atom) => {
-                // TODO: ANSI switch
-                atom.fmt_ansi(f, ansi)
-            }
+            Formula::Atom(atom) => atom.fmt_ansi(f, ansi),
 
             Formula::Unary { op, expr } => match expr.as_ref() {
                 Formula::True
@@ -215,7 +212,7 @@ impl<A: Atomic> Formula<A> {
             Formula::Quantified { q, var, fm } => {
                 write!(f, "{q}")?;
                 // TODO: Var ANSI switch
-                write!(f, "{var}")?;
+                var.fmt_ansi(f, ansi)?;
                 write!(f, "(")?;
                 fm.fmt_ansi(f, ansi)?;
                 write!(f, ")")

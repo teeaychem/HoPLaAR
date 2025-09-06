@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 
-use crate::logic::first_order::{Element, Model, Valuation, eval_term};
+use crate::logic::{
+    Variable,
+    first_order::{Element, Model, Valuation, eval_term},
+};
 
 pub type TermId = String;
 
@@ -111,6 +114,28 @@ pub struct Var {
     pub variant: usize,
 }
 
+impl Variable for Var {
+    fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, ansi: bool) -> std::fmt::Result {
+        match ansi {
+            true => {
+                write!(f, "\x1B[3m{}\x1B[0m", self.id)?;
+                if 0 < self.variant {
+                    write!(f, "\x1B[3m_{}\x1B[0m", self.variant)?;
+                }
+            }
+
+            false => {
+                write!(f, "{}", self.id)?;
+                if 0 < self.variant {
+                    write!(f, "_{}", self.variant)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl From<&str> for Var {
     fn from(value: &str) -> Self {
         let (id, variant) = id_and_variant(value);
@@ -157,11 +182,7 @@ impl Var {
 
 impl std::fmt::Display for Var {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.id)?;
-        if 0 < self.variant {
-            write!(f, "_{}", self.variant)?
-        }
-        Ok(())
+        self.fmt_ansi(f, false)
     }
 }
 

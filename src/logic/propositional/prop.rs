@@ -1,10 +1,16 @@
 use std::convert::Infallible;
 
-use crate::logic::Atomic;
+use crate::logic::{Atomic, Variable};
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Prop {
     id: String,
+}
+
+impl Variable for Infallible {
+    fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, ansi: bool) -> std::fmt::Result {
+        todo!()
+    }
 }
 
 impl Atomic for Prop {
