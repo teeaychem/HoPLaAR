@@ -45,26 +45,51 @@ impl Fun {
             args: self.args.clone(),
         }
     }
-}
 
-impl std::fmt::Display for Fun {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\x1B[1m{}\x1B[0m", self.id)?;
+    pub fn string_ansi(&self) -> String {
+        use std::fmt::Write;
+        let mut s = String::default();
+
+        let _ = write!(s, "\x1B[1m{}\x1B[0m", self.id);
         if 0 < self.variant {
-            write!(f, "\x1B[1m_{}\x1B[0m", self.variant)?;
+            let _ = write!(s, "\x1B[1m_{}\x1B[0m", self.variant);
         }
 
         match self.args.as_slice() {
             [] => {}
             [first, remaining @ ..] => {
-                write!(f, "(")?;
+                let _ = write!(s, "(");
+                let _ = write!(s, "{first}");
+                for arg in remaining {
+                    let _ = write!(s, ", {arg}");
+                }
+                let _ = write!(s, ")");
+            }
+        }
+
+        s
+    }
+}
+
+impl std::fmt::Display for Fun {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)?;
+        if 0 < self.variant {
+            write!(f, "_{}", self.variant)?;
+        }
+        write!(f, "(")?;
+
+        match self.args.as_slice() {
+            [] => {}
+            [first, remaining @ ..] => {
                 write!(f, "{first}")?;
                 for arg in remaining {
                     write!(f, ", {arg}")?;
                 }
-                write!(f, ")")?;
             }
         }
+
+        write!(f, ")")?;
         Ok(())
     }
 }
@@ -117,13 +142,24 @@ impl Var {
             variant,
         }
     }
+
+    pub fn string_ansi(&self) -> String {
+        use std::fmt::Write;
+        let mut s = String::default();
+        let _ = write!(s, "\x1B[3m{}\x1B[0m", self.id);
+        if 0 < self.variant {
+            let _ = write!(s, "\x1B[3m_{}\x1B[0m", self.variant);
+        }
+
+        s
+    }
 }
 
 impl std::fmt::Display for Var {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\x1B[3m{}\x1B[0m", self.id)?;
+        write!(f, "{}", self.id)?;
         if 0 < self.variant {
-            write!(f, "\x1B[3m_{}\x1B[0m", self.variant)?
+            write!(f, "_{}", self.variant)?
         }
         Ok(())
     }
@@ -146,6 +182,15 @@ pub enum Term {
     F(Fun),
     /// A variable
     V(Var),
+}
+
+impl Term {
+    pub fn string_ansi(&self) -> String {
+        match self {
+            Term::F(fun) => fun.string_ansi(),
+            Term::V(var) => var.string_ansi(),
+        }
+    }
 }
 
 impl std::fmt::Display for Term {

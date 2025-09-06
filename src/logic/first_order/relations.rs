@@ -37,21 +37,42 @@ impl Relation {
     pub fn eval<E: Element, M: Model<E>>(&self, I: &M, v: &Valuation<E>) -> bool {
         I.relations(self, v)
     }
+
+    pub fn string_ansi(&self) -> String {
+        use std::fmt::Write;
+        let mut s = String::default();
+        let _ = write!(s, "{}", self.id);
+
+        match self.terms.as_slice() {
+            [] => {}
+            [first, remaining @ ..] => {
+                let _ = write!(s, "(");
+                let _ = write!(s, "{}", first.string_ansi());
+                for term in remaining {
+                    let _ = write!(s, ", {}", term.string_ansi());
+                }
+                let _ = write!(s, ")");
+            }
+        }
+        s
+    }
 }
 
 impl std::fmt::Display for Relation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.terms.as_slice() {
-            [] => write!(f, "{}", self.id),
-            [first, remaining @ ..] => {
-                let mut term_string = format!("{first}");
-                for term in remaining {
-                    term_string.push_str(&format!(", {term}"));
-                }
+        write!(f, "{}", self.id)?;
+        write!(f, "(")?;
 
-                write!(f, "{}({term_string})", self.id)
+        match self.terms.as_slice() {
+            [] => {}
+            [first, remaining @ ..] => {
+                write!(f, "{first}")?;
+                for term in remaining {
+                    write!(f, ", {term}")?;
+                }
             }
         }
+        write!(f, ")")
     }
 }
 
