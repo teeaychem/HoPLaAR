@@ -34,6 +34,10 @@ impl Atomic for Prop {
     fn variables(&self) -> impl Iterator<Item = &Self::Variable> {
         std::iter::empty()
     }
+
+    fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, _ansi: bool) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
 }
 
 impl Prop {

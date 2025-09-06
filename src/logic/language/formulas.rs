@@ -121,57 +121,111 @@ impl<A: Atomic> Formula<A> {
     }
 }
 
-impl<A: Atomic> std::fmt::Display for Formula<A> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<A: Atomic> Formula<A> {
+    fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, ansi: bool) -> std::fmt::Result {
         match self {
-            Formula::True => write!(f, "⊤"),
-            Formula::False => write!(f, "⊥"),
+            Formula::True => {
+                write!(f, "⊤")
+            }
+            Formula::False => {
+                write!(f, "⊥")
+            }
 
-            Formula::Atom(atom) => write!(f, "{atom}"),
+            Formula::Atom(atom) => {
+                // TODO: ANSI switch
+                atom.fmt_ansi(f, ansi)
+            }
 
             Formula::Unary { op, expr } => match expr.as_ref() {
                 Formula::True
                 | Formula::False
                 | Formula::Atom { .. }
                 | Formula::Unary { .. }
-                | Formula::Quantified { .. } => write!(f, "{op}{expr}"),
+                | Formula::Quantified { .. } => {
+                    write!(f, "{op}")?;
+                    expr.fmt_ansi(f, ansi)
+                }
 
-                Formula::Binary { .. } => write!(f, "{op}({expr})"),
+                Formula::Binary { .. } => {
+                    write!(f, "{op}")?;
+                    write!(f, "(")?;
+                    expr.fmt_ansi(f, ansi)?;
+                    write!(f, ")")
+                }
             },
 
             Formula::Binary { op, lhs, rhs } => match (lhs.as_ref(), rhs.as_ref()) {
                 (Formula::Binary { op: lop, .. }, Formula::Binary { op: rop, .. }) => {
                     if op == lop && op == rop {
-                        write!(f, "{lhs} {op} {rhs}")
+                        lhs.fmt_ansi(f, ansi)?;
+                        write!(f, " {op} ")?;
+                        rhs.fmt_ansi(f, ansi)
                     } else if op == lop {
-                        write!(f, "{lhs} {op} ({rhs})")
+                        lhs.fmt_ansi(f, ansi)?;
+                        write!(f, " {op} (")?;
+                        rhs.fmt_ansi(f, ansi)?;
+                        write!(f, ")")
                     } else if op == rop {
-                        write!(f, "({lhs}) {op} {rhs}")
+                        write!(f, "(")?;
+                        lhs.fmt_ansi(f, ansi)?;
+                        write!(f, ") {op} ")?;
+                        rhs.fmt_ansi(f, ansi)
                     } else {
-                        write!(f, "({lhs}) {op} ({rhs})")
+                        write!(f, "(")?;
+                        lhs.fmt_ansi(f, ansi)?;
+                        write!(f, ") {op} (")?;
+                        rhs.fmt_ansi(f, ansi)?;
+                        write!(f, ")")
                     }
                 }
 
                 (Formula::Binary { op: lop, .. }, _) => {
                     if op == lop {
-                        write!(f, "{lhs} {op} {rhs}")
+                        lhs.fmt_ansi(f, ansi)?;
+                        write!(f, " {op} ")?;
+                        rhs.fmt_ansi(f, ansi)
                     } else {
-                        write!(f, "({lhs}) {op} {rhs}")
+                        write!(f, "(")?;
+                        lhs.fmt_ansi(f, ansi)?;
+                        write!(f, ") {op} ")?;
+                        rhs.fmt_ansi(f, ansi)
                     }
                 }
 
                 (_, Formula::Binary { op: rop, .. }) => {
                     if op == rop {
-                        write!(f, "{lhs} {op} {rhs}")
+                        lhs.fmt_ansi(f, ansi)?;
+                        write!(f, " {op} ")?;
+                        rhs.fmt_ansi(f, ansi)
                     } else {
-                        write!(f, "{lhs} {op} ({rhs})")
+                        lhs.fmt_ansi(f, ansi)?;
+                        write!(f, " {op} (")?;
+                        rhs.fmt_ansi(f, ansi)?;
+                        write!(f, ")")
                     }
                 }
 
-                _ => write!(f, "{lhs} {op} {rhs}"),
+                _ => {
+                    lhs.fmt_ansi(f, ansi)?;
+                    write!(f, " {op} ")?;
+                    rhs.fmt_ansi(f, ansi)
+                }
             },
 
-            Formula::Quantified { q, var, fm } => write!(f, "{q}{var}({fm})"),
+            Formula::Quantified { q, var, fm } => {
+                write!(f, "{q}")?;
+                // TODO: Var ANSI switch
+                write!(f, "{var}")?;
+                write!(f, "(")?;
+                fm.fmt_ansi(f, ansi)?;
+                write!(f, ")")
+            }
         }
+    }
+}
+
+impl<A: Atomic> std::fmt::Display for Formula<A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.fmt_ansi(f, false)
     }
 }

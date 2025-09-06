@@ -117,4 +117,11 @@ impl Atomic for Relation {
             Term::V(var) => Some(var),
         })
     }
+
+    fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, ansi: bool) -> std::fmt::Result {
+        match ansi {
+            true => write!(f, "{}", self.string_ansi()),
+            false => write!(f, "{self}"),
+        }
+    }
 }

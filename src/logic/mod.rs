@@ -38,4 +38,6 @@ pub trait Atomic: std::fmt::Debug + Display + Clone + hash::Hash + Eq + cmp::Ord
     fn functions(&self) -> impl Iterator<Item = &Self::Function>;
 
     fn variables(&self) -> impl Iterator<Item = &Self::Variable>;
+
+    fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, ansi: bool) -> std::fmt::Result;
 }
