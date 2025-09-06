@@ -58,7 +58,7 @@ mod tests {
         let expr = parse("(p | (q & ~r))");
         let (_, cnf) = expr.clone().cnf();
 
-        assert!(!expr.satisfiable() || cnf.satisfiable());
-        assert!(!cnf.satisfiable() || expr.satisfiable());
+        assert!(!expr.is_satisfiable() || cnf.is_satisfiable());
+        assert!(!cnf.is_satisfiable() || expr.is_satisfiable());
     }
 }

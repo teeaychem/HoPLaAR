@@ -84,6 +84,6 @@ fn main() {
     let three_three_four = ramsey(3, 3, 4);
     println!("{three_three_four}");
 
-    assert!(!ramsey(3, 3, 5).tautology());
-    assert!(ramsey(3, 3, 6).tautology());
+    assert!(!ramsey(3, 3, 5).is_tautology());
+    assert!(ramsey(3, 3, 6).is_tautology());
 }

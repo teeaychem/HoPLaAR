@@ -94,7 +94,7 @@ impl PropFormula {
         table
     }
 
-    pub fn tautology(&self) -> bool {
+    pub fn is_tautology(&self) -> bool {
         let mut valuation = Valuation::from_prop_set(self.atoms());
         for _ in 0..valuation.permutation_count() {
             if !self.eval(&valuation) {
@@ -105,12 +105,12 @@ impl PropFormula {
         true
     }
 
-    pub fn unsatisfiable(&self) -> bool {
+    pub fn is_unsatisfiable(&self) -> bool {
         let negated = PropFormula::Not(self.clone());
-        negated.tautology()
+        negated.is_tautology()
     }
 
-    pub fn satisfiable(&self) -> bool {
+    pub fn is_satisfiable(&self) -> bool {
         let mut valuation = Valuation::from_prop_set(self.atoms());
         for _ in 0..valuation.permutation_count() {
             if self.eval(&valuation) {
@@ -217,30 +217,30 @@ mod tests {
     #[test]
     fn tautologies() {
         let a = parse("p | ~p");
-        assert!(a.tautology());
+        assert!(a.is_tautology());
 
         let b = parse("p | q ==> p");
-        assert!(!b.tautology());
+        assert!(!b.is_tautology());
 
         let c = parse("p | q => q | (p <=> q)");
-        assert!(!c.tautology());
+        assert!(!c.is_tautology());
 
         let d = parse("(p | q) & ~(p & q) ==> (~p <=> q)");
-        assert!(d.tautology());
+        assert!(d.is_tautology());
     }
 
     #[test]
     fn satisfiability() {
         let a = parse("p | ~p");
-        assert!(a.satisfiable());
-        assert!(!a.unsatisfiable());
+        assert!(a.is_satisfiable());
+        assert!(!a.is_unsatisfiable());
 
         let b = parse("p | q ==> p");
-        assert!(b.satisfiable());
-        assert!(!b.unsatisfiable());
+        assert!(b.is_satisfiable());
+        assert!(!b.is_unsatisfiable());
 
         let c = parse("p & ~p");
-        assert!(c.unsatisfiable())
+        assert!(c.is_unsatisfiable())
     }
 
     #[test]
@@ -266,14 +266,14 @@ mod tests {
     fn cnf() {
         let expr = parse("(p | q & r) & (~p | ~r)");
 
-        assert!(PropFormula::Iff(expr.clone(), expr.dnf()).tautology());
+        assert!(PropFormula::Iff(expr.clone(), expr.dnf()).is_tautology());
     }
 
     #[test]
     fn try_from_first_order() {
         let basic = FirstOrderFormula::from("P(x) | ~P(x)");
         let attempt = PropFormula::try_from(basic);
-        assert!(attempt.is_ok_and(|fm| fm.tautology()));
+        assert!(attempt.is_ok_and(|fm| fm.is_tautology()));
 
         let basic = FirstOrderFormula::from("forall x. (P(x) | ~P(x))");
         let attempt = PropFormula::try_from(basic);

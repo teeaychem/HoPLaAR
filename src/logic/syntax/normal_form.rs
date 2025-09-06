@@ -164,7 +164,7 @@ mod tests {
         let expr = parse_propositional("(p <=> q) <=> ~(r ==> s)");
         let expr_nnf = expr.clone().negation_normal_form();
 
-        assert!(Formula::Iff(expr, expr_nnf).tautology())
+        assert!(Formula::Iff(expr, expr_nnf).is_tautology())
     }
 
     #[test]
@@ -187,6 +187,6 @@ mod tests {
         let expr = parse_propositional("(p <=> q) <=> ~(r ==> s)");
         let expr_nenf = expr.clone().nenf();
 
-        assert!(Formula::Iff(expr, expr_nenf).tautology())
+        assert!(Formula::Iff(expr, expr_nenf).is_tautology())
     }
 }

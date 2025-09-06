@@ -345,6 +345,6 @@ mod tests {
         let expr = parse_propositional("(p | q & r) & (~p | ~r)");
         let dnf = expr.dnf_to_formula_set();
         let fm = dnf.as_formula();
-        assert!(Formula::Iff(expr, fm).tautology());
+        assert!(Formula::Iff(expr, fm).is_tautology());
     }
 }

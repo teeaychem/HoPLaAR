@@ -170,6 +170,6 @@ mod tests {
     fn raw_dnf() {
         let expr = parse_propositional("(p | q & r) & (~p | ~r)");
         let expected = parse_propositional("(p & ~p | (q & r) & ~p) | p & ~r | (q & r) & ~r");
-        assert!(Formula::Iff(expr.raw_dnf(), expected).tautology());
+        assert!(Formula::Iff(expr.raw_dnf(), expected).is_tautology());
     }
 }

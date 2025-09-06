@@ -577,6 +577,6 @@ fn main() {
     println!("{x} * {y} = {}", ripple_multiply(x, y));
 
     for i in 1..14 {
-        println!("It is {} that {i} is prime", prime(i).tautology());
+        println!("It is {} that {i} is prime", prime(i).is_tautology());
     }
 }
