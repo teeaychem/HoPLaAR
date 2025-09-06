@@ -211,7 +211,6 @@ impl<A: Atomic> Formula<A> {
 
             Formula::Quantified { q, var, fm } => {
                 write!(f, "{q}")?;
-                // TODO: Var ANSI switch
                 var.fmt_ansi(f, ansi)?;
                 write!(f, "(")?;
                 fm.fmt_ansi(f, ansi)?;

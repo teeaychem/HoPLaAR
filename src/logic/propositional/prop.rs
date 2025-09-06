@@ -1,6 +1,10 @@
 use std::convert::Infallible;
 
-use crate::logic::{Atomic, Variable};
+use crate::logic::{
+    Atomic, Variable,
+    first_order::{FirstOrderFormula, Relation},
+    propositional::PropFormula,
+};
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Prop {
@@ -46,11 +50,23 @@ impl Atomic for Prop {
     }
 }
 
-impl Prop {
-    pub fn from(id: &str) -> Self {
-        Self { id: id.to_owned() }
+impl From<&str> for Prop {
+    fn from(value: &str) -> Self {
+        Self {
+            id: value.to_owned(),
+        }
     }
+}
 
+impl From<&String> for Prop {
+    fn from(value: &String) -> Self {
+        Self {
+            id: value.to_owned(),
+        }
+    }
+}
+
+impl Prop {
     pub fn name_set(&mut self, name: String) {
         self.id = name
     }
@@ -97,6 +113,12 @@ impl Iterator for PropSeq {
 impl std::fmt::Display for Prop {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.id())
+    }
+}
+
+impl From<Relation> for Prop {
+    fn from(value: Relation) -> Self {
+        Prop::from(&value.to_string())
     }
 }
 

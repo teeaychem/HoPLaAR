@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use crate::logic::{Formula, OpBinary, OpUnary};
+use crate::logic::{Formula, OpBinary, OpUnary, first_order::FirstOrderFormula};
 
 mod bdd;
 mod cnf;
@@ -139,10 +139,38 @@ impl PropFormula {
     }
 }
 
+impl TryFrom<FirstOrderFormula> for PropFormula {
+    type Error = ();
+
+    fn try_from(value: FirstOrderFormula) -> Result<PropFormula, Self::Error> {
+        match value {
+            FirstOrderFormula::True => Ok(PropFormula::True),
+            FirstOrderFormula::False => Ok(PropFormula::False),
+
+            FirstOrderFormula::Atom(relation) => Ok(PropFormula::Atom(Prop::from(relation))),
+
+            FirstOrderFormula::Unary { op, expr } => {
+                Ok(PropFormula::Unary(op, PropFormula::try_from(*expr)?))
+            }
+
+            FirstOrderFormula::Binary { op, lhs, rhs } => Ok(PropFormula::Binary(
+                op,
+                PropFormula::try_from(*lhs)?,
+                PropFormula::try_from(*rhs)?,
+            )),
+
+            FirstOrderFormula::Quantified { .. } => Err(()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
-    use crate::logic::propositional::{Prop, PropFormula, Valuation, eval, parse};
+    use crate::logic::{
+        first_order::FirstOrderFormula,
+        propositional::{Prop, PropFormula, Valuation, eval, parse},
+    };
 
     #[test]
     fn eval_empty() {
@@ -239,5 +267,16 @@ mod tests {
         let expr = parse("(p | q & r) & (~p | ~r)");
 
         assert!(PropFormula::Iff(expr.clone(), expr.dnf()).tautology());
+    }
+
+    #[test]
+    fn try_from_first_order() {
+        let basic = FirstOrderFormula::from("P(x) | ~P(x)");
+        let attempt = PropFormula::try_from(basic);
+        assert!(attempt.is_ok_and(|fm| fm.tautology()));
+
+        let basic = FirstOrderFormula::from("forall x. (P(x) | ~P(x))");
+        let attempt = PropFormula::try_from(basic);
+        assert!(attempt.is_err())
     }
 }
