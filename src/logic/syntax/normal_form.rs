@@ -122,7 +122,10 @@ impl<A: Atomic> Formula<A> {
                         }
                     }
 
-                    Quantified { .. } => todo!(),
+                    Quantified { q, var, fm } => {
+                        let expr = std::mem::take(fm);
+                        Formula::Quantified(q.dual(), var.clone(), expr.negate().nenf_basic())
+                    }
 
                     _ => self,
                 },
@@ -138,7 +141,10 @@ impl<A: Atomic> Formula<A> {
                 }
             }
 
-            Quantified { .. } => todo!(),
+            Quantified { q, var, fm } => {
+                let expr = std::mem::take(fm);
+                Formula::Quantified(*q, var.clone(), expr.negation_normal_form_basic())
+            }
 
             _ => self,
         }
