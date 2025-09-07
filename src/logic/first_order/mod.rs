@@ -1,7 +1,8 @@
 mod domains;
-use std::collections::HashSet;
 
 pub use domains::Element;
+
+pub mod ground;
 
 mod semantics;
 pub use semantics::{Model, Valuation, eval_first_order, eval_relation, eval_term};
@@ -15,6 +16,10 @@ pub use terms::{Term, TermId};
 mod relations;
 pub use relations::Relation;
 
+// Local usage
+
+use std::collections::HashSet;
+
 use crate::logic::{
     Atomic, Formula,
     first_order::terms::{Fun, Var},
@@ -26,6 +31,18 @@ impl FirstOrderFormula {
     #[allow(non_snake_case)]
     pub fn eval<E: Element, M: Model<E>>(&self, M: &M, v: &mut Valuation<E>) -> bool {
         eval_first_order(self, M, v)
+    }
+
+    pub fn constants(&self) -> HashSet<Fun> {
+        let mut constants: HashSet<Fun> = HashSet::default();
+
+        for atom in self.atoms_dfs() {
+            for function in atom.functions().filter(|f| f.arity() == 0) {
+                constants.insert(function.to_owned());
+            }
+        }
+
+        constants
     }
 
     pub fn variables(&self) -> HashSet<Var> {

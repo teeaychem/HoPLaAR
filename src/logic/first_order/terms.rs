@@ -122,6 +122,62 @@ impl Fun {
     }
 }
 
+impl Fun {
+    pub fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, ansi: bool) -> std::fmt::Result {
+        use std::fmt::Write;
+        let mut s = String::default();
+
+        if ansi {
+            match self.arity() {
+                0 => write!(f, "\x1B[1m")?,
+                _ => write!(f, "\x1B[3m")?,
+            }
+        }
+
+        write!(f, "{}", self.id)?;
+
+        if 0 < self.variant {
+            write!(s, "_{}", self.variant)?
+        }
+
+        if ansi {
+            write!(f, "\x1B[0m")?;
+        }
+
+        match ansi {
+            true => match self.args.as_slice() {
+                [] => {}
+                [first, remaining @ ..] => {
+                    write!(f, "(")?;
+                    first.fmt_ansi(f, ansi)?;
+                    for arg in remaining {
+                        write!(f, ", ")?;
+                        arg.fmt_ansi(f, ansi)?;
+                    }
+                    write!(f, ")")?
+                }
+            },
+
+            false => {
+                write!(f, "(")?;
+                match self.args.as_slice() {
+                    [] => {}
+                    [first, remaining @ ..] => {
+                        first.fmt_ansi(f, ansi)?;
+                        for arg in remaining {
+                            write!(f, ", ")?;
+                            arg.fmt_ansi(f, ansi)?;
+                        }
+                    }
+                }
+                write!(f, ")")?
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl std::fmt::Display for Fun {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.id)?;
@@ -258,6 +314,13 @@ impl Term {
         match self {
             Term::F(fun) => fun.string_ansi(),
             Term::V(var) => var.string_ansi(),
+        }
+    }
+
+    pub fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, ansi: bool) -> std::fmt::Result {
+        match self {
+            Term::F(fun) => fun.fmt_ansi(f, ansi),
+            Term::V(var) => var.fmt_ansi(f, ansi),
         }
     }
 }
