@@ -1,9 +1,9 @@
-use std::{collections::HashSet, default};
+use std::collections::HashSet;
 
 use itertools::Itertools;
 
 use crate::logic::{
-    Atomic, Formula,
+    Atomic,
     first_order::{FirstOrderFormula, Term, terms::Fun},
 };
 
@@ -189,8 +189,7 @@ mod tests {
                 for (k, &v) in fv.iter().zip(&ground_permutation) {
                     s.add_interrupt(k, Some(v.into()));
                 }
-                let fmx = fm.clone().term_substitution(&mut s);
-                println!(": {}", fmx);
+                let _fmx = fm.clone().term_substitution(&mut s);
             }
             ground.overlay();
         }

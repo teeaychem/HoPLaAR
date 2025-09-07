@@ -173,8 +173,6 @@ mod tests {
         let expected =
             FirstOrderFormula::from("forall x_1. forall x_2. (eq(x_1, x) => eq(x_1, x_2))");
 
-        println!("{expr} {expected}");
-
         assert_eq!(expr, expected);
     }
 }

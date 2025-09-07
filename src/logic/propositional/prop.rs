@@ -1,10 +1,6 @@
 use std::convert::Infallible;
 
-use crate::logic::{
-    Atomic, Variable,
-    first_order::{FirstOrderFormula, Relation},
-    propositional::PropFormula,
-};
+use crate::logic::{Atomic, Variable, first_order::Relation};
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Prop {
@@ -12,7 +8,7 @@ pub struct Prop {
 }
 
 impl Variable for Infallible {
-    fn fmt_ansi(&self, f: &mut std::fmt::Formatter<'_>, ansi: bool) -> std::fmt::Result {
+    fn fmt_ansi(&self, _f: &mut std::fmt::Formatter<'_>, _ansi: bool) -> std::fmt::Result {
         todo!()
     }
 }
