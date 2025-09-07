@@ -528,4 +528,19 @@ mod tests {
 
         assert_eq!(set.len(), 2);
     }
+
+    #[test]
+    fn fun_order() {
+        let a: Fun = Term::try_from("c()").unwrap().try_into().unwrap();
+        let b: Fun = Term::try_from("f(x)").unwrap().try_into().unwrap();
+        let c: Fun = Term::try_from("g(x)").unwrap().try_into().unwrap();
+        let d: Fun = Term::try_from("g(x, y)").unwrap().try_into().unwrap();
+
+        let mut v = vec![d.clone(), b.clone(), a.clone(), c.clone()];
+        let sorted = vec![a, b, c, d];
+
+        assert_ne!(v, sorted);
+        v.sort();
+        assert_eq!(v, sorted);
+    }
 }
