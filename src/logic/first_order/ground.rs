@@ -1,9 +1,9 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, default};
 
 use itertools::Itertools;
 
 use crate::logic::{
-    Atomic,
+    Atomic, Formula,
     first_order::{FirstOrderFormula, Term, terms::Fun},
 };
 
@@ -49,8 +49,8 @@ impl Default for Ground {
     }
 }
 
-impl From<FirstOrderFormula> for Ground {
-    fn from(value: FirstOrderFormula) -> Self {
+impl From<&FirstOrderFormula> for Ground {
+    fn from(value: &FirstOrderFormula) -> Self {
         let mut ground = Ground::default();
 
         for relation in value.atoms_dfs() {
@@ -67,6 +67,15 @@ impl From<FirstOrderFormula> for Ground {
                     Term::V(_) => {}
                 }
             }
+        }
+
+        if ground.constants.is_empty() {
+            let c = Fun {
+                id: "c".to_owned(),
+                variant: 0,
+                args: Vec::default(),
+            };
+            ground.constants.insert(c);
         }
 
         for constant in &ground.constants {
@@ -148,24 +157,42 @@ impl Ground {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::logic::first_order::FirstOrderFormula;
+    use crate::logic::first_order::{FirstOrderFormula, syntax::Substitution, terms::Var};
 
     #[test]
     fn ground_basic() {
         let fm = FirstOrderFormula::from("R(f(c())) | ~R(g(d()))");
 
-        let mut ground = Ground::from(fm);
-        println!("{ground}");
+        let mut ground = Ground::from(&fm);
         assert_eq!(ground.size(), 2);
 
         ground.overlay();
-        println!("{ground}");
         // 1 * 2 + 2 * 2
         assert_eq!(ground.size(), 6);
 
         ground.overlay();
-        println!("{ground}");
         // 1 * 2 + 2 * 2 + 4 * 2
         assert_eq!(ground.size(), 14);
+    }
+
+    #[test]
+    fn ground_instance() {
+        let fm = FirstOrderFormula::from("~R(x) | R(f(g(y)))");
+        let fv: Vec<Var> = fm.free_variables().into_iter().collect();
+        let fvs = fv.len();
+
+        let mut ground = Ground::from(&fm);
+
+        for _ in 0..2 {
+            for ground_permutation in ground.top_soil().iter().combinations_with_replacement(fvs) {
+                let mut s = Substitution::default();
+                for (k, &v) in fv.iter().zip(&ground_permutation) {
+                    s.add_interrupt(k, Some(v.into()));
+                }
+                let fmx = fm.clone().term_substitution(&mut s);
+                println!(": {}", fmx);
+            }
+            ground.overlay();
+        }
     }
 }

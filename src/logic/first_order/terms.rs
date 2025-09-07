@@ -67,6 +67,18 @@ impl PartialEq for Fun {
 
 impl Eq for Fun {}
 
+impl From<&Fun> for Term {
+    fn from(value: &Fun) -> Self {
+        Term::F(value.clone())
+    }
+}
+
+impl From<Fun> for Term {
+    fn from(value: Fun) -> Self {
+        Term::F(value)
+    }
+}
+
 impl Fun {
     pub fn arity(&self) -> usize {
         self.args.len()
