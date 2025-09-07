@@ -9,27 +9,75 @@ pub type TermId = String;
 
 /// Functions (and constants)
 ///
-/// As functions are always applied,
-#[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
+/// <div class="warning">
+/// Equality of [Fun]'s is derived from equality of id, variant, and arity.
+/// Equality of `Fun`'s is *not* determined by argument instances.
+///
+/// For example, *f(x)* == *f(y)*.
+///</div>
+///
+/// As a consequence of the hashing of [Fun]'s is (also) independent of argument instances.
+#[derive(Clone, Debug)]
 pub struct Fun {
     pub id: TermId,
     pub variant: usize,
     pub args: Vec<Term>,
 }
 
+impl std::hash::Hash for Fun {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.variant.hash(state);
+        self.arity().hash(state);
+    }
+}
+
+impl PartialOrd for Fun {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Fun {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.arity().cmp(&other.arity()) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+
+        match self.id.cmp(&other.id) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+
+        match self.variant.cmp(&other.variant) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+
+        self.args.cmp(&other.args)
+    }
+}
+
+impl PartialEq for Fun {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.variant == other.variant && self.arity() == other.arity()
+    }
+}
+
+impl Eq for Fun {}
+
 impl Fun {
-    /// Returns true if `self` and `other` are the same function.
-    ///
-    /// Definitional equality is distinct from equality between instances of Fun, as instances of Fun specify the arguments passed to a function definition.
-    pub fn definitionally_eq(&self, other: &Fun) -> bool {
-        self.id == other.id && self.args.len() == other.args.len()
+    pub fn arity(&self) -> usize {
+        self.args.len()
     }
 
     pub fn fresh_variant<'a, T: Iterator<Item = &'a Fun>>(&'a self, taken: T) -> Fun {
         let mut minimal_variant = None;
 
         for var in taken {
-            if var.definitionally_eq(self) {
+            if var == self {
+                // Note, argument instances ignored
                 if let Some(minimal) = minimal_variant {
                     minimal_variant = Some(std::cmp::max(minimal, var.variant));
                 } else {
@@ -462,5 +510,22 @@ mod tests {
         let variant = fun_f_xy.fresh_variant([fun_f_yx, fun_f_zz].iter());
 
         assert_eq!(variant, fun_f_one);
+    }
+
+    #[test]
+    fn fun_hashes() {
+        let a: Fun = Term::try_from("f(x,y)").unwrap().try_into().unwrap();
+        let b: Fun = Term::try_from("f(y,x)").unwrap().try_into().unwrap();
+        let c: Fun = Term::try_from("f(z, z)").unwrap().try_into().unwrap();
+
+        let mut set = HashSet::from([a, b, c]);
+
+        assert_eq!(set.len(), 1);
+
+        let d: Fun = Term::try_from("f(f(x))").unwrap().try_into().unwrap();
+
+        set.insert(d);
+
+        assert_eq!(set.len(), 2);
     }
 }
