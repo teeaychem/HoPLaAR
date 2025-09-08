@@ -301,6 +301,50 @@ impl<A: Atomic> Formula<A> {
     }
 }
 
+impl<A: Atomic> FormulaSet<A> {
+    pub fn one_literal_rule(&mut self) {
+        // A collection of all one literal set literals
+        let mut one_literals: Vec<Literal<A>> = Vec::default();
+
+        // Swap remove all one literal sets, exending one_literals with each set found.
+        let mut index = 0;
+        let mut limit = self.sets.len();
+
+        while index < limit {
+            match self.sets[index].len() {
+                1 => {
+                    let one_literal_set = self.sets.swap_remove(index);
+                    one_literals.extend(one_literal_set);
+                    limit -= 1
+                }
+
+                _ => index += 1,
+            }
+        }
+
+        // Negate each one literal literal, to inspect the remaining sets.
+        for one_lit in &mut one_literals {
+            one_lit.negate();
+        }
+
+        // Swap remove any literals complementing a one literal literal
+        for set in &mut self.sets {
+            let mut index = 0;
+            let mut limit = set.len();
+            while index < limit {
+                match one_literals.iter().any(|one_lit| one_lit == &set[index]) {
+                    true => {
+                        set.swap_remove(index);
+                        limit -= 1
+                    }
+
+                    false => index += 1,
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::logic::{Formula, parse_propositional};
