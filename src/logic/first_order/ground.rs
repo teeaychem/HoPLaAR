@@ -209,23 +209,56 @@ mod tests {
     }
 
     #[test]
-    fn ground_instance() {
-        let fm = FirstOrderFormula::from("~R(x) | R(f(g(y)))");
+    fn gilmore_basic() {
+        let fm = FirstOrderFormula::from("exists x. forall y. (P(x) => P(y))");
+        let (result, ground, _) = fm.is_valid_gilmore(None);
+        assert!(result);
+        assert_eq!(ground.level_markers.len(), 2);
+    }
 
-        let mut ground = Ground::from(&fm);
-
-        for _ in 0..2 {
-            for tsf in ground.top_soil_formulas() {
-                println!("{tsf}");
-            }
-            ground.overlay();
-        }
+    #[ignore = "Unsatisfiability test too inefficient"]
+    #[test]
+    fn p20() {
+        let fm = FirstOrderFormula::from(
+            "forall x (forall y. (exists z. (forall w. (P(x) & Q(y) ==> R(z) & U(w))))) ==> exists x (exists y. (P(x) & Q(y))) ==> exists z. R(z)",
+        );
+        let (result, ground, _) = fm.is_valid_gilmore(None);
+        assert!(result);
     }
 
     #[test]
-    fn gilmore_basic() {
-        let fm = FirstOrderFormula::from("exists x. forall y. (P(x) => P(y))");
-        let (result, _ground, _propositional) = fm.is_valid_gilmore(Some(3));
+    fn p24() {
+        let fm = FirstOrderFormula::from(
+            "
+~(exists x. (U(x) & Q(x))) &
+(forall x. (P(x) ==> Q(x) | R(x))) &
+~(exists x. (P(x) ==> (exists x. Q(x)))) &
+(forall x. (Q(x) & R(x) ==> U(x)))
+==>
+(exists x. P(x) & R(x))
+",
+        );
+        let (result, ground, _) = fm.is_valid_gilmore(None);
         assert!(result);
+        assert_eq!(ground.level_markers.len(), 1);
+    }
+
+    #[ignore = "Unsatisfiability test too inefficient"]
+    #[test]
+    fn p45() {
+        let fm = FirstOrderFormula::from(
+            "
+forall x. (P(x) & (forall y. G(y) & H(x,y) ==> J(x,y)) ==> (forall y. G(y) & H(x,y) ==> R(y)))
+&
+~exists y. (L(y) & R(y))
+&
+exists x. (P(x) & (forall y. H(x,y) ==> L(y))
+&
+forall y. (G(y) & H(x,y) ==> J(x,y))) ==> exists x. (P(x) & ~exists y. (G(y) & H(x,y)))
+",
+        );
+        let (result, ground, _) = fm.is_valid_gilmore(Some(6));
+        assert!(result);
+        assert_eq!(ground.level_markers.len(), 1);
     }
 }
