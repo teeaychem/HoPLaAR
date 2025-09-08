@@ -1,10 +1,15 @@
 use std::collections::HashSet;
 
-use itertools::Itertools;
+use itertools::{Itertools, repeat_n};
 
 use crate::logic::{
     Atomic,
-    first_order::{FirstOrderFormula, Term, terms::Fun},
+    first_order::{
+        FirstOrderFormula, Term,
+        syntax::Substitution,
+        terms::{Fun, Var},
+    },
+    propositional::PropFormula,
 };
 
 impl FirstOrderFormula {
@@ -31,37 +36,28 @@ impl FirstOrderFormula {
     }
 }
 
-struct Ground {
-    constants: HashSet<Fun>,
+pub struct Ground {
+    formula: FirstOrderFormula,
+    free_variables: Vec<Var>,
     functions: HashSet<Fun>,
     ground: Vec<Fun>,
-    separators: Vec<usize>,
-}
-
-impl Default for Ground {
-    fn default() -> Self {
-        Self {
-            constants: Default::default(),
-            functions: Default::default(),
-            ground: Default::default(),
-            separators: vec![0],
-        }
-    }
+    level_markers: Vec<usize>,
 }
 
 impl From<&FirstOrderFormula> for Ground {
     fn from(value: &FirstOrderFormula) -> Self {
-        let mut ground = Ground::default();
+        let mut constants: HashSet<&Fun> = HashSet::default();
+        let mut functions = HashSet::default();
 
         for relation in value.atoms_dfs() {
             for term in relation.parts() {
                 match term {
                     Term::F(fun) => match fun.arity() {
                         0 => {
-                            ground.constants.insert(fun.clone());
+                            constants.insert(fun);
                         }
                         _ => {
-                            ground.functions.insert(fun.clone());
+                            functions.insert(fun.clone());
                         }
                     },
                     Term::V(_) => {}
@@ -69,26 +65,29 @@ impl From<&FirstOrderFormula> for Ground {
             }
         }
 
-        if ground.constants.is_empty() {
+        let mut ground: Vec<Fun> = constants.into_iter().cloned().collect();
+        if ground.is_empty() {
             let c = Fun {
                 id: "c".to_owned(),
                 variant: 0,
                 args: Vec::default(),
             };
-            ground.constants.insert(c);
+            ground.push(c);
         }
 
-        for constant in &ground.constants {
-            ground.ground.push(constant.clone());
+        Ground {
+            free_variables: value.free_variables().iter().cloned().collect(),
+            formula: value.to_owned(),
+            functions,
+            ground,
+            level_markers: vec![0],
         }
-
-        ground
     }
 }
 
 impl std::fmt::Display for Ground {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut separators = self.separators.iter();
+        let mut separators = self.level_markers.iter();
 
         let mut start = separators.next().cloned().unwrap();
         let mut end = separators.next().cloned();
@@ -115,7 +114,7 @@ impl std::fmt::Display for Ground {
 
 impl Ground {
     fn fresh_separator(&mut self) {
-        self.separators.push(self.ground.len());
+        self.level_markers.push(self.ground.len());
     }
 }
 
@@ -126,7 +125,7 @@ impl Ground {
 
     // The initial ground atoms, or those from the most recent call to `overlay`.
     pub fn top_soil(&self) -> &[Fun] {
-        match self.separators.last().cloned() {
+        match self.level_markers.last().cloned() {
             Some(s) => &self.ground[s..],
             None => &self.ground,
         }
@@ -152,12 +151,46 @@ impl Ground {
         self.fresh_separator();
         self.ground.extend(overlay);
     }
+
+    pub fn top_soil_formulas(&self) -> impl Iterator<Item = PropFormula> {
+        repeat_n(self.top_soil().iter(), self.formula.free_variables().len())
+            .multi_cartesian_product()
+            .map(|ground_permutation| {
+                let mut s = Substitution::default();
+                for (k, &v) in self.free_variables.iter().zip(&ground_permutation) {
+                    s.add_interrupt(k, Some(v.into()));
+                }
+                PropFormula::try_from(self.formula.clone().term_substitution(&mut s)).unwrap()
+            })
+    }
+}
+
+impl FirstOrderFormula {
+    pub fn is_valid_gilmore(&self, limit: Option<usize>) -> (bool, Ground, PropFormula) {
+        let sfm = self.clone().generalize().negate().skolemize();
+        let mut ground = Ground::from(&sfm);
+        let mut propositional = PropFormula::conjoin(ground.top_soil_formulas());
+
+        for _ in 0..limit.unwrap_or(usize::MAX) {
+            if propositional.is_unsatisfiable() {
+                return (true, ground, propositional);
+            }
+            ground.overlay();
+            propositional = PropFormula::And(
+                propositional,
+                PropFormula::conjoin(ground.top_soil_formulas()),
+            );
+        }
+
+        (false, ground, propositional)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
-    use crate::logic::first_order::{FirstOrderFormula, syntax::Substitution, terms::Var};
+    use crate::logic::first_order::FirstOrderFormula;
 
     #[test]
     fn ground_basic() {
@@ -178,20 +211,21 @@ mod tests {
     #[test]
     fn ground_instance() {
         let fm = FirstOrderFormula::from("~R(x) | R(f(g(y)))");
-        let fv: Vec<Var> = fm.free_variables().into_iter().collect();
-        let fvs = fv.len();
 
         let mut ground = Ground::from(&fm);
 
         for _ in 0..2 {
-            for ground_permutation in ground.top_soil().iter().combinations_with_replacement(fvs) {
-                let mut s = Substitution::default();
-                for (k, &v) in fv.iter().zip(&ground_permutation) {
-                    s.add_interrupt(k, Some(v.into()));
-                }
-                let _fmx = fm.clone().term_substitution(&mut s);
+            for tsf in ground.top_soil_formulas() {
+                println!("{tsf}");
             }
             ground.overlay();
         }
+    }
+
+    #[test]
+    fn gilmore_basic() {
+        let fm = FirstOrderFormula::from("exists x. forall y. (P(x) => P(y))");
+        let (result, _ground, _propositional) = fm.is_valid_gilmore(Some(3));
+        assert!(result);
     }
 }
