@@ -1,4 +1,9 @@
-use crate::logic::{Atomic, Formula, Literal, OpBinary, OpUnary};
+use std::fmt::Binary;
+
+use crate::logic::{
+    Atomic, Formula, Literal, OpBinary, OpUnary,
+    propositional::{Prop, PropFormula},
+};
 
 // Invariant: Literals are sorted by `literal_cmp`.
 type LiteralSet<A> = Vec<Literal<A>>;
@@ -97,15 +102,15 @@ impl<A: Atomic> FormulaSet<A> {
 
     pub fn is_bot(&self) -> bool {
         match self.mode {
-            Mode::CNF => self.cnf_is_bot(),
-            Mode::DNF => self.dnf_is_bot(),
+            Mode::CNF => self.is_cnf_bot(),
+            Mode::DNF => self.is_dnf_bot(),
         }
     }
 
     pub fn is_top(&self) -> bool {
         match self.mode {
-            Mode::CNF => self.cnf_is_top(),
-            Mode::DNF => self.dnf_is_top(),
+            Mode::CNF => self.is_cnf_top(),
+            Mode::DNF => self.is_dnf_top(),
         }
     }
 
@@ -145,11 +150,11 @@ impl<A: Atomic> FormulaSet<A> {
         self.sets.sort_by(|a, b| literal_set_cmp(a, b));
     }
 
-    pub fn dnf_is_bot(&self) -> bool {
+    pub fn is_dnf_bot(&self) -> bool {
         self.sets.is_empty()
     }
 
-    pub fn dnf_is_top(&self) -> bool {
+    pub fn is_dnf_top(&self) -> bool {
         self.sets.first().is_some_and(|set| set.is_empty())
     }
 
@@ -192,11 +197,11 @@ impl<A: Atomic> FormulaSet<A> {
 }
 
 impl<A: Atomic> FormulaSet<A> {
-    pub fn cnf_is_bot(&self) -> bool {
+    pub fn is_cnf_bot(&self) -> bool {
         self.sets.first().is_some_and(|set| set.is_empty())
     }
 
-    pub fn cnf_is_top(&self) -> bool {
+    pub fn is_cnf_top(&self) -> bool {
         self.sets.is_empty()
     }
 
@@ -239,8 +244,8 @@ impl<A: Atomic> FormulaSet<A> {
 }
 
 impl<A: Atomic> Formula<A> {
-    pub fn dnf_to_formula_set(&self) -> FormulaSet<A> {
-        let mut formula = self.dnf_to_set();
+    pub fn to_dnf_formula_set(&self) -> FormulaSet<A> {
+        let mut formula = self.to_dnf_set();
         formula.sort_by(|a, b| literal_set_cmp(a, b));
         formula.dedup();
 
@@ -250,7 +255,7 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    fn dnf_to_set(&self) -> Vec<Vec<Literal<A>>> {
+    fn to_dnf_set(&self) -> Vec<Vec<Literal<A>>> {
         match self {
             Formula::True => vec![vec![]],
             Formula::False => vec![],
@@ -268,8 +273,8 @@ impl<A: Atomic> Formula<A> {
             },
 
             Formula::Binary { op, lhs, rhs } => {
-                let lhs = lhs.dnf_to_formula_set();
-                let rhs = rhs.dnf_to_formula_set();
+                let lhs = lhs.to_dnf_formula_set();
+                let rhs = rhs.to_dnf_formula_set();
 
                 match op {
                     OpBinary::And => {
@@ -301,6 +306,71 @@ impl<A: Atomic> Formula<A> {
     }
 }
 
+impl<A: Atomic> Formula<A> {
+    pub fn to_cnf_formula_set_direct(&self) -> FormulaSet<A> {
+        let mut formula = self.to_cnf_set();
+        formula.sort_by(|a, b| literal_set_cmp(a, b));
+        formula.dedup();
+
+        FormulaSet {
+            sets: formula,
+            mode: Mode::CNF,
+        }
+    }
+
+    fn to_cnf_set(&self) -> Vec<Vec<Literal<A>>> {
+        match self {
+            Formula::True => vec![vec![]],
+            Formula::False => vec![],
+
+            Formula::Atom(atom) => vec![vec![Literal::from(atom.clone(), true)]],
+
+            Formula::Unary { op, expr } => match op {
+                OpUnary::Not => {
+                    if let Formula::Atom(atom) = expr.as_ref() {
+                        vec![vec![Literal::from(atom.clone(), false)]]
+                    } else {
+                        todo!()
+                    }
+                }
+            },
+
+            Formula::Binary { op, lhs, rhs } => {
+                let lhs = lhs.to_cnf_formula_set_direct();
+                let rhs = rhs.to_cnf_formula_set_direct();
+
+                match op {
+                    OpBinary::Or => {
+                        let mut fm = Vec::with_capacity(lhs.sets.len() * rhs.sets.len());
+                        for l_set in &lhs.sets {
+                            for r_set in &rhs.sets {
+                                let mut product: Vec<Literal<A>> =
+                                    l_set.iter().chain(r_set).cloned().collect();
+
+                                // 'Setify'
+                                // As the product is partially sorted, stable sort is preferred.
+                                product.sort();
+                                product.dedup();
+
+                                fm.push(product);
+                            }
+                        }
+                        fm
+                    }
+
+                    OpBinary::And => lhs.sets.into_iter().chain(rhs.sets).collect(),
+
+                    OpBinary::Imp => todo!(),
+
+                    OpBinary::Iff => todo!(),
+                }
+            }
+
+            Formula::Quantified { .. } => todo!(),
+        }
+    }
+}
+
 impl<A: Atomic> FormulaSet<A> {
     pub fn one_literal_rule(&mut self) {
         // A collection of all one literal set literals
@@ -322,25 +392,59 @@ impl<A: Atomic> FormulaSet<A> {
             }
         }
 
-        // Negate each one literal literal, to inspect the remaining sets.
-        for one_lit in &mut one_literals {
-            one_lit.negate();
-        }
+        // We now have all one literal literals in `one_literals`, so...
+        // A second (final) pass over all sets.
+        // As both sets and literals may be mutated, this is done as a nested swap remove.
 
-        // Swap remove any literals complementing a one literal literal
-        for set in &mut self.sets {
-            let mut index = 0;
-            let mut limit = set.len();
-            while index < limit {
-                match one_literals.iter().any(|one_lit| one_lit == &set[index]) {
-                    true => {
-                        set.swap_remove(index);
-                        limit -= 1
+        let mut set_index = 0;
+        let mut set_limit = self.sets.len();
+
+        'set_loop: while set_index < set_limit {
+            let mut literal_index = 0;
+            let mut literal_limit = self.sets[set_index].len();
+
+            'literal_loop: while literal_index < literal_limit {
+                // Check against each one literal.
+                for literal in &one_literals {
+                    // If the atoms match, either the set or the literal will be removed.
+                    if literal.atom() == self.sets[set_index][literal_index].atom() {
+                        match literal
+                            .value()
+                            .cmp(&self.sets[set_index][literal_index].value())
+                        {
+                            std::cmp::Ordering::Equal => {
+                                set_limit -= 1;
+                                self.sets.swap_remove(set_index);
+                                continue 'set_loop;
+                            }
+
+                            _ => {
+                                literal_limit -= 1;
+                                self.sets[set_index].swap_remove(literal_index);
+                                continue 'literal_loop;
+                            }
+                        }
                     }
-
-                    false => index += 1,
                 }
+                // As the set was not removed, consider the next literal.
+                literal_index += 1;
             }
+            // As the set was not removed, and all literals were examined, consider the next set.
+            set_index += 1;
+        }
+    }
+}
+
+impl PropFormula {
+    pub fn to_cnf_formula_set_tseytin(&self) -> FormulaSet<Prop> {
+        let (_, cnf) = self.clone().cnf();
+        let mut formula = cnf.to_cnf_set();
+        formula.sort_by(literal_set_cmp);
+        formula.dedup();
+
+        FormulaSet {
+            sets: formula,
+            mode: Mode::CNF,
         }
     }
 }
@@ -350,36 +454,36 @@ mod tests {
     use crate::logic::{Formula, parse_propositional};
 
     #[test]
-    fn dnf() {
+    fn dnf_set() {
         let expr = parse_propositional("(p | q & r) & (~p | ~r)");
-        let mut dnf = expr.dnf_to_formula_set();
+        let mut dnf = expr.to_dnf_formula_set();
         assert_eq!(dnf.sets().len(), 4);
 
         dnf.dnf_filter_contradictions();
         assert_eq!(dnf.sets().len(), 2);
 
         let expr = parse_propositional("(p | p & r)");
-        let dnf = expr.dnf_to_formula_set();
+        let dnf = expr.to_dnf_formula_set();
         assert_eq!(dnf.sets().len(), 2);
 
         let expr = parse_propositional("false");
-        let dnf = expr.dnf_to_formula_set();
+        let dnf = expr.to_dnf_formula_set();
         assert!(dnf.is_bot());
 
         let expr = parse_propositional("p & ~p");
-        let mut dnf = expr.dnf_to_formula_set();
+        let mut dnf = expr.to_dnf_formula_set();
         dnf.filter_contradictions();
         assert!(dnf.is_bot());
 
         let expr = parse_propositional("true");
-        let dnf = expr.dnf_to_formula_set();
+        let dnf = expr.to_dnf_formula_set();
         assert!(dnf.is_top());
     }
 
     #[test]
     fn dnf_subsumption() {
         let expr = parse_propositional("(p | p & r) & true");
-        let mut dnf = expr.dnf_to_formula_set();
+        let mut dnf = expr.to_dnf_formula_set();
         dnf.subsume();
         assert!(dnf.sets().first().is_some_and(|set| set.len() == 2));
     }
@@ -387,8 +491,21 @@ mod tests {
     #[test]
     fn dnf_formula() {
         let expr = parse_propositional("(p | q & r) & (~p | ~r)");
-        let dnf = expr.dnf_to_formula_set();
+        let dnf = expr.to_dnf_formula_set();
         let fm = dnf.as_formula();
         assert!(Formula::Iff(expr, fm).is_tautology());
+    }
+
+    #[test]
+    fn cnf_set() {
+        let expr = parse_propositional("(p | q | r) & (~p | ~r)");
+        let cnf = expr.to_cnf_formula_set_direct();
+        println!("{cnf}");
+
+        let expr = parse_propositional("~p => r");
+        let mut cnf = expr.to_cnf_formula_set_tseytin();
+        println!("{cnf}");
+        cnf.one_literal_rule();
+        println!("{cnf}");
     }
 }

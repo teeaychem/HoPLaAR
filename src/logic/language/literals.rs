@@ -39,9 +39,12 @@ impl<A: Atomic> Literal<A> {
     pub fn invert_value(&mut self) {
         self.value = !self.value
     }
+}
 
-    pub fn negate(&mut self) {
-        self.value = !self.value
+impl<A: Atomic> Literal<A> {
+    pub fn negate(mut self) -> Self {
+        self.value = !self.value;
+        self
     }
 }
 
