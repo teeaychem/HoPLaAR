@@ -1,6 +1,6 @@
 use crate::logic::{Atomic, Formula, OpUnary};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Literal<A> {
     atom: A,
     value: bool,
@@ -64,14 +64,6 @@ impl<A: Atomic> std::cmp::Ord for Literal<A> {
         }
     }
 }
-
-impl<A: Atomic> std::cmp::PartialEq for Literal<A> {
-    fn eq(&self, other: &Self) -> bool {
-        self.atom == other.atom && self.value == other.value
-    }
-}
-
-impl<A: Atomic> std::cmp::Eq for Literal<A> {}
 
 impl<A: Atomic> std::fmt::Display for Literal<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
