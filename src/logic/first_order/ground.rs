@@ -222,7 +222,7 @@ mod tests {
         let fm = FirstOrderFormula::from(
             "forall x (forall y. (exists z. (forall w. (P(x) & Q(y) ==> R(z) & U(w))))) ==> exists x (exists y. (P(x) & Q(y))) ==> exists z. R(z)",
         );
-        let (result, ground, _) = fm.is_valid_gilmore(None);
+        let (result, _ground, _) = fm.is_valid_gilmore(None);
         assert!(result);
     }
 

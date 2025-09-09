@@ -51,8 +51,8 @@ impl<A: Atomic> FormulaSet<A> {
 }
 
 impl<A: Atomic> Formula<A> {
-    fn to_cnf_formula_set_direct(&self) -> FormulaSet<A> {
-        let mut formula = self.to_cnf_set();
+    pub fn to_cnf_set_direct(&self) -> FormulaSet<A> {
+        let mut formula = self.to_cnf_set_local();
         formula.sort_by(|a, b| literal_set_cmp(a, b));
         formula.dedup();
 
@@ -62,7 +62,7 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    pub fn to_cnf_set(&self) -> Vec<Vec<Literal<A>>> {
+    fn to_cnf_set_local(&self) -> Vec<Vec<Literal<A>>> {
         match self {
             Formula::True => vec![vec![]],
             Formula::False => vec![],
@@ -80,8 +80,8 @@ impl<A: Atomic> Formula<A> {
             },
 
             Formula::Binary { op, lhs, rhs } => {
-                let lhs = lhs.to_cnf_formula_set_direct();
-                let rhs = rhs.to_cnf_formula_set_direct();
+                let lhs = lhs.to_cnf_set_direct();
+                let rhs = rhs.to_cnf_set_direct();
 
                 match op {
                     OpBinary::Or => {
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn cnf_set() {
         let p_q = parse_propositional("p | r");
-        let p_q_set = p_q.to_cnf_formula_set_direct();
+        let p_q_set = p_q.to_cnf_set_direct();
 
         let expr = parse_propositional("~p => r");
         let mut cnf = expr.to_cnf_formula_set_tseytin();
