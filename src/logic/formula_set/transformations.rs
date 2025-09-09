@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::logic::{Atomic, Literal, formula_set::FormulaSet};
 
 impl<A: Atomic> FormulaSet<A> {
@@ -61,5 +63,59 @@ impl<A: Atomic> FormulaSet<A> {
             // As the set was not removed, and all literals were examined, consider the next set.
             set_index += 1;
         }
+    }
+}
+
+impl<'a, A: Atomic> FormulaSet<A> {
+    pub fn affirmative_negative_rule(&'a mut self) {
+        let atom_ids: Vec<String> = {
+            // Map each atom id to a pair, capturing whether the atom has appear in a (true, false) literal.
+            let mut instances: HashMap<&str, (bool, bool)> = HashMap::default();
+
+            for literal in self.sets.iter().flatten() {
+                match literal.value() {
+                    true => instances.entry(literal.id()).or_default().0 = true,
+                    false => instances.entry(literal.id()).or_default().1 = true,
+                }
+            }
+
+            // Retain only those instance when the atom has not appear both as true and false.
+            instances.retain(|_, (t, f)| !(*t && *f));
+
+            // Collect the ids, as owned, given the formula set is up for mutation.
+            instances.into_keys().map(|k| k.to_owned()).collect()
+        };
+
+        let mut set_index = 0;
+        let mut set_limit = self.sets.len();
+
+        'set_loop: while set_index < set_limit {
+            for literal in &self.sets[set_index] {
+                for atom in &atom_ids {
+                    if *atom == literal.id() {
+                        set_limit -= 1;
+                        self.sets.swap_remove(set_index);
+                        continue 'set_loop;
+                    }
+                }
+            }
+            set_index += 1;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logic::parse_propositional;
+
+    #[test]
+    fn debug() {
+        let expr = parse_propositional("(~p | r) & (q | p | r)");
+
+        let mut cnf = expr.to_cnf_set_direct();
+
+        cnf.affirmative_negative_rule();
+
+        assert!(cnf.is_cnf_top());
     }
 }
