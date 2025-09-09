@@ -64,8 +64,8 @@ impl<A: Atomic> Formula<A> {
 
     fn to_cnf_set_local(&self) -> Vec<Vec<Literal<A>>> {
         match self {
-            Formula::True => vec![vec![]],
-            Formula::False => vec![],
+            Formula::True => vec![],
+            Formula::False => vec![vec![]],
 
             Formula::Atom(atom) => vec![vec![Literal::from(atom.clone(), true)]],
 
@@ -118,6 +118,15 @@ impl<A: Atomic> Formula<A> {
 #[cfg(test)]
 mod tests {
     use crate::logic::parse_propositional;
+
+    #[test]
+    fn cnf_true_false() {
+        let t = parse_propositional("true");
+        assert!(t.to_cnf_set_direct().is_cnf_top());
+
+        let f = parse_propositional("false");
+        assert!(f.to_cnf_set_direct().is_cnf_bot());
+}
 
     #[test]
     fn cnf_set() {
