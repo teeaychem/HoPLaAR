@@ -72,6 +72,18 @@ impl<A: Atomic> FormulaSet<A> {
             set_index += 1;
         }
 
+        // It's likely there are fewer one literals than atoms.
+        // So, remove one literals by inspecting each atom.
+        // Here, atoms could be sorted and binary search could be used.
+        'one_loop: for literal in one_literals {
+            for atom_index in 0..self.atoms.len() {
+                if literal.atom() == &self.atoms[atom_index] {
+                    self.atoms.swap_remove(atom_index);
+                    continue 'one_loop;
+                }
+            }
+        }
+
         mutation
     }
 
@@ -114,6 +126,17 @@ impl<A: Atomic> FormulaSet<A> {
             }
             set_index += 1;
         }
+
+        // Remove from atoms any affirmative / negative atoms.
+        'pure_loop: for id in atom_ids {
+            for atom_index in 0..self.atoms.len() {
+                if id == self.atoms[atom_index].id() {
+                    self.atoms.swap_remove(atom_index);
+                    continue 'pure_loop;
+                }
+            }
+        }
+
         mutation
     }
 
@@ -173,6 +196,7 @@ impl<A: Atomic> FormulaSet<A> {
         self.sets.sort_unstable();
         self.sets.dedup();
 
+        // As resolution is applied to exactly one atom, remove from atoms and the break to a return.
         for index in 0..self.atoms.len() {
             if self.atoms[index] == atom {
                 self.atoms.remove(index);
