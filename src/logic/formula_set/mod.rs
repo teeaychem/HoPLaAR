@@ -19,6 +19,7 @@ pub enum Mode {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FormulaSet<A: Atomic> {
     sets: Vec<LiteralSet<A>>,
+    atoms: Vec<A>,
     mode: Mode,
 }
 
@@ -86,7 +87,11 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
 
 impl<A: Atomic> FormulaSet<A> {
     pub fn empty(mode: Mode) -> Self {
-        FormulaSet { sets: vec![], mode }
+        FormulaSet {
+            sets: vec![],
+            atoms: vec![],
+            mode,
+        }
     }
 }
 

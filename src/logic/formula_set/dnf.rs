@@ -5,12 +5,17 @@ use crate::logic::{
 
 impl<A: Atomic> Formula<A> {
     pub fn to_dnf_formula_set(&self) -> FormulaSet<A> {
-        let mut formula = self.to_dnf_set();
-        formula.sort_by(|a, b| literal_set_cmp(a, b));
-        formula.dedup();
+        let mut sets = self.to_dnf_set();
+        sets.sort_by(|a, b| literal_set_cmp(a, b));
+        sets.dedup();
+
+        let mut atoms: Vec<_> = sets.iter().flatten().map(|l| l.atom()).cloned().collect();
+        atoms.sort_unstable();
+        atoms.dedup();
 
         FormulaSet {
-            sets: formula,
+            sets,
+            atoms,
             mode: Mode::DNF,
         }
     }

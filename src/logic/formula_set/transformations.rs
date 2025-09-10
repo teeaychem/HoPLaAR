@@ -173,6 +173,13 @@ impl<A: Atomic> FormulaSet<A> {
         self.sets.sort_unstable();
         self.sets.dedup();
 
+        for index in 0..self.atoms.len() {
+            if self.atoms[index] == atom {
+                self.atoms.remove(index);
+                break;
+            }
+        }
+
         true
     }
 
