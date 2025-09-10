@@ -3,6 +3,8 @@ mod dnf;
 mod propositional;
 mod transformations;
 
+use std::collections::HashMap;
+
 use crate::logic::{Atomic, Formula, Literal, OpBinary};
 
 // Invariant: Literals are sorted by `literal_cmp`.
@@ -16,10 +18,10 @@ pub enum Mode {
 
 // A formula, as a set of sets.
 // Invariant: `formula` is sorted by `literal_set_cmp`.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct FormulaSet<A: Atomic> {
     sets: Vec<LiteralSet<A>>,
-    atoms: Vec<A>,
+    atoms: HashMap<String, (bool, bool)>,
     mode: Mode,
 }
 
@@ -86,10 +88,19 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
 }
 
 impl<A: Atomic> FormulaSet<A> {
+    pub fn note_literal(&mut self, literal: &Literal<A>) {
+        match literal.value() {
+            true => self.atoms.entry(literal.id().to_owned()).or_default().0 = true,
+            false => self.atoms.entry(literal.id().to_owned()).or_default().1 = true,
+        }
+    }
+}
+
+impl<A: Atomic> FormulaSet<A> {
     pub fn empty(mode: Mode) -> Self {
         FormulaSet {
             sets: vec![],
-            atoms: vec![],
+            atoms: HashMap::default(),
             mode,
         }
     }

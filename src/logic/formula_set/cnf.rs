@@ -52,19 +52,19 @@ impl<A: Atomic> FormulaSet<A> {
 
 impl<A: Atomic> Formula<A> {
     pub fn to_cnf_set_direct(&self) -> FormulaSet<A> {
+        let mut fs = FormulaSet::empty(Mode::CNF);
+
         let mut sets = self.to_cnf_set_local();
         sets.sort_by(|a, b| literal_set_cmp(a, b));
         sets.dedup();
 
-        let mut atoms: Vec<_> = sets.iter().flatten().map(|l| l.atom()).cloned().collect();
-        atoms.sort_unstable();
-        atoms.dedup();
-
-        FormulaSet {
-            sets,
-            atoms,
-            mode: Mode::CNF,
+        for literal in sets.iter().flatten() {
+            fs.note_literal(literal);
         }
+
+        std::mem::swap(&mut fs.sets, &mut sets);
+
+        fs
     }
 
     fn to_cnf_set_local(&self) -> Vec<Vec<Literal<A>>> {
