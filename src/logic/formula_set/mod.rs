@@ -85,6 +85,12 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
 }
 
 impl<A: Atomic> FormulaSet<A> {
+    pub fn empty(mode: Mode) -> Self {
+        FormulaSet { sets: vec![], mode }
+    }
+}
+
+impl<A: Atomic> FormulaSet<A> {
     pub fn sets(&self) -> &Vec<LiteralSet<A>> {
         &self.sets
     }

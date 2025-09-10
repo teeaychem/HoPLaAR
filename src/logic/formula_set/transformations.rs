@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::logic::{Atomic, Literal, formula_set::FormulaSet};
+use crate::logic::{
+    Atomic, Literal,
+    formula_set::{FormulaSet, Mode},
+};
 
 impl<A: Atomic> FormulaSet<A> {
     pub fn one_literal_rule(&mut self) {
@@ -100,14 +103,64 @@ impl<A: Atomic> FormulaSet<A> {
             set_index += 1;
         }
     }
+
+    pub fn resolve_on(&mut self, atom: A) {
+        // Each set of literals containing atom / ~atom will be moved to local storage.
+        // Further, one move atom / ~atom will be removed from the set to ease taking the product later.
+        let mut affirmative = FormulaSet::<A>::empty(Mode::CNF);
+        let mut negative = FormulaSet::<A>::empty(Mode::CNF);
+
+        let mut set_index = 0;
+        let mut set_limit = self.sets.len();
+
+        'set_loop: while set_index < set_limit {
+            let mut literal_index = 0;
+            let literal_limit = self.sets[set_index].len();
+
+            while literal_index < literal_limit {
+                if self.sets[set_index][literal_index].atom() == &atom {
+                    let literal = self.sets[set_index].swap_remove(literal_index);
+
+                    match literal.value() {
+                        true => affirmative.sets.push(self.sets.swap_remove(set_index)),
+                        false => negative.sets.push(self.sets.swap_remove(set_index)),
+                    }
+                    set_limit -= 1;
+                    continue 'set_loop;
+                }
+
+                literal_index += 1;
+            }
+            set_index += 1;
+        }
+
+        // Take the cartersian product
+        for a in &affirmative.sets {
+            for n in &negative.sets {
+                let mut fresh = a.clone();
+                fresh.extend(n.iter().cloned());
+
+                // Ensure the fresh vec emulates a set
+                fresh.sort_unstable();
+                fresh.dedup();
+
+                // Extend the formula
+                self.sets.push(fresh);
+            }
+        }
+
+        // Ensure the formula continues to emulate a set
+        self.sets.sort_unstable();
+        self.sets.dedup();
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::parse_propositional;
+    use crate::logic::{parse_propositional, propositional::Prop};
 
     #[test]
-    fn debug() {
+    fn affirmative_negative_simple() {
         let expr = parse_propositional("(~p | r) & (q | p | r)");
 
         let mut cnf = expr.to_cnf_set_direct();
@@ -115,5 +168,12 @@ mod tests {
         cnf.affirmative_negative_rule();
 
         assert!(cnf.is_cnf_top());
+    }
+
+    #[test]
+    fn debug() {
+        let mut fm =
+            parse_propositional("(~p | r | s) & (q | p | r) & (s | t)").to_cnf_set_direct();
+        fm.resolve_on(Prop::from("p"));
     }
 }
