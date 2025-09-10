@@ -175,6 +175,27 @@ impl<A: Atomic> FormulaSet<A> {
 
         true
     }
+
+    /// The relative size of `self` after applying `resolve_on` with `atom`.
+    pub fn resolution_blowup(&self, atom: &A) -> isize {
+        // Note, an isize is returned as the formula *may* shrink.
+
+        let mut positive_count: isize = 0;
+        let mut negative_count: isize = 0;
+
+        for set in &self.sets {
+            for literal in set {
+                if literal.atom() == atom {
+                    match literal.value() {
+                        true => positive_count += 1,
+                        false => negative_count += 1,
+                    }
+                }
+            }
+        }
+
+        (positive_count * negative_count) - (positive_count + negative_count)
+    }
 }
 
 #[cfg(test)]
@@ -196,6 +217,13 @@ mod tests {
     fn debug() {
         let mut fm =
             parse_propositional("(~p | r | s) & (q | p | r) & (s | t)").to_cnf_set_direct();
-        fm.resolve_on(Prop::from("p"));
+
+        let prop = Prop::from("p");
+
+        println!("{}", fm.resolution_blowup(&prop));
+
+        fm.resolve_on(prop);
+
+        println!("{fm}");
     }
 }
