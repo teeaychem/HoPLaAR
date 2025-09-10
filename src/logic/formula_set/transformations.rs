@@ -117,10 +117,13 @@ impl<A: Atomic> FormulaSet<A> {
         mutation
     }
 
-    pub fn resolve_on(&mut self, atom: A) {
+    /// Applies the affirmative / negative rule to `self`, using `atom` as a pivot.
+    /// Nominally returns true if a mutation occurred, and false otherwise.
+    /// Though, at present panics if `atom` occurrs only positively or negatively.
+    pub fn resolve_on(&mut self, atom: A) -> bool {
         // Each set of literals containing atom / ~atom will be moved to local storage.
         // Further, one move atom / ~atom will be removed from the set to ease taking the product later.
-        let mut affirmative = FormulaSet::<A>::empty(Mode::CNF);
+        let mut positive = FormulaSet::<A>::empty(Mode::CNF);
         let mut negative = FormulaSet::<A>::empty(Mode::CNF);
 
         let mut set_index = 0;
@@ -135,7 +138,7 @@ impl<A: Atomic> FormulaSet<A> {
                     let literal = self.sets[set_index].swap_remove(literal_index);
 
                     match literal.value() {
-                        true => affirmative.sets.push(self.sets.swap_remove(set_index)),
+                        true => positive.sets.push(self.sets.swap_remove(set_index)),
                         false => negative.sets.push(self.sets.swap_remove(set_index)),
                     }
                     set_limit -= 1;
@@ -147,8 +150,12 @@ impl<A: Atomic> FormulaSet<A> {
             set_index += 1;
         }
 
+        if positive.is_top() || negative.is_top() {
+            panic!("Resolution called on {atom} without complimentary literals")
+        }
+
         // Take the cartersian product
-        for a in &affirmative.sets {
+        for a in &positive.sets {
             for n in &negative.sets {
                 let mut fresh = a.clone();
                 fresh.extend(n.iter().cloned());
@@ -165,6 +172,8 @@ impl<A: Atomic> FormulaSet<A> {
         // Ensure the formula continues to emulate a set
         self.sets.sort_unstable();
         self.sets.dedup();
+
+        true
     }
 }
 
