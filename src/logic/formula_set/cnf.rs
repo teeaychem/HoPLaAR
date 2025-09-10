@@ -5,7 +5,7 @@ use crate::logic::{
 
 impl<A: Atomic> FormulaSet<A> {
     pub fn is_cnf_bot(&self) -> bool {
-        self.sets.first().is_some_and(|set| set.is_empty())
+        !self.sets.is_empty() && self.sets.iter().all(|set| set.is_empty())
     }
 
     pub fn is_cnf_top(&self) -> bool {
@@ -126,7 +126,7 @@ mod tests {
 
         let f = parse_propositional("false");
         assert!(f.to_cnf_set_direct().is_cnf_bot());
-}
+    }
 
     #[test]
     fn cnf_set() {

@@ -64,10 +64,8 @@ impl<A: Atomic> FormulaSet<A> {
             set_index += 1;
         }
     }
-}
 
-impl<'a, A: Atomic> FormulaSet<A> {
-    pub fn affirmative_negative_rule(&'a mut self) {
+    pub fn affirmative_negative_rule(&mut self) {
         let atom_ids: Vec<String> = {
             // Map each atom id to a pair, capturing whether the atom has appear in a (true, false) literal.
             let mut instances: HashMap<&str, (bool, bool)> = HashMap::default();

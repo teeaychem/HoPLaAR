@@ -92,7 +92,7 @@ impl<A: Atomic> FormulaSet<A> {
     }
 
     pub fn is_dnf_top(&self) -> bool {
-        self.sets.first().is_some_and(|set| set.is_empty())
+        !self.sets.is_empty() && self.sets.iter().all(|set| set.is_empty())
     }
 
     // DNF subsumption
