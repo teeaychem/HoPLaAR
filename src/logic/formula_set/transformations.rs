@@ -6,9 +6,13 @@ use crate::logic::{
 };
 
 impl<A: Atomic> FormulaSet<A> {
-    pub fn one_literal_rule(&mut self) {
+    /// Applies the affirmative / negative rule to `self`.
+    /// Returns true if a mutation occurred, and false otherwise.
+    pub fn one_literal_rule(&mut self) -> bool {
         // A collection of all one literal set literals
         let mut one_literals: Vec<Literal<A>> = Vec::default();
+
+        let mut mutation = false;
 
         // Swap remove all one literal sets, exending one_literals with each set found.
         let mut index = 0;
@@ -19,6 +23,7 @@ impl<A: Atomic> FormulaSet<A> {
                 1 => {
                     let one_literal_set = self.sets.swap_remove(index);
                     one_literals.extend(one_literal_set);
+                    mutation = true;
                     limit -= 1
                 }
 
@@ -66,9 +71,13 @@ impl<A: Atomic> FormulaSet<A> {
             // As the set was not removed, and all literals were examined, consider the next set.
             set_index += 1;
         }
+
+        mutation
     }
 
-    pub fn affirmative_negative_rule(&mut self) {
+    /// Applies the affirmative / negative rule to `self`.
+    /// Returns true if a mutation occurred, and false otherwise.
+    pub fn affirmative_negative_rule(&mut self) -> bool {
         let atom_ids: Vec<String> = {
             // Map each atom id to a pair, capturing whether the atom has appear in a (true, false) literal.
             let mut instances: HashMap<&str, (bool, bool)> = HashMap::default();
@@ -87,6 +96,8 @@ impl<A: Atomic> FormulaSet<A> {
             instances.into_keys().map(|k| k.to_owned()).collect()
         };
 
+        let mut mutation = false;
+
         let mut set_index = 0;
         let mut set_limit = self.sets.len();
 
@@ -96,12 +107,14 @@ impl<A: Atomic> FormulaSet<A> {
                     if *atom == literal.id() {
                         set_limit -= 1;
                         self.sets.swap_remove(set_index);
+                        mutation = true;
                         continue 'set_loop;
                     }
                 }
             }
             set_index += 1;
         }
+        mutation
     }
 
     pub fn resolve_on(&mut self, atom: A) {
