@@ -257,13 +257,13 @@ impl<A: Atomic> FormulaSet<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::parse_propositional;
+    use crate::logic::{formula_set::Mode, parse_propositional};
 
     #[test]
     fn affirmative_negative_simple() {
         let expr = parse_propositional("(~p | r) & (q | p | r)");
 
-        let mut cnf = expr.to_cnf_set_direct();
+        let mut cnf = expr.to_set_direct(Mode::CNF);
 
         cnf.affirmative_negative_rule();
 

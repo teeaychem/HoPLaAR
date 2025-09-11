@@ -87,6 +87,27 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
     }
 }
 
+impl<A: Atomic> Formula<A> {
+    pub fn to_set_direct(&self, mode: Mode) -> FormulaSet<A> {
+        let mut fs = FormulaSet::empty(mode);
+
+        let mut sets = match mode {
+            Mode::CNF => self.to_cnf_set_local(),
+            Mode::DNF => self.to_dnf_set_local(),
+        };
+        sets.sort_by(|a, b| literal_set_cmp(a, b));
+        sets.dedup();
+
+        for literal in sets.iter().flatten() {
+            fs.note_literal(literal);
+        }
+
+        std::mem::swap(&mut fs.sets, &mut sets);
+
+        fs
+    }
+}
+
 impl<A: Atomic> FormulaSet<A> {
     pub fn note_literal(&mut self, literal: &Literal<A>) {
         match literal.value() {

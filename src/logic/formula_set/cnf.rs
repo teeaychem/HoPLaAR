@@ -51,23 +51,7 @@ impl<A: Atomic> FormulaSet<A> {
 }
 
 impl<A: Atomic> Formula<A> {
-    pub fn to_cnf_set_direct(&self) -> FormulaSet<A> {
-        let mut fs = FormulaSet::empty(Mode::CNF);
-
-        let mut sets = self.to_cnf_set_local();
-        sets.sort_by(|a, b| literal_set_cmp(a, b));
-        sets.dedup();
-
-        for literal in sets.iter().flatten() {
-            fs.note_literal(literal);
-        }
-
-        std::mem::swap(&mut fs.sets, &mut sets);
-
-        fs
-    }
-
-    fn to_cnf_set_local(&self) -> Vec<Vec<Literal<A>>> {
+    pub(super) fn to_cnf_set_local(&self) -> Vec<Vec<Literal<A>>> {
         match self {
             Formula::True => vec![],
             Formula::False => vec![vec![]],
@@ -85,8 +69,8 @@ impl<A: Atomic> Formula<A> {
             },
 
             Formula::Binary { op, lhs, rhs } => {
-                let lhs = lhs.to_cnf_set_direct();
-                let rhs = rhs.to_cnf_set_direct();
+                let lhs = lhs.to_set_direct(Mode::CNF);
+                let rhs = rhs.to_set_direct(Mode::CNF);
 
                 match op {
                     OpBinary::Or => {
@@ -143,21 +127,21 @@ impl<A: Atomic> FormulaSet<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::parse_propositional;
+    use crate::logic::{formula_set::Mode, parse_propositional};
 
     #[test]
     fn cnf_true_false() {
         let t = parse_propositional("true");
-        assert!(t.to_cnf_set_direct().is_cnf_top());
+        assert!(t.to_set_direct(Mode::CNF).is_cnf_top());
 
         let f = parse_propositional("false");
-        assert!(f.to_cnf_set_direct().is_cnf_bot());
+        assert!(f.to_set_direct(Mode::CNF).is_cnf_bot());
     }
 
     #[test]
     fn cnf_set() {
         let p_q = parse_propositional("p | r");
-        let p_q_set = p_q.to_cnf_set_direct();
+        let p_q_set = p_q.to_set_direct(Mode::CNF);
 
         let expr = parse_propositional("~p => r");
         let mut cnf = expr.to_cnf_formula_set_tseytin();

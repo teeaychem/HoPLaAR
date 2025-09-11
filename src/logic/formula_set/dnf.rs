@@ -4,23 +4,7 @@ use crate::logic::{
 };
 
 impl<A: Atomic> Formula<A> {
-    pub fn to_dnf_set_direct(&self) -> FormulaSet<A> {
-        let mut fs = FormulaSet::empty(Mode::DNF);
-
-        let mut sets = self.to_dnf_set_local();
-        sets.sort_by(|a, b| literal_set_cmp(a, b));
-        sets.dedup();
-
-        for literal in sets.iter().flatten() {
-            fs.note_literal(literal);
-        }
-
-        std::mem::swap(&mut fs.sets, &mut sets);
-
-        fs
-    }
-
-    fn to_dnf_set_local(&self) -> Vec<Vec<Literal<A>>> {
+    pub(super) fn to_dnf_set_local(&self) -> Vec<Vec<Literal<A>>> {
         match self {
             Formula::True => vec![vec![]],
             Formula::False => vec![],
@@ -38,8 +22,8 @@ impl<A: Atomic> Formula<A> {
             },
 
             Formula::Binary { op, lhs, rhs } => {
-                let lhs = lhs.to_dnf_set_direct();
-                let rhs = rhs.to_dnf_set_direct();
+                let lhs = lhs.to_set_direct(Mode::DNF);
+                let rhs = rhs.to_set_direct(Mode::DNF);
 
                 match op {
                     OpBinary::And => {
@@ -134,39 +118,39 @@ impl<A: Atomic> FormulaSet<A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Formula, parse_propositional};
+    use crate::logic::{Formula, formula_set::Mode, parse_propositional};
 
     #[test]
     fn dnf_set() {
         let expr = parse_propositional("(p | q & r) & (~p | ~r)");
-        let mut dnf = expr.to_dnf_set_direct();
+        let mut dnf = expr.to_set_direct(Mode::DNF);
         assert_eq!(dnf.sets().len(), 4);
 
         dnf.dnf_filter_contradictions();
         assert_eq!(dnf.sets().len(), 2);
 
         let expr = parse_propositional("(p | p & r)");
-        let dnf = expr.to_dnf_set_direct();
+        let dnf = expr.to_set_direct(Mode::DNF);
         assert_eq!(dnf.sets().len(), 2);
 
         let expr = parse_propositional("false");
-        let dnf = expr.to_dnf_set_direct();
+        let dnf = expr.to_set_direct(Mode::DNF);
         assert!(dnf.is_bot());
 
         let expr = parse_propositional("p & ~p");
-        let mut dnf = expr.to_dnf_set_direct();
+        let mut dnf = expr.to_set_direct(Mode::DNF);
         dnf.filter_contradictions();
         assert!(dnf.is_bot());
 
         let expr = parse_propositional("true");
-        let dnf = expr.to_dnf_set_direct();
+        let dnf = expr.to_set_direct(Mode::DNF);
         assert!(dnf.is_top());
     }
 
     #[test]
     fn dnf_subsumption() {
         let expr = parse_propositional("(p | p & r) & true");
-        let mut dnf = expr.to_dnf_set_direct();
+        let mut dnf = expr.to_set_direct(Mode::DNF);
         dnf.subsume();
         assert!(dnf.sets().first().is_some_and(|set| set.len() == 2));
     }
@@ -174,7 +158,7 @@ mod tests {
     #[test]
     fn dnf_formula() {
         let expr = parse_propositional("(p | q & r) & (~p | ~r)");
-        let dnf = expr.to_dnf_set_direct();
+        let dnf = expr.to_set_direct(Mode::DNF);
         let fm = dnf.as_formula();
 
         assert!(Formula::Iff(expr, fm).is_tautology());
