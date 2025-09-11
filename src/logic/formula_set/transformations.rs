@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use crate::logic::{
     Atomic, Literal,
@@ -6,32 +6,25 @@ use crate::logic::{
 };
 
 impl<A: Atomic> FormulaSet<A> {
-    /// Applies the affirmative / negative rule to `self`.
+    /// Applies the one literal rule to `self`.
     /// Returns true if a mutation occurred, and false otherwise.
     pub fn one_literal_rule(&mut self) -> bool {
-        // A collection of all one literal set literals
-        let mut one_literals: Vec<Literal<A>> = Vec::default();
-
         let mut removed_other: HashSet<Literal<A>> = HashSet::default();
 
-        let mut mutation = false;
+        let mut one = None;
 
-        // Swap remove all one literal sets, exending one_literals with each set found.
-        let mut index = 0;
-        let mut limit = self.sets.len();
-
-        while index < limit {
-            match self.sets[index].len() {
-                1 => {
-                    let one_literal_set = self.sets.swap_remove(index);
-                    one_literals.extend(one_literal_set);
-                    mutation = true;
-                    limit -= 1
-                }
-
-                _ => index += 1,
+        for index in 0..self.sets.len() {
+            if let [_l] = self.sets[index].as_slice() {
+                let one_literal = self.sets.swap_remove(index).into_iter().next().unwrap();
+                one = Some(one_literal);
+                break;
             }
         }
+
+        let one = match one {
+            Some(l) => l,
+            None => return false,
+        };
 
         // We now have all one literal literals in `one_literals`, so...
         // A second (final) pass over all sets.
@@ -46,27 +39,31 @@ impl<A: Atomic> FormulaSet<A> {
 
             'literal_loop: while literal_index < literal_limit {
                 // Check against each one literal.
-                for literal in &one_literals {
-                    // If the atoms match, either the set or the literal will be removed.
-                    if literal.atom() == self.sets[set_index][literal_index].atom() {
-                        match literal
-                            .value()
-                            .cmp(&self.sets[set_index][literal_index].value())
-                        {
-                            std::cmp::Ordering::Equal => {
-                                set_limit -= 1;
-                                removed_other.extend(self.sets.swap_remove(set_index));
-                                continue 'set_loop;
-                            }
 
-                            _ => {
-                                literal_limit -= 1;
-                                self.sets[set_index].swap_remove(literal_index);
-                                continue 'literal_loop;
-                            }
-                        }
+                // If the atoms match, either the set or the literal will be removed.
+                if one.atom() == self.sets[set_index][literal_index].atom() {
+                    if one.value() == self.sets[set_index][literal_index].value() {
+                        set_limit -= 1;
+                        removed_other.extend(self.sets.swap_remove(set_index));
+                        continue 'set_loop;
                     }
+
+                    // Conflicting literals
+
+                    // If the literal is unit, have φ ∧ ¬φ, so rewrite to basic ⊥ form.
+                    if self.sets[set_index].len() == 1 {
+                        self.sets.drain(0..set_limit);
+                        self.sets.push(vec![]);
+                        return true;
+                    }
+
+                    // Otherwise, remove the literal.
+                    literal_limit -= 1;
+                    self.sets[set_index].swap_remove(literal_index);
+
+                    continue 'literal_loop;
                 }
+
                 // As the set was not removed, consider the next literal.
                 literal_index += 1;
             }
@@ -74,12 +71,7 @@ impl<A: Atomic> FormulaSet<A> {
             set_index += 1;
         }
 
-        // It's likely there are fewer one literals than atoms.
-        // So, remove one literals by inspecting each atom.
-        // Here, atoms could be sorted and binary search could be used.
-        for literal in one_literals {
-            self.atoms.remove(literal.id());
-        }
+        self.atoms.remove(one.id());
 
         'other_loop: for other in removed_other {
             if self.sets.iter().flatten().any(|l| l == &other) {
@@ -94,7 +86,7 @@ impl<A: Atomic> FormulaSet<A> {
 
         // TODO: Atom may now contain false / false values.
 
-        mutation
+        true
     }
 
     /// Applies the affirmative / negative rule to `self`.
@@ -177,13 +169,20 @@ impl<A: Atomic> FormulaSet<A> {
 
         // Take the cartersian product
         for a in &positive.sets {
-            for n in &negative.sets {
+            'loop_inner: for n in &negative.sets {
                 let mut fresh = a.clone();
                 fresh.extend(n.iter().cloned());
 
                 // Ensure the fresh vec emulates a set
                 fresh.sort_unstable();
                 fresh.dedup();
+
+                // Skip tivial sets from resolution
+                for literal_index in 1..fresh.len() {
+                    if fresh[literal_index - 1].id() == fresh[literal_index].id() {
+                        continue 'loop_inner;
+                    }
+                }
 
                 // Extend the formula
                 self.sets.push(fresh);
@@ -239,11 +238,32 @@ impl<A: Atomic> FormulaSet<A> {
 
         self.resolve_on(&min_atom)
     }
+
+    pub fn is_sat_dp(&mut self) -> bool {
+        self.filter_trivial_cnf();
+        loop {
+            if self.is_bot() {
+                return false;
+            } else if self.is_top() {
+                return true;
+            }
+
+            if self.one_literal_rule() {
+                continue;
+            }
+
+            if self.affirmative_negative_rule() {
+                continue;
+            }
+
+            self.resolution_rule();
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Atomic, parse_propositional, propositional::Prop};
+    use crate::logic::parse_propositional;
 
     #[test]
     fn affirmative_negative_simple() {
@@ -257,16 +277,18 @@ mod tests {
     }
 
     #[test]
-    fn debug() {
-        let mut fm =
-            parse_propositional("(~p | r | s) & (q | p | r) & (s | t)").to_cnf_set_direct();
+    fn dp_simple() {
+        let mut bot = parse_propositional("~p & p").to_cnf_formula_set_tseytin();
+        assert!(!bot.is_sat_dp());
 
-        let prop = Prop::from("p");
-
-        println!("{}", fm.resolution_blowup(prop.id()));
-
-        fm.resolution_rule();
-
-        println!("{fm}");
+        let mut top = parse_propositional("~p | p").to_cnf_formula_set_tseytin();
+        assert!(top.is_sat_dp());
     }
+
+    // #[test]
+    // fn debug() {
+    //     let mut fm =
+    //         parse_propositional("(~p | r | s) & (q | p | r) & (s | t)").to_cnf_set_direct();
+    //     println!("{}", fm.is_sat_dp());
+    // }
 }

@@ -1,5 +1,5 @@
 use crate::logic::{
-    formula_set::{FormulaSet, Mode, literal_set_cmp},
+    formula_set::FormulaSet,
     propositional::{Prop, PropFormula},
 };
 
