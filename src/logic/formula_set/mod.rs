@@ -94,6 +94,11 @@ impl<A: Atomic> FormulaSet<A> {
             false => self.atoms.entry(literal.id().to_owned()).or_default().1 = true,
         }
     }
+
+    pub fn setify_outer(&mut self) {
+        self.sets.sort_by(|a, b| literal_set_cmp(a, b));
+        self.sets.dedup();
+    }
 }
 
 impl<A: Atomic> FormulaSet<A> {
@@ -149,4 +154,18 @@ impl<A: Atomic> FormulaSet<A> {
             Mode::DNF => self.dnf_formula(),
         }
     }
+}
+
+pub fn set_contains_complementary_literals<A: Atomic>(set: &LiteralSet<A>) -> bool {
+    for idx in 1..set.len() {
+        if set[idx - 1].id() == set[idx].id() {
+            return true;
+        }
+    }
+    false
+}
+
+pub fn setify<A: Atomic>(set: &mut LiteralSet<A>) {
+    set.sort_unstable();
+    set.dedup();
 }

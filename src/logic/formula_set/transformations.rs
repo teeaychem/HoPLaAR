@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::logic::{
     Atomic, Literal,
-    formula_set::{FormulaSet, Mode},
+    formula_set::{FormulaSet, Mode, set_contains_complementary_literals, setify},
 };
 
 impl<A: Atomic> FormulaSet<A> {
@@ -169,29 +169,23 @@ impl<A: Atomic> FormulaSet<A> {
 
         // Take the cartersian product
         for a in &positive.sets {
-            'loop_inner: for n in &negative.sets {
+            for n in &negative.sets {
                 let mut fresh = a.clone();
                 fresh.extend(n.iter().cloned());
 
                 // Ensure the fresh vec emulates a set
-                fresh.sort_unstable();
-                fresh.dedup();
+                setify(&mut fresh);
 
                 // Skip tivial sets from resolution
-                for literal_index in 1..fresh.len() {
-                    if fresh[literal_index - 1].id() == fresh[literal_index].id() {
-                        continue 'loop_inner;
-                    }
+                if !set_contains_complementary_literals(&fresh) {
+                    // Extend the formula
+                    self.sets.push(fresh);
                 }
-
-                // Extend the formula
-                self.sets.push(fresh);
             }
         }
 
         // Ensure the formula continues to emulate a set
-        self.sets.sort_unstable();
-        self.sets.dedup();
+        self.setify_outer();
 
         // Remove the atom used as a pivot.
         self.atoms.remove(id);

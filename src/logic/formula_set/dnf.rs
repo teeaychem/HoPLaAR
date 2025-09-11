@@ -1,6 +1,6 @@
 use crate::logic::{
     Atomic, Formula, Literal, OpBinary, OpUnary,
-    formula_set::{FormulaSet, Mode, literal_set_cmp, literal_set_to_formula},
+    formula_set::{FormulaSet, Mode, literal_set_cmp, literal_set_to_formula, setify},
 };
 
 impl<A: Atomic> Formula<A> {
@@ -46,14 +46,8 @@ impl<A: Atomic> Formula<A> {
                         let mut fm = Vec::with_capacity(lhs.sets.len() * rhs.sets.len());
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
-                                let mut product: Vec<Literal<A>> =
-                                    l_set.iter().chain(r_set).cloned().collect();
-
-                                // 'Setify'
-                                // As the product is partially sorted, stable sort is preferred.
-                                product.sort();
-                                product.dedup();
-
+                                let mut product = l_set.iter().chain(r_set).cloned().collect();
+                                setify(&mut product);
                                 fm.push(product);
                             }
                         }
