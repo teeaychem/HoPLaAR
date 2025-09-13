@@ -16,6 +16,8 @@ pub use terms::{Term, TermId};
 mod relations;
 pub use relations::Relation;
 
+mod unification;
+
 // Local usage
 
 use std::collections::HashSet;
