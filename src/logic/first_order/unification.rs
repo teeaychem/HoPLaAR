@@ -100,6 +100,27 @@ impl Unifier {
             }
         }
     }
+
+    pub fn update_term(&mut self, t: Term) -> Term {
+        match t {
+            Term::F(Fun { id, variant, args }) => Term::F(Fun {
+                id,
+                variant,
+                args: args.into_iter().map(|arg| self.update_term(arg)).collect(),
+            }),
+            Term::V(ref var) => match self.get_value(var) {
+                Some(y) => y.clone(),
+                None => t,
+            },
+        }
+    }
+
+    pub fn solve_one_pass(&mut self) {
+        for index in 0..self.env.len() {
+            let to = std::mem::take(&mut self.env[index].to);
+            self.env[index].to = self.update_term(to)
+        }
+    }
 }
 
 impl std::fmt::Display for Unifier {
@@ -119,13 +140,16 @@ mod tests {
     #[test]
     fn debug() {
         let mut u = Unifier::default();
-        let t1 = Term::try_from("f(y)").unwrap();
-        let t2 = Term::try_from("x").unwrap();
-        let t3 = Term::try_from("g(v)").unwrap();
-        let t4 = Term::try_from("z").unwrap();
-        let t5 = Term::try_from("y").unwrap();
-        let t6 = Term::try_from("x").unwrap();
+        let t1 = Term::try_from("a").unwrap();
+        let t2 = Term::try_from("b").unwrap();
+        let t3 = Term::try_from("f(a)").unwrap();
+        let t4 = Term::try_from("c").unwrap();
 
-        u.unify(vec![(t1, t2), (t3, t4), (t5, t6)]);
+        u.unify(vec![(t1, t2), (t3, t4)]);
+
+        println!("{u}");
+        u.solve_one_pass();
+
+        println!("{u}");
     }
 }

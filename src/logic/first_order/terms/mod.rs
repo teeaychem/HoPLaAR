@@ -21,6 +21,17 @@ pub enum Term {
     V(Var),
 }
 
+// Availability of a default term is useful for mem tasks. E.g., take.
+// The default term, however, should never be used.
+impl Default for Term {
+    fn default() -> Self {
+        Term::V(Var {
+            id: "!".to_string(),
+            variant: usize::MAX,
+        })
+    }
+}
+
 impl Term {
     pub fn string_ansi(&self) -> String {
         match self {
