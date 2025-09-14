@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::logic::first_order::{
     Term,
     terms::{Fun, Var},
@@ -6,18 +8,23 @@ use crate::logic::first_order::{
 pub type EqsSlice = [(Term, Term)];
 pub type EqsVec = Vec<(Term, Term)>;
 
-/// A mapping `from` a variable `to` a term.
-#[derive(Clone, Debug)]
-pub struct Mapping {
-    from: Var,
-    to: Term,
-}
-
 /// A struct which handles the state of unification, and bundles methods for unification.
+///
+/// The unification environment is split into two parts.
+/// - A mapping from variables to indices.
+/// - A collection of indexed terms.
 #[derive(Clone, Debug, Default)]
 pub struct Unifier {
-    /// A unification is a collection of [Mapping]s.
-    env: Vec<Mapping>,
+    // The split mapping requires two steps.
+    // However:
+    // - Terms can be freely mutated while retaining the ability to lookup mappings.
+    // - Iteration through terms does not require inspection of empty buckets in a hash map, etc.
+    //
+    /// A mapping from variables to the position of a term in `indexed_terms`.
+    term_indicies: HashMap<Var, usize>,
+
+    /// A collection of indexed terms.
+    indexed_terms: Vec<Term>,
 }
 
 /// The type of mapping, with respect to some background env.
@@ -52,25 +59,22 @@ impl Unifier {
             }
 
             Term::V(y) if x == y => MapType::Trivial,
-            Term::V(y) => {
-                let v = self.env.binary_search_by(|m| m.from.cmp(y));
-                match v {
-                    Ok(index) => self.get_map_type(x, &self.env[index].to),
-                    Err(_) => MapType::Fresh,
-                }
-            }
+            Term::V(y) => match self.get_index(y) {
+                Some(index) => self.get_map_type(x, &self.indexed_terms[index]),
+                None => MapType::Fresh,
+            },
         }
     }
 
     /// Returns the index of variable `v` in the env.
     pub fn get_index(&self, v: &Var) -> Option<usize> {
-        self.env.binary_search_by(|m| m.from.cmp(v)).ok()
+        self.term_indicies.get(v).cloned()
     }
 
     /// Returns the term which variable `v` maps to in the unification environment.
     pub fn get_value(&self, v: &Var) -> Option<&Term> {
         match self.get_index(v) {
-            Some(index) => Some(&self.env[index].to),
+            Some(index) => Some(&self.indexed_terms[index]),
             None => None,
         }
     }
@@ -79,8 +83,9 @@ impl Unifier {
 impl Unifier {
     /// Inserts a mapping from `v` to `t` into the unification environment.
     pub fn insert(&mut self, v: Var, t: Term) {
-        self.env.push(Mapping { from: v, to: t });
-        self.env.sort_by(|a, b| a.from.cmp(&b.from));
+        self.term_indicies
+            .insert(v.clone(), self.indexed_terms.len());
+        self.indexed_terms.push(t);
     }
 
     /// Unifies a sequences of equals.
@@ -149,14 +154,14 @@ impl Unifier {
     pub fn update_env_one_pass(&mut self) -> bool {
         let mut update = false;
 
-        for index in 0..self.env.len() {
-            let to = std::mem::take(&mut self.env[index].to);
+        for index in 0..self.indexed_terms.len() {
+            let to = std::mem::take(&mut self.indexed_terms[index]);
             match self.update_term(to) {
                 (t, true) => {
                     update = true;
-                    self.env[index].to = t
+                    self.indexed_terms[index] = t
                 }
-                (t, false) => self.env[index].to = t,
+                (t, false) => self.indexed_terms[index] = t,
             }
         }
 
@@ -195,8 +200,8 @@ impl Unifier {
 
 impl std::fmt::Display for Unifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for map in &self.env {
-            writeln!(f, "{} -> {}", map.from, map.to)?
+        for (v, index) in &self.term_indicies {
+            writeln!(f, "{v} \t=>\t {}", self.indexed_terms[*index])?
         }
 
         Ok(())
