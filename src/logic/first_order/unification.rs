@@ -3,7 +3,8 @@ use crate::logic::first_order::{
     terms::{Fun, Var},
 };
 
-pub type Eqs = Vec<(Term, Term)>;
+pub type EqsSlice = [(Term, Term)];
+pub type EqsVec = Vec<(Term, Term)>;
 
 /// A mapping `from` a variable `to` a term.
 #[derive(Clone, Debug)]
@@ -24,6 +25,12 @@ pub struct Unifier {
 pub enum MapType {
     Trivial,
     Fresh,
+    Cyclic,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnificationFailure {
+    Impossible,
     Cyclic,
 }
 
@@ -79,32 +86,36 @@ impl Unifier {
     /// Unifies a sequences of equals.
     ///
     /// An iterative variant of a recursive implementation from the book.
-    pub fn unify(&mut self, mut eqs: Eqs) {
-        while let Some((lhs, rhs)) = eqs.pop() {
+    pub fn unify(&mut self, eqs: &EqsSlice) -> Result<(), UnificationFailure> {
+        let mut todo = eqs.to_vec();
+
+        while let Some((lhs, rhs)) = todo.pop() {
             match (lhs, rhs) {
                 (Term::F(f), Term::F(g)) => {
                     if f == g {
-                        eqs.extend(f.args.iter().cloned().zip(g.args.iter().cloned()));
+                        todo.extend(f.args.iter().cloned().zip(g.args.iter().cloned()));
                     } else {
-                        panic!("Impossible")
+                        return Err(UnificationFailure::Impossible);
                     }
                 }
 
                 (Term::V(x), t) | (t, Term::V(x)) => {
                     if let Some(y) = self.get_value(&x) {
-                        eqs.push((y.clone(), t));
+                        todo.push((y.clone(), t));
                     } else {
                         match self.get_map_type(&x, &t) {
                             MapType::Trivial => {}
                             MapType::Fresh => {
                                 self.insert(x, t);
                             }
-                            MapType::Cyclic => panic!("Cyclic"),
+                            MapType::Cyclic => return Err(UnificationFailure::Cyclic),
                         }
                     }
                 }
             }
         }
+
+        Ok(())
     }
 
     /// Updates the given term `t` by replacing variables with a term mapped by the unification environment, if possible.
@@ -163,9 +174,22 @@ impl Unifier {
     }
 
     /// Fully unifies a seques of equals.
-    pub fn fully_unify(&mut self, eqs: Eqs) {
-        self.unify(eqs);
+    pub fn fully_unify(&mut self, eqs: &EqsSlice) -> Result<(), UnificationFailure> {
+        self.unify(eqs)?;
         self.solve();
+        Ok(())
+    }
+
+    pub fn unify_and_apply(&mut self, eqs: &mut EqsVec) -> Result<(), UnificationFailure> {
+        self.fully_unify(eqs)?;
+        for (a, b) in eqs {
+            let taken_a = std::mem::take(a);
+            *a = self.update_term(taken_a).0;
+
+            let taken_b = std::mem::take(b);
+            *b = self.update_term(taken_b).0;
+        }
+        Ok(())
     }
 }
 
@@ -181,21 +205,63 @@ impl std::fmt::Display for Unifier {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::first_order::{Term, unification::Unifier};
+    use crate::logic::first_order::{
+        Term,
+        unification::{UnificationFailure, Unifier},
+    };
 
     #[test]
-    fn debug() {
+    fn simple_one() {
         let mut u = Unifier::default();
-        let t1 = Term::try_from("a").unwrap();
-        let t2 = Term::try_from("b").unwrap();
-        let t3 = Term::try_from("c").unwrap();
-        let t4 = Term::try_from("d").unwrap();
-        let t5 = Term::try_from("a").unwrap();
-        let t6 = Term::try_from("c").unwrap();
 
-        u.unify(vec![(t1, t2), (t3, t4), (t5, t6)]);
+        let t1 = Term::try_from("f(x, g(y))").unwrap();
+        let t2 = Term::try_from("f(f(z), w)").unwrap();
 
-        u.solve();
-        println!("{u}")
+        let e1 = Term::try_from("f(f(z), g(y))").unwrap();
+        let e2 = Term::try_from("f(f(z), g(y))").unwrap();
+
+        let mut eqs = vec![(t1, t2)];
+        let _ = u.unify_and_apply(&mut eqs);
+        match eqs.as_slice() {
+            [(a, b)] => {
+                assert_eq!(a, &e1);
+                assert_eq!(b, &e2);
+            }
+
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn simple_two() {
+        let mut u = Unifier::default();
+
+        let t1 = Term::try_from("f(x, y)").unwrap();
+        let t2 = Term::try_from("f(y, x)").unwrap();
+
+        let e1 = Term::try_from("f(y, y)").unwrap();
+        let e2 = Term::try_from("f(y, y)").unwrap();
+
+        let mut eqs = vec![(t1, t2)];
+        let _ = u.unify_and_apply(&mut eqs);
+        match eqs.as_slice() {
+            [(a, b)] => {
+                assert_eq!(a, &e1);
+                assert_eq!(b, &e2);
+            }
+
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn simple_cyclic() {
+        let mut u = Unifier::default();
+
+        let t1 = Term::try_from("f(x, g(y))").unwrap();
+        let t2 = Term::try_from("f(y, x))").unwrap();
+        let mut eqs = vec![(t1, t2)];
+        let result = u.unify_and_apply(&mut eqs);
+        assert_eq!(result, Err(UnificationFailure::Cyclic))
     }
 }
