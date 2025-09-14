@@ -5,17 +5,21 @@ use crate::logic::first_order::{
 
 pub type Eqs = Vec<(Term, Term)>;
 
+/// A mapping `from` a variable `to` a term.
 #[derive(Clone, Debug)]
 pub struct Mapping {
     from: Var,
     to: Term,
 }
 
+/// A struct which handles the state of unification, and bundles methods for unification.
 #[derive(Clone, Debug, Default)]
 pub struct Unifier {
+    /// A unification is a collection of [Mapping]s.
     env: Vec<Mapping>,
 }
 
+/// The type of mapping, with respect to some background env.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MapType {
     Trivial,
@@ -51,12 +55,14 @@ impl Unifier {
         }
     }
 
-    pub fn get_index(&self, k: &Var) -> Option<usize> {
-        self.env.binary_search_by(|m| m.from.cmp(k)).ok()
+    /// Returns the index of variable `v` in the env.
+    pub fn get_index(&self, v: &Var) -> Option<usize> {
+        self.env.binary_search_by(|m| m.from.cmp(v)).ok()
     }
 
-    pub fn get_value(&self, k: &Var) -> Option<&Term> {
-        match self.get_index(k) {
+    /// Returns the term which variable `v` maps to in the unification environment.
+    pub fn get_value(&self, v: &Var) -> Option<&Term> {
+        match self.get_index(v) {
             Some(index) => Some(&self.env[index].to),
             None => None,
         }
@@ -64,15 +70,15 @@ impl Unifier {
 }
 
 impl Unifier {
+    /// Inserts a mapping from `v` to `t` into the unification environment.
     pub fn insert(&mut self, v: Var, t: Term) {
         self.env.push(Mapping { from: v, to: t });
         self.env.sort_by(|a, b| a.from.cmp(&b.from));
     }
 
+    /// Unifies a sequences of equals.
     ///
-    ///
-    /// An iterative variant of the books recursive implementation.
-    ///
+    /// An iterative variant of a recursive implementation from the book.
     pub fn unify(&mut self, mut eqs: Eqs) {
         while let Some((lhs, rhs)) = eqs.pop() {
             match (lhs, rhs) {
@@ -101,6 +107,8 @@ impl Unifier {
         }
     }
 
+    /// Updates the given term `t` by replacing variables with a term mapped by the unification environment, if possible.
+    /// Otherwise, returns `t`.
     pub fn update_term(&mut self, t: Term) -> (Term, bool) {
         let mut update = false;
 
@@ -126,7 +134,8 @@ impl Unifier {
         }
     }
 
-    pub fn solve_one_pass(&mut self) -> bool {
+    /// Takes a single pass over the unification environment, updating each term mapped to, whenever possible.
+    pub fn update_env_one_pass(&mut self) -> bool {
         let mut update = false;
 
         for index in 0..self.env.len() {
@@ -143,13 +152,20 @@ impl Unifier {
         update
     }
 
+    /// Solves a unification environment by repeatedly updating mapped to terms until a fixed point is established.
+    /// A count of update passes until the fixed point is returned.
     pub fn solve(&mut self) -> usize {
         let mut passes = 0;
-        while self.solve_one_pass() {
+        while self.update_env_one_pass() {
             passes += 1;
-            println!("{self}");
         }
         passes
+    }
+
+    /// Fully unifies a seques of equals.
+    pub fn fully_unify(&mut self, eqs: Eqs) {
+        self.unify(eqs);
+        self.solve();
     }
 }
 
