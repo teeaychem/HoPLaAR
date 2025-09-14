@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::logic::first_order::{
     Term,
     terms::{Fun, Var},
@@ -7,9 +5,15 @@ use crate::logic::first_order::{
 
 pub type Eqs = Vec<(Term, Term)>;
 
+#[derive(Clone, Debug)]
+pub struct Mapping {
+    from: Var,
+    to: Term,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Unifier {
-    env: HashMap<Var, Term>,
+    env: Vec<Mapping>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,15 +41,34 @@ impl Unifier {
             }
 
             Term::V(y) if x == y => MapType::Trivial,
-            Term::V(y) => match self.env.get(y) {
-                Some(t_y) => self.get_map_type(x, t_y),
-                None => MapType::Fresh,
-            },
+            Term::V(y) => {
+                let v = self.env.binary_search_by(|m| m.from.cmp(y));
+                match v {
+                    Ok(index) => self.get_map_type(x, &self.env[index].to),
+                    Err(_) => MapType::Fresh,
+                }
+            }
+        }
+    }
+
+    pub fn get_index(&self, k: &Var) -> Option<usize> {
+        self.env.binary_search_by(|m| m.from.cmp(k)).ok()
+    }
+
+    pub fn get_value(&self, k: &Var) -> Option<&Term> {
+        match self.get_index(k) {
+            Some(index) => Some(&self.env[index].to),
+            None => None,
         }
     }
 }
 
 impl Unifier {
+    pub fn insert(&mut self, v: Var, t: Term) {
+        self.env.push(Mapping { from: v, to: t });
+        self.env.sort_by(|a, b| a.from.cmp(&b.from));
+    }
+
     ///
     ///
     /// An iterative variant of the books recursive implementation.
@@ -62,13 +85,13 @@ impl Unifier {
                 }
 
                 (Term::V(x), t) | (t, Term::V(x)) => {
-                    if let Some(y) = self.env.get(&x) {
+                    if let Some(y) = self.get_value(&x) {
                         eqs.push((y.clone(), t));
                     } else {
                         match self.get_map_type(&x, &t) {
                             MapType::Trivial => {}
                             MapType::Fresh => {
-                                self.env.insert(x, t);
+                                self.insert(x, t);
                             }
                             MapType::Cyclic => panic!("Cyclic"),
                         }
@@ -77,14 +100,12 @@ impl Unifier {
             }
         }
     }
-
-    pub fn solve_step(&mut self) {}
 }
 
 impl std::fmt::Display for Unifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (k, v) in &self.env {
-            writeln!(f, "{k} -> {v}")?
+        for map in &self.env {
+            writeln!(f, "{} -> {}", map.from, map.to)?
         }
 
         Ok(())
@@ -100,10 +121,11 @@ mod tests {
         let mut u = Unifier::default();
         let t1 = Term::try_from("f(y)").unwrap();
         let t2 = Term::try_from("x").unwrap();
-        let t3 = Term::try_from("g(x)").unwrap();
-        let t4 = Term::try_from("y").unwrap();
+        let t3 = Term::try_from("g(v)").unwrap();
+        let t4 = Term::try_from("z").unwrap();
+        let t5 = Term::try_from("y").unwrap();
+        let t6 = Term::try_from("x").unwrap();
 
-        u.unify(vec![(t1, t2), (t3, t4)]);
-        println!("{u}");
+        u.unify(vec![(t1, t2), (t3, t4), (t5, t6)]);
     }
 }
