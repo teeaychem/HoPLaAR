@@ -137,6 +137,18 @@ impl Term {
 
         vars
     }
+
+    /// Returns whether all subterms of `self` are equal to `other`, `self` and `other` included.
+    pub fn subterm_eq(&self, other: &Term) -> bool {
+        match (self, other) {
+            (Term::F(_), Term::V(_)) | (Term::V(_), Term::F(_)) => false,
+            (Term::F(l), Term::F(r)) => {
+                l == r && l.args.iter().zip(&r.args).all(|(l, r)| l.subterm_eq(r))
+            }
+
+            (Term::V(l), Term::V(r)) => l == r,
+        }
+    }
 }
 
 pub struct TermIteratorD<'a> {

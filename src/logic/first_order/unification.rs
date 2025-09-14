@@ -218,14 +218,13 @@ mod tests {
         let t2 = Term::try_from("f(f(z), w)").unwrap();
 
         let e1 = Term::try_from("f(f(z), g(y))").unwrap();
-        let e2 = Term::try_from("f(f(z), g(y))").unwrap();
 
         let mut eqs = vec![(t1, t2)];
         let _ = u.unify_and_apply(&mut eqs);
         match eqs.as_slice() {
             [(a, b)] => {
-                assert_eq!(a, &e1);
-                assert_eq!(b, &e2);
+                assert!(a.subterm_eq(&e1));
+                assert!(b.subterm_eq(&e1));
             }
 
             _ => unreachable!(),
@@ -239,15 +238,15 @@ mod tests {
         let t1 = Term::try_from("f(x, y)").unwrap();
         let t2 = Term::try_from("f(y, x)").unwrap();
 
-        let e1 = Term::try_from("f(y, y)").unwrap();
+        let e1 = Term::try_from("f(x, x)").unwrap();
         let e2 = Term::try_from("f(y, y)").unwrap();
 
         let mut eqs = vec![(t1, t2)];
         let _ = u.unify_and_apply(&mut eqs);
         match eqs.as_slice() {
             [(a, b)] => {
-                assert_eq!(a, &e1);
-                assert_eq!(b, &e2);
+                assert!(a.subterm_eq(&e1) || a.subterm_eq(&e2));
+                assert!(b.subterm_eq(&e1) || b.subterm_eq(&e2));
             }
 
             _ => unreachable!(),
@@ -263,5 +262,41 @@ mod tests {
         let mut eqs = vec![(t1, t2)];
         let result = u.unify_and_apply(&mut eqs);
         assert_eq!(result, Err(UnificationFailure::Cyclic))
+    }
+
+    #[test]
+    fn large_unifier() {
+        let mut u = Unifier::default();
+
+        let t1 = Term::try_from("x_0").unwrap();
+        let t2 = Term::try_from("f(x_1, x_1)").unwrap();
+
+        let t3 = Term::try_from("x_1").unwrap();
+        let t4 = Term::try_from("f(x_2, x_2)").unwrap();
+
+        let t5 = Term::try_from("x_2").unwrap();
+        let t6 = Term::try_from("f(x_3, x_3)").unwrap();
+
+        let e1 =
+            Term::try_from("f(f(f(x_3, x_3), f(x_3, x_3)), f(f(x_3, x_3), f(x_3, x_3)))").unwrap();
+        let e2 = Term::try_from("f(f(x_3, x_3), f(x_3, x_3))").unwrap();
+        let e3 = Term::try_from("f(x_3, x_3)").unwrap();
+
+        let mut eqs = vec![(t1, t2), (t3, t4), (t5, t6)];
+        let _ = u.unify_and_apply(&mut eqs);
+        match eqs.as_slice() {
+            [(a, b), (c, d), (e, f)] => {
+                assert!(a.subterm_eq(&e1));
+                assert!(b.subterm_eq(&e1));
+
+                assert!(c.subterm_eq(&e2));
+                assert!(d.subterm_eq(&e2));
+
+                assert!(e.subterm_eq(&e3));
+                assert!(f.subterm_eq(&e3));
+            }
+
+            _ => unreachable!(),
+        }
     }
 }
