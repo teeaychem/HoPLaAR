@@ -1,6 +1,6 @@
 use crate::logic::{
     Atomic, Formula, Literal, OpBinary, OpUnary,
-    formula_set::{FormulaSet, Mode, literal_set_cmp, literal_set_to_formula},
+    formula_set::{FormulaSet, Mode, literal_set_to_formula},
 };
 
 impl<A: Atomic> FormulaSet<A> {
