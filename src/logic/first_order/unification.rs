@@ -101,25 +101,55 @@ impl Unifier {
         }
     }
 
-    pub fn update_term(&mut self, t: Term) -> Term {
+    pub fn update_term(&mut self, t: Term) -> (Term, bool) {
+        let mut update = false;
+
         match t {
-            Term::F(Fun { id, variant, args }) => Term::F(Fun {
-                id,
-                variant,
-                args: args.into_iter().map(|arg| self.update_term(arg)).collect(),
-            }),
+            Term::F(mut fun) => {
+                for arg in fun.args.iter_mut() {
+                    let taken_arg = std::mem::take(arg);
+                    match self.update_term(taken_arg) {
+                        (t, true) => {
+                            update = true;
+                            *arg = t
+                        }
+                        (t, false) => *arg = t,
+                    }
+                }
+
+                (Term::F(fun), update)
+            }
             Term::V(ref var) => match self.get_value(var) {
-                Some(y) => y.clone(),
-                None => t,
+                Some(y) => (y.clone(), true),
+                None => (t, false),
             },
         }
     }
 
-    pub fn solve_one_pass(&mut self) {
+    pub fn solve_one_pass(&mut self) -> bool {
+        let mut update = false;
+
         for index in 0..self.env.len() {
             let to = std::mem::take(&mut self.env[index].to);
-            self.env[index].to = self.update_term(to)
+            match self.update_term(to) {
+                (t, true) => {
+                    update = true;
+                    self.env[index].to = t
+                }
+                (t, false) => self.env[index].to = t,
+            }
         }
+
+        update
+    }
+
+    pub fn solve(&mut self) -> usize {
+        let mut passes = 0;
+        while self.solve_one_pass() {
+            passes += 1;
+            println!("{self}");
+        }
+        passes
     }
 }
 
@@ -142,14 +172,14 @@ mod tests {
         let mut u = Unifier::default();
         let t1 = Term::try_from("a").unwrap();
         let t2 = Term::try_from("b").unwrap();
-        let t3 = Term::try_from("f(a)").unwrap();
-        let t4 = Term::try_from("c").unwrap();
+        let t3 = Term::try_from("c").unwrap();
+        let t4 = Term::try_from("d").unwrap();
+        let t5 = Term::try_from("a").unwrap();
+        let t6 = Term::try_from("c").unwrap();
 
-        u.unify(vec![(t1, t2), (t3, t4)]);
+        u.unify(vec![(t1, t2), (t3, t4), (t5, t6)]);
 
-        println!("{u}");
-        u.solve_one_pass();
-
-        println!("{u}");
+        u.solve();
+        println!("{u}")
     }
 }
