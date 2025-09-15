@@ -184,10 +184,17 @@ impl<A: Atomic> FormulaSet<A> {
         }
     }
 
+    /// Returns the index which separates negative literals from positive literals, if such an index exists.
+    /// If all literals share the same value, None is returned.
+    /// Note, as a consequence of the above, the returned index is never 0.
+    /// (For, otherwise all literals must be positive.)
     pub fn get_negative_positive_split(&self, set_index: usize) -> Option<usize> {
         for (index, literal) in self.sets[set_index].iter().enumerate() {
             if literal.value() {
-                return Some(index);
+                match index {
+                    0 => return None,
+                    _ => return Some(index),
+                }
             }
         }
         None
