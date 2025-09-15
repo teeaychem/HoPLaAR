@@ -58,7 +58,7 @@ impl<A: Atomic> FormulaSet<A> {
 
         'set_loop: while set_idx < limit {
             if self.sets[set_idx].len() > 1 {
-                let false_index = match self.get_negative_positive_split(set_idx) {
+                let false_index = match Self::get_negative_positive_split(&self.sets[set_idx]) {
                     Some(index) => index,
                     None => continue 'set_loop,
                 };

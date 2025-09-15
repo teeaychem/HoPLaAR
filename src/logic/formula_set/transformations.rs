@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::logic::{
     Atomic, Literal,
-    formula_set::{FormulaSet, Mode, set_contains_complementary_literals, setify},
+    formula_set::{FormulaSet, Mode, setify},
 };
 
 impl<A: Atomic> FormulaSet<A> {
@@ -177,7 +177,7 @@ impl<A: Atomic> FormulaSet<A> {
                 setify(&mut fresh);
 
                 // Skip tivial sets from resolution
-                if !set_contains_complementary_literals(&fresh) {
+                if !Self::set_contains_complementary_literals(&fresh) {
                     // Extend the formula
                     self.sets.push(fresh);
                 }

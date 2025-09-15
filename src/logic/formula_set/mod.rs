@@ -188,8 +188,8 @@ impl<A: Atomic> FormulaSet<A> {
     /// If all literals share the same value, None is returned.
     /// Note, as a consequence of the above, the returned index is never 0.
     /// (For, otherwise all literals must be positive.)
-    pub fn get_negative_positive_split(&self, set_index: usize) -> Option<usize> {
-        for (index, literal) in self.sets[set_index].iter().enumerate() {
+    pub fn get_negative_positive_split(set: &[Literal<A>]) -> Option<usize> {
+        for (index, literal) in set.iter().enumerate() {
             if literal.value() {
                 match index {
                     0 => return None,
@@ -199,18 +199,77 @@ impl<A: Atomic> FormulaSet<A> {
         }
         None
     }
-}
 
-pub fn set_contains_complementary_literals<A: Atomic>(set: &LiteralSet<A>) -> bool {
-    for idx in 1..set.len() {
-        if set[idx - 1].id() == set[idx].id() {
-            return true;
+    pub fn set_contains_complementary_literals(set: &LiteralSet<A>) -> bool {
+        use std::cmp::Ordering::*;
+
+        match Self::get_negative_positive_split(set) {
+            Some(index) => {
+                let (p, n) = set.split_at(index);
+
+                let mut p_index = 0;
+                let mut n_index = 0;
+
+                while p_index < p.len() && n_index < n.len() {
+                    match p[p_index].atom().cmp(n[n_index].atom()) {
+                        Less => p_index += 1,
+                        Equal => return true,
+                        Greater => n_index += 1,
+                    }
+                }
+                false
+            }
+            None => false,
         }
     }
-    false
 }
 
 pub fn setify<A: Atomic>(set: &mut Vec<Literal<A>>) {
     set.sort_unstable();
     set.dedup();
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logic::{
+        first_order::FirstOrderFormula,
+        formula_set::{FormulaSet, Mode},
+    };
+
+    #[test]
+    fn complementary_literals() {
+        let fm = FirstOrderFormula::from("(P(a) & ~P(a))");
+        let fms = fm.to_set_direct(Mode::DNF);
+        assert!(
+            fms.sets()
+                .iter()
+                .any(FormulaSet::set_contains_complementary_literals)
+        );
+
+        let fm = FirstOrderFormula::from("(P(a) & ~P(b))");
+        let fms = fm.to_set_direct(Mode::DNF);
+        assert!(
+            !fms.sets()
+                .iter()
+                .all(FormulaSet::set_contains_complementary_literals)
+        );
+    }
+
+    #[test]
+    fn negative_positive_split() {
+        let fm = FirstOrderFormula::from("P(a) & ~P(a) & ~Q(c)");
+        let fms = fm.to_set_direct(Mode::DNF);
+        let split = FormulaSet::get_negative_positive_split(fms.sets().first().unwrap());
+        assert_eq!(Some(2), split);
+
+        let fm = FirstOrderFormula::from("~P(a) & ~P(a) & ~Q(c)");
+        let fms = fm.to_set_direct(Mode::DNF);
+        let split = FormulaSet::get_negative_positive_split(fms.sets().first().unwrap());
+        assert_eq!(None, split);
+
+        let fm = FirstOrderFormula::from("P(a) & P(b) & Q(c)");
+        let fms = fm.to_set_direct(Mode::DNF);
+        let split = FormulaSet::get_negative_positive_split(fms.sets().first().unwrap());
+        assert_eq!(None, split);
+    }
 }
