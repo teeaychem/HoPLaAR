@@ -160,7 +160,7 @@ mod tests {
     use crate::arithmetic::parsing::parse_arithmetic;
 
     #[test]
-    fn debug() {
+    fn simple() {
         let expr = "2 * ((var_1 + x’) + 11)";
         let parse = parse_arithmetic(expr);
         assert_eq!(format!("{parse}"), format!("({expr})"));
