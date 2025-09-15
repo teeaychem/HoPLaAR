@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
-use crate::logic::first_order::{
-    Term,
-    terms::{Fun, Var},
+use crate::logic::{
+    Formula, OpUnary,
+    first_order::{
+        FirstOrderFormula, Relation, Term,
+        terms::{Fun, Var},
+    },
 };
 
 pub type EqsSlice = [(Term, Term)];
@@ -196,6 +199,28 @@ impl Unifier {
         }
         Ok(())
     }
+
+    pub fn unify_literals(
+        &mut self,
+        l: &FirstOrderFormula,
+        r: &FirstOrderFormula,
+    ) -> Result<(), UnificationFailure> {
+        use {Formula::*, OpUnary::*};
+        match (l, r) {
+            (Atom(Relation { terms: t_l, .. }), Atom(Relation { terms: t_r, .. })) => {
+                let eqs: Vec<_> = t_l.iter().cloned().zip(t_r.iter().cloned()).collect();
+                self.unify(&eqs)
+            }
+
+            (Unary { op: Not, expr: l_e }, Unary { op: Not, expr: r_e }) => {
+                self.unify_literals(l_e, r_e)
+            }
+
+            (False, False) => Ok(()),
+
+            _ => panic!("Can't unify literals"),
+        }
+    }
 }
 
 impl std::fmt::Display for Unifier {
@@ -210,9 +235,12 @@ impl std::fmt::Display for Unifier {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::first_order::{
-        Term,
-        unification::{UnificationFailure, Unifier},
+    use crate::logic::{
+        first_order::{
+            FirstOrderFormula, Relation, Term,
+            unification::{UnificationFailure, Unifier},
+        },
+        formula_set::Mode,
     };
 
     #[test]
@@ -303,5 +331,17 @@ mod tests {
 
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn debug_simple_two_relation() {
+        let mut u = Unifier::default();
+
+        let t1 = FirstOrderFormula::from("R(x, y)");
+        let t2 = FirstOrderFormula::from("R(y, x)");
+
+        let _ = u.unify_literals(&t1, &t2);
+
+        println!("{u}");
     }
 }
