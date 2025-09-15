@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
 use crate::logic::{
-    Formula, OpUnary,
+    Atomic, Formula, OpUnary,
     first_order::{
         FirstOrderFormula, Relation, Term,
         terms::{Fun, Var},
     },
+    formula_set::FormulaSet,
 };
 
 pub type EqsSlice = [(Term, Term)];
@@ -207,10 +208,7 @@ impl Unifier {
     ) -> Result<(), UnificationFailure> {
         use {Formula::*, OpUnary::*};
         match (l, r) {
-            (Atom(Relation { terms: t_l, .. }), Atom(Relation { terms: t_r, .. })) => {
-                let eqs: Vec<_> = t_l.iter().cloned().zip(t_r.iter().cloned()).collect();
-                self.unify(&eqs)
-            }
+            (Atom(l), Atom(r)) => self.unify_relations(l, r),
 
             (Unary { op: Not, expr: l_e }, Unary { op: Not, expr: r_e }) => {
                 self.unify_literals(l_e, r_e)
@@ -220,6 +218,57 @@ impl Unifier {
 
             _ => panic!("Can't unify literals"),
         }
+    }
+
+    pub fn unify_relations(
+        &mut self,
+        l: &Relation,
+        r: &Relation,
+    ) -> Result<(), UnificationFailure> {
+        if l.id == r.id && l.terms.len() == r.terms.len() {
+            let eqs: Vec<_> = l
+                .terms
+                .iter()
+                .cloned()
+                .zip(r.terms.iter().cloned())
+                .collect();
+            self.unify(&eqs)
+        } else {
+            panic!("Can't unify relations")
+        }
+    }
+}
+
+impl Unifier {
+    pub fn unify_complements(
+        &mut self,
+        fs: &FormulaSet<Relation>,
+    ) -> Result<(), UnificationFailure> {
+        use std::cmp::Ordering;
+
+        'loop_set: for disjunct in fs.sets().iter() {
+            let (p, n) = match FormulaSet::get_negative_positive_split(disjunct) {
+                Some(index) => disjunct.split_at(index),
+                None => continue 'loop_set,
+            };
+
+            let mut p_index = 0;
+            let mut n_index = 0;
+
+            while p_index < p.len() && n_index < n.len() {
+                match p[p_index].id().cmp(n[n_index].id()) {
+                    Ordering::Less => p_index += 1,
+                    Ordering::Equal => {
+                        self.unify_relations(p[p_index].atom(), n[n_index].atom())?;
+                        p_index += 1;
+                        n_index += 1;
+                    }
+                    Ordering::Greater => n_index += 1,
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -237,7 +286,7 @@ impl std::fmt::Display for Unifier {
 mod tests {
     use crate::logic::{
         first_order::{
-            FirstOrderFormula, Relation, Term,
+            FirstOrderFormula, Term,
             unification::{UnificationFailure, Unifier},
         },
         formula_set::Mode,
@@ -343,5 +392,19 @@ mod tests {
         let _ = u.unify_literals(&t1, &t2);
 
         println!("{u}");
+    }
+
+    #[test]
+    fn debug() {
+        let fm = FirstOrderFormula::from("(R(a, b) &  ~R(c, d)) | (R(a, b) & ~R(e, f))");
+        let fm = fm.raw_dnf();
+        let fms = fm.to_set_direct(Mode::DNF);
+        println!("{fms}");
+
+        let mut u = Unifier::default();
+        let result = u.unify_complements(&fms);
+
+        println!("{result:?}");
+        println!("Unified complements: {u}");
     }
 }
