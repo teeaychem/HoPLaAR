@@ -120,6 +120,14 @@ impl<A: Atomic> FormulaSet<A> {
         self.sets.sort_by(|a, b| literal_set_cmp(a, b));
         self.sets.dedup();
     }
+
+    pub fn sort_outer_and_inner(&mut self) {
+        for set in &mut self.sets {
+            set.sort_unstable();
+        }
+
+        self.sets.sort_by(|a, b| literal_set_cmp(a, b));
+    }
 }
 
 impl<A: Atomic> FormulaSet<A> {
@@ -175,6 +183,15 @@ impl<A: Atomic> FormulaSet<A> {
             Mode::DNF => self.dnf_formula(),
         }
     }
+
+    pub fn get_negative_positive_split(&self, set_index: usize) -> Option<usize> {
+        for (index, literal) in self.sets[set_index].iter().enumerate() {
+            if literal.value() {
+                return Some(index);
+            }
+        }
+        None
+    }
 }
 
 pub fn set_contains_complementary_literals<A: Atomic>(set: &LiteralSet<A>) -> bool {
@@ -186,7 +203,7 @@ pub fn set_contains_complementary_literals<A: Atomic>(set: &LiteralSet<A>) -> bo
     false
 }
 
-pub fn setify<A: Atomic>(set: &mut LiteralSet<A>) {
+pub fn setify<A: Atomic>(set: &mut Vec<Literal<A>>) {
     set.sort_unstable();
     set.dedup();
 }

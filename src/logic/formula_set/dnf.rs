@@ -51,16 +51,32 @@ impl<A: Atomic> Formula<A> {
 
 impl<A: Atomic> FormulaSet<A> {
     pub fn dnf_filter_contradictions(&mut self) {
+        use std::cmp::Ordering::*;
+
         let mut limit = self.sets.len();
         let mut set_idx = 0;
 
         'set_loop: while set_idx < limit {
             if self.sets[set_idx].len() > 1 {
-                for idx in 1..self.sets[set_idx].len() {
-                    if self.sets[set_idx][idx - 1].atom() == self.sets[set_idx][idx].atom() {
-                        self.sets.swap_remove(set_idx);
-                        limit -= 1;
-                        continue 'set_loop;
+                let false_index = match self.get_negative_positive_split(set_idx) {
+                    Some(index) => index,
+                    None => continue 'set_loop,
+                };
+
+                let (p, n) = self.sets[set_idx].split_at(false_index);
+
+                let mut p_index = 0;
+                let mut n_index = 0;
+
+                while p_index < p.len() && n_index < n.len() {
+                    match p[p_index].atom().cmp(n[n_index].atom()) {
+                        Less => p_index += 1,
+                        Equal => {
+                            self.sets.swap_remove(set_idx);
+                            limit -= 1;
+                            continue 'set_loop;
+                        }
+                        Greater => n_index += 1,
                     }
                 }
             }
@@ -121,6 +137,25 @@ mod tests {
     use crate::logic::{Formula, formula_set::Mode, parse_propositional};
 
     #[test]
+    fn dnf_set_bot() {
+        let expr = parse_propositional("false");
+        let dnf = expr.to_set_direct(Mode::DNF);
+        assert!(dnf.is_bot());
+
+        let expr = parse_propositional("p & ~p");
+        let mut dnf = expr.to_set_direct(Mode::DNF);
+        dnf.filter_contradictions();
+        assert!(dnf.is_bot());
+    }
+
+    #[test]
+    fn dnf_set_top() {
+        let expr = parse_propositional("true");
+        let dnf = expr.to_set_direct(Mode::DNF);
+        assert!(dnf.is_top());
+    }
+
+    #[test]
     fn dnf_set() {
         let expr = parse_propositional("(p | q & r) & (~p | ~r)");
         let mut dnf = expr.to_set_direct(Mode::DNF);
@@ -132,19 +167,6 @@ mod tests {
         let expr = parse_propositional("(p | p & r)");
         let dnf = expr.to_set_direct(Mode::DNF);
         assert_eq!(dnf.sets().len(), 2);
-
-        let expr = parse_propositional("false");
-        let dnf = expr.to_set_direct(Mode::DNF);
-        assert!(dnf.is_bot());
-
-        let expr = parse_propositional("p & ~p");
-        let mut dnf = expr.to_set_direct(Mode::DNF);
-        dnf.filter_contradictions();
-        assert!(dnf.is_bot());
-
-        let expr = parse_propositional("true");
-        let dnf = expr.to_set_direct(Mode::DNF);
-        assert!(dnf.is_top());
     }
 
     #[test]

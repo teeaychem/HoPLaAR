@@ -141,11 +141,14 @@ mod tests {
     #[test]
     fn cnf_set() {
         let p_q = parse_propositional("p | r");
-        let p_q_set = p_q.to_set_direct(Mode::CNF);
+        let mut p_q_set = p_q.to_set_direct(Mode::CNF);
 
         let expr = parse_propositional("~p => r");
         let mut cnf = expr.to_cnf_formula_set_tseytin();
         cnf.one_literal_rule();
+
+        cnf.sort_outer_and_inner();
+        p_q_set.sort_outer_and_inner();
         assert_eq!(cnf, p_q_set)
     }
 }

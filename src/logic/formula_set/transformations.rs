@@ -271,10 +271,12 @@ mod tests {
     }
 
     #[test]
-    fn dp_simple() {
+    fn dp_simple_bot() {
         let mut bot = parse_propositional("~p & p").to_cnf_formula_set_tseytin();
         assert!(!bot.is_sat_dp());
+    }
 
+    fn dp_simple_top() {
         let mut top = parse_propositional("~p | p").to_cnf_formula_set_tseytin();
         assert!(top.is_sat_dp());
     }

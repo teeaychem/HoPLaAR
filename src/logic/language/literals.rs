@@ -57,10 +57,10 @@ impl<A: Atomic> std::cmp::PartialOrd for Literal<A> {
 impl<A: Atomic> std::cmp::Ord for Literal<A> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         use std::cmp::Ordering::*;
-        match self.atom.cmp(&other.atom) {
+        match self.value.cmp(&other.value) {
             Less => Less,
             Greater => Greater,
-            Equal => self.value.cmp(&other.value),
+            Equal => self.atom.cmp(&other.atom),
         }
     }
 }
