@@ -281,10 +281,10 @@ mod tests {
         assert!(top.is_sat_dp());
     }
 
-    // #[test]
-    // fn debug() {
-    //     let mut fm =
-    //         parse_propositional("(~p | r | s) & (q | p | r) & (s | t)").to_cnf_set_direct();
-    //     println!("{}", fm.is_sat_dp());
-    // }
+    #[test]
+    fn dp_still_simple() {
+        let mut fm =
+            parse_propositional("(~p | r | s) & (q | p | r) & (s | t)").to_set_direct(Mode::CNF);
+        println!("{}", fm.is_sat_dp());
+    }
 }
