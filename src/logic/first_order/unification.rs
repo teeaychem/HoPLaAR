@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::logic::{
-    Atomic, Formula, OpUnary,
+    Atomic, Formula, Literal, OpUnary,
     first_order::{
         FirstOrderFormula, Relation, Term,
         terms::{Fun, Var},
@@ -220,6 +220,7 @@ impl Unifier {
         }
     }
 
+    /// Extends `self` with a unification of relations `l` and `r`, if possible.
     pub fn unify_relations(
         &mut self,
         l: &Relation,
@@ -240,34 +241,46 @@ impl Unifier {
 }
 
 impl Unifier {
+    /// Extends `self` with unifiers for all complementary literals in `set`.
     pub fn unify_complements(
         &mut self,
-        fs: &FormulaSet<Relation>,
+        set: &[Literal<Relation>],
     ) -> Result<(), UnificationFailure> {
         use std::cmp::Ordering;
+        // Splits the set into positive and negative literals, then examines all possible complements.
 
-        'loop_set: for disjunct in fs.sets().iter() {
-            let (p, n) = match FormulaSet::get_negative_positive_split(disjunct) {
-                Some(index) => disjunct.split_at(index),
-                None => continue 'loop_set,
-            };
+        let (p, n) = match FormulaSet::get_negative_positive_split(set) {
+            Some(index) => set.split_at(index),
+            None => return Ok(()),
+        };
 
-            let mut p_index = 0;
-            let mut n_index = 0;
+        // Here, using the inariant that literals of the same value are lexicographically ordered.
+        let mut p_index = 0;
+        let mut n_index = 0;
 
-            while p_index < p.len() && n_index < n.len() {
-                match p[p_index].id().cmp(n[n_index].id()) {
-                    Ordering::Less => p_index += 1,
-                    Ordering::Equal => {
-                        self.unify_relations(p[p_index].atom(), n[n_index].atom())?;
-                        p_index += 1;
-                        n_index += 1;
-                    }
-                    Ordering::Greater => n_index += 1,
+        while p_index < p.len() && n_index < n.len() {
+            match p[p_index].id().cmp(n[n_index].id()) {
+                Ordering::Less => p_index += 1,
+                Ordering::Equal => {
+                    self.unify_relations(p[p_index].atom(), n[n_index].atom())?;
+                    p_index += 1;
+                    n_index += 1;
                 }
+                Ordering::Greater => n_index += 1,
             }
         }
 
+        Ok(())
+    }
+
+    /// Extends `self` with unifiers for all complementary literals in the formula set `fs`
+    pub fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> Result<(), UnificationFailure> {
+        for disjunct in fs.sets().iter() {
+            match self.unify_complements(disjunct) {
+                Ok(_) => break,
+                Err(_) => continue,
+            }
+        }
         Ok(())
     }
 }
@@ -395,14 +408,18 @@ mod tests {
     }
 
     #[test]
-    fn debug() {
-        let fm = FirstOrderFormula::from("(R(a, b) &  ~R(c, d)) | (R(a, b) & ~R(e, f))");
-        let fm = fm.raw_dnf();
+    fn udebug() {
+        let mut fm = FirstOrderFormula::from("exists x. (P(x) & ~P(x))");
+        let mut fm = FirstOrderFormula::from("forall x. (P(x) | ~P(x))");
+        fm = fm.generalize().negate().skolemize().raw_dnf();
+
+        println!("{fm}");
+
         let fms = fm.to_set_direct(Mode::DNF);
         println!("{fms}");
 
         let mut u = Unifier::default();
-        let result = u.unify_complements(&fms);
+        let result = u.unify_refute(&fms);
 
         println!("{result:?}");
         println!("Unified complements: {u}");

@@ -153,10 +153,9 @@ impl FirstOrderFormula {
                         //
                         let xs = self.free_variables();
 
-                        // var would include ANSI markup, so use var.id
                         let id = match xs.is_empty() {
-                            true => format!("c_{}", var.id),
-                            false => format!("f_{}", var.id),
+                            true => format!("c_{var}"),
+                            false => format!("f_{var}"),
                         };
 
                         let fresh_f = Fun {
