@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::logic::{
-    Atomic, Formula, Literal, OpUnary,
+    Formula, Literal, OpUnary,
     first_order::{
         FirstOrderFormula, Relation, Term,
         terms::{Fun, Var},
@@ -41,7 +41,8 @@ pub enum MapType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UnificationFailure {
-    Impossible,
+    Distinct,
+    FormulaMismatch,
     Cyclic,
 }
 
@@ -78,7 +79,7 @@ impl Unifier {
     /// Returns the term which variable `v` maps to in the unification environment.
     pub fn get_value(&self, v: &Var) -> Option<&Term> {
         match self.get_index(v) {
-            Some(index) => Some(&self.indexed_terms[index]),
+            Some(index) => self.indexed_terms.get(index),
             None => None,
         }
     }
@@ -101,10 +102,12 @@ impl Unifier {
         while let Some((lhs, rhs)) = todo.pop() {
             match (lhs, rhs) {
                 (Term::F(f), Term::F(g)) => {
-                    if f == g {
-                        todo.extend(f.args.iter().cloned().zip(g.args.iter().cloned()));
-                    } else {
-                        return Err(UnificationFailure::Impossible);
+                    use std::cmp::Ordering::*;
+                    match f.cmp(&g) {
+                        Equal => todo.extend(f.args.iter().cloned().zip(g.args.iter().cloned())),
+                        _ => {
+                            return Err(UnificationFailure::Distinct);
+                        }
                     }
                 }
 
@@ -112,12 +115,11 @@ impl Unifier {
                     if let Some(y) = self.get_value(&x) {
                         todo.push((y.clone(), t));
                     } else {
+                        use MapType::*;
                         match self.get_map_type(&x, &t) {
-                            MapType::Trivial => {}
-                            MapType::Fresh => {
-                                self.insert(x, t);
-                            }
-                            MapType::Cyclic => return Err(UnificationFailure::Cyclic),
+                            Trivial => {}
+                            Fresh => self.insert(x, t),
+                            Cyclic => return Err(UnificationFailure::Cyclic),
                         }
                     }
                 }
@@ -216,7 +218,7 @@ impl Unifier {
 
             (False, False) => Ok(()),
 
-            _ => panic!("Can't unify literals"),
+            _ => Err(UnificationFailure::FormulaMismatch),
         }
     }
 
@@ -226,16 +228,15 @@ impl Unifier {
         l: &Relation,
         r: &Relation,
     ) -> Result<(), UnificationFailure> {
-        if l.id == r.id && l.terms.len() == r.terms.len() {
-            let eqs: Vec<_> = l
-                .terms
-                .iter()
-                .cloned()
-                .zip(r.terms.iter().cloned())
-                .collect();
-            self.unify(&eqs)
-        } else {
-            panic!("Can't unify relations")
+        match l.id == r.id && l.terms.len() == r.terms.len() {
+            true => {
+                let l_terms = l.terms.iter().cloned();
+                let r_terms = r.terms.iter().cloned();
+                let eqs: Vec<_> = l_terms.zip(r_terms).collect();
+                self.unify(&eqs)
+            }
+
+            false => Err(UnificationFailure::Distinct),
         }
     }
 }
@@ -409,7 +410,7 @@ mod tests {
 
     #[test]
     fn udebug() {
-        let mut fm = FirstOrderFormula::from("exists x. (P(x) & ~P(x))");
+        // let mut fm = FirstOrderFormula::from("exists x. (P(x) & ~P(x))");
         let mut fm = FirstOrderFormula::from("forall x. (P(x) | ~P(x))");
         fm = fm.generalize().negate().skolemize().raw_dnf();
 
