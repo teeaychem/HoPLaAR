@@ -242,17 +242,16 @@ impl Unifier {
 }
 
 impl Unifier {
-    /// Extends `self` with unifiers for all complementary literals in `set`.
-    pub fn unify_complements(
-        &mut self,
-        set: &[Literal<Relation>],
-    ) -> Result<(), UnificationFailure> {
+    /// Searches for a pair of complementary literals.
+    /// Returns true on the first unifier found, with `self` is updated with the unifier
+    /// Returns false, otherwise.
+    pub fn unify_complements(&mut self, set: &[Literal<Relation>]) -> bool {
         use std::cmp::Ordering;
         // Splits the set into positive and negative literals, then examines all possible complements.
 
         let (p, n) = match FormulaSet::get_negative_positive_split(set) {
             Some(index) => set.split_at(index),
-            None => return Ok(()),
+            None => return false,
         };
 
         // Here, using the inariant that literals of the same value are lexicographically ordered.
@@ -263,26 +262,32 @@ impl Unifier {
             match p[p_index].id().cmp(n[n_index].id()) {
                 Ordering::Less => p_index += 1,
                 Ordering::Equal => {
-                    self.unify_relations(p[p_index].atom(), n[n_index].atom())?;
-                    p_index += 1;
-                    n_index += 1;
+                    match self.unify_relations(p[p_index].atom(), n[n_index].atom()) {
+                        Ok(()) => return true,
+                        Err(_) => {
+                            p_index += 1;
+                            n_index += 1;
+                        }
+                    }
                 }
                 Ordering::Greater => n_index += 1,
             }
         }
 
-        Ok(())
+        false
     }
 
-    /// Extends `self` with unifiers for all complementary literals in the formula set `fs`
-    pub fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> Result<(), UnificationFailure> {
+    /// Attemps to extend `self` with a unifier for a pair of complementary literals for each set of relations in `fs`.
+    /// Returns true if a unifier for complementary literals has been found for each set of `fs`.
+    /// Returns false otherwise --- specifically, immediately on finding a set for which no unifier is available.
+    pub fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> bool {
         for disjunct in fs.sets().iter() {
             match self.unify_complements(disjunct) {
-                Ok(_) => break,
-                Err(_) => continue,
+                true => {}
+                false => return false,
             }
         }
-        Ok(())
+        true
     }
 }
 
