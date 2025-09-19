@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use crate::logic::{
-    Formula, Literal, OpUnary,
+    Formula, OpUnary,
     first_order::{
         FirstOrderFormula, Relation, Term,
         terms::{Fun, Var},
     },
-    formula_set::FormulaSet,
+    formula_set::{FormulaSet, LiteralSet},
 };
 
 pub type EqsSlice = [(Term, Term)];
@@ -245,12 +245,12 @@ impl Unifier {
     /// Searches for a pair of complementary literals.
     /// Returns true on the first unifier found, with `self` is updated with the unifier
     /// Returns false, otherwise.
-    pub fn unify_complements(&mut self, set: &[Literal<Relation>]) -> bool {
+    pub fn unify_complements(&mut self, set: &LiteralSet<Relation>) -> bool {
         use std::cmp::Ordering;
         // Splits the set into positive and negative literals, then examines all possible complements.
 
-        let (p, n) = match FormulaSet::get_negative_positive_split(set) {
-            Some(index) => set.split_at(index),
+        let (p, n) = match set.get_negative_positive_split_index() {
+            Some(index) => set.set.split_at(index),
             None => return false,
         };
 

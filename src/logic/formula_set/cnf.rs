@@ -1,6 +1,6 @@
 use crate::logic::{
     Atomic, Formula, Literal, OpBinary, OpUnary,
-    formula_set::{FormulaSet, Mode, literal_set_to_formula},
+    formula_set::{FormulaSet, LiteralSet, Mode},
 };
 
 impl<A: Atomic> FormulaSet<A> {
@@ -23,8 +23,8 @@ impl<A: Atomic> FormulaSet<A> {
 
         'set_loop: while set_idx < limit {
             let base_set = &self.sets[set_idx];
-            for (literal_idx, literal) in base_set.iter().enumerate() {
-                if literal != &self.sets[set_idx + 1][literal_idx] {
+            for (literal_idx, literal) in base_set.set.iter().enumerate() {
+                if literal != &self.sets[set_idx + 1].set[literal_idx] {
                     set_idx += 1;
                     continue 'set_loop;
                 }
@@ -38,11 +38,14 @@ impl<A: Atomic> FormulaSet<A> {
     pub fn cnf_formula(&self) -> Formula<A> {
         match self.sets.as_slice() {
             [] => Formula::False,
-            [conjunction] => literal_set_to_formula(OpBinary::Or, conjunction),
+            [conjunction] => FormulaSet::literal_set_to_formula(OpBinary::Or, conjunction),
             [first, remaining @ ..] => {
-                let mut formula = literal_set_to_formula(OpBinary::Or, first);
+                let mut formula = FormulaSet::literal_set_to_formula(OpBinary::Or, first);
                 for other in remaining {
-                    formula = Formula::And(formula, literal_set_to_formula(OpBinary::Or, other))
+                    formula = Formula::And(
+                        formula,
+                        FormulaSet::literal_set_to_formula(OpBinary::Or, other),
+                    )
                 }
                 formula
             }
@@ -51,17 +54,21 @@ impl<A: Atomic> FormulaSet<A> {
 }
 
 impl<A: Atomic> Formula<A> {
-    pub(super) fn to_cnf_set_local(&self) -> Vec<Vec<Literal<A>>> {
+    pub(super) fn to_cnf_set_local(&self) -> Vec<LiteralSet<A>> {
         match self {
             Formula::True => vec![],
-            Formula::False => vec![vec![]],
+            Formula::False => vec![LiteralSet::default()],
 
-            Formula::Atom(atom) => vec![vec![Literal::from(atom.clone(), true)]],
+            Formula::Atom(atom) => vec![LiteralSet {
+                set: vec![Literal::from(atom.clone(), true)],
+            }],
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
                     if let Formula::Atom(atom) = expr.as_ref() {
-                        vec![vec![Literal::from(atom.clone(), false)]]
+                        vec![LiteralSet {
+                            set: vec![Literal::from(atom.clone(), false)],
+                        }]
                     } else {
                         todo!()
                     }
@@ -78,14 +85,14 @@ impl<A: Atomic> Formula<A> {
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
                                 let mut product: Vec<Literal<A>> =
-                                    l_set.iter().chain(r_set).cloned().collect();
+                                    l_set.set.iter().chain(r_set.set.iter()).cloned().collect();
 
                                 // 'Setify'
                                 // As the product is partially sorted, stable sort is preferred.
                                 product.sort();
                                 product.dedup();
 
-                                fm.push(product);
+                                fm.push(LiteralSet { set: product });
                             }
                         }
                         fm
@@ -110,10 +117,10 @@ impl<A: Atomic> FormulaSet<A> {
         let mut set_limit = self.sets.len();
 
         'set_loop: while set_index < set_limit {
-            self.sets[set_index].sort_unstable();
+            self.sets[set_index].set.sort_unstable();
             for literal_index in 1..self.sets[set_index].len() {
-                if self.sets[set_index][literal_index - 1].id()
-                    == self.sets[set_index][literal_index].id()
+                if self.sets[set_index].set[literal_index - 1].id()
+                    == self.sets[set_index].set[literal_index].id()
                 {
                     self.sets.swap_remove(set_index);
                     set_limit -= 1;

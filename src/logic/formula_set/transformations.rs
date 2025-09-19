@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::logic::{
     Atomic, Literal,
-    formula_set::{FormulaSet, Mode, setify},
+    formula_set::{FormulaSet, LiteralSet, Mode, setify},
 };
 
 impl<A: Atomic> FormulaSet<A> {
@@ -15,7 +15,7 @@ impl<A: Atomic> FormulaSet<A> {
 
         for index in 0..self.sets.len() {
             if let [_l] = self.sets[index].as_slice() {
-                let one_literal = self.sets.swap_remove(index).into_iter().next().unwrap();
+                let one_literal = self.sets.swap_remove(index).set.into_iter().next().unwrap();
                 one = Some(one_literal);
                 break;
             }
@@ -41,10 +41,10 @@ impl<A: Atomic> FormulaSet<A> {
                 // Check against each one literal.
 
                 // If the atoms match, either the set or the literal will be removed.
-                if one.atom() == self.sets[set_index][literal_index].atom() {
-                    if one.value() == self.sets[set_index][literal_index].value() {
+                if one.atom() == self.sets[set_index].set[literal_index].atom() {
+                    if one.value() == self.sets[set_index].set[literal_index].value() {
                         set_limit -= 1;
-                        removed_other.extend(self.sets.swap_remove(set_index));
+                        removed_other.extend(self.sets.swap_remove(set_index).set);
                         continue 'set_loop;
                     }
 
@@ -53,13 +53,13 @@ impl<A: Atomic> FormulaSet<A> {
                     // If the literal is unit, have φ ∧ ¬φ, so rewrite to basic ⊥ form.
                     if self.sets[set_index].len() == 1 {
                         self.sets.drain(0..set_limit);
-                        self.sets.push(vec![]);
+                        self.sets.push(LiteralSet::default());
                         return true;
                     }
 
                     // Otherwise, remove the literal.
                     literal_limit -= 1;
-                    self.sets[set_index].swap_remove(literal_index);
+                    self.sets[set_index].set.swap_remove(literal_index);
 
                     continue 'literal_loop;
                 }
@@ -74,7 +74,13 @@ impl<A: Atomic> FormulaSet<A> {
         self.atoms.remove(one.id());
 
         'other_loop: for other in removed_other {
-            if self.sets.iter().flatten().any(|l| l == &other) {
+            if self
+                .sets
+                .iter()
+                .map(|x| &x.set)
+                .flatten()
+                .any(|l| l == &other)
+            {
                 continue 'other_loop;
             } else if let Some((t, f)) = self.atoms.get_mut(other.id()) {
                 match other.value() {
@@ -109,7 +115,7 @@ impl<A: Atomic> FormulaSet<A> {
         let mut set_limit = self.sets.len();
 
         'set_loop: while set_index < set_limit {
-            for literal in &self.sets[set_index] {
+            for literal in &self.sets[set_index].set {
                 for atom in &atom_ids {
                     if *atom == literal.id() {
                         set_limit -= 1;
@@ -147,8 +153,8 @@ impl<A: Atomic> FormulaSet<A> {
             let literal_limit = self.sets[set_index].len();
 
             while literal_index < literal_limit {
-                if self.sets[set_index][literal_index].id() == id {
-                    let literal = self.sets[set_index].swap_remove(literal_index);
+                if self.sets[set_index].set[literal_index].id() == id {
+                    let literal = self.sets[set_index].set.swap_remove(literal_index);
 
                     match literal.value() {
                         true => positive.sets.push(self.sets.swap_remove(set_index)),
@@ -171,10 +177,10 @@ impl<A: Atomic> FormulaSet<A> {
         for a in &positive.sets {
             for n in &negative.sets {
                 let mut fresh = a.clone();
-                fresh.extend(n.iter().cloned());
+                fresh.set.extend(n.set.iter().cloned());
 
                 // Ensure the fresh vec emulates a set
-                setify(&mut fresh);
+                setify(&mut fresh.set);
 
                 // Skip tivial sets from resolution
                 if !Self::set_contains_complementary_literals(&fresh) {
@@ -201,7 +207,7 @@ impl<A: Atomic> FormulaSet<A> {
         let mut negative_count: isize = 0;
 
         for set in &self.sets {
-            for literal in set {
+            for literal in &set.set {
                 if literal.id() == id {
                     match literal.value() {
                         true => positive_count += 1,

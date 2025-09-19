@@ -1,20 +1,24 @@
 use crate::logic::{
     Atomic, Formula, Literal, OpBinary, OpUnary,
-    formula_set::{FormulaSet, Mode, literal_set_cmp, literal_set_to_formula, setify},
+    formula_set::{FormulaSet, LiteralSet, Mode, setify},
 };
 
 impl<A: Atomic> Formula<A> {
-    pub(super) fn to_dnf_set_local(&self) -> Vec<Vec<Literal<A>>> {
+    pub(super) fn to_dnf_set_local(&self) -> Vec<LiteralSet<A>> {
         match self {
-            Formula::True => vec![vec![]],
+            Formula::True => vec![LiteralSet::default()],
             Formula::False => vec![],
 
-            Formula::Atom(atom) => vec![vec![Literal::from(atom.clone(), true)]],
+            Formula::Atom(atom) => vec![LiteralSet {
+                set: vec![Literal::from(atom.clone(), true)],
+            }],
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
                     if let Formula::Atom(atom) = expr.as_ref() {
-                        vec![vec![Literal::from(atom.clone(), false)]]
+                        vec![LiteralSet {
+                            set: vec![Literal::from(atom.clone(), false)],
+                        }]
                     } else {
                         panic!()
                     }
@@ -30,9 +34,10 @@ impl<A: Atomic> Formula<A> {
                         let mut fm = Vec::with_capacity(lhs.sets.len() * rhs.sets.len());
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
-                                let mut product = l_set.iter().chain(r_set).cloned().collect();
+                                let mut product =
+                                    l_set.set.iter().chain(r_set.set.iter()).cloned().collect();
                                 setify(&mut product);
-                                fm.push(product);
+                                fm.push(LiteralSet { set: product });
                             }
                         }
                         fm
@@ -58,12 +63,12 @@ impl<A: Atomic> FormulaSet<A> {
 
         'set_loop: while set_idx < limit {
             if self.sets[set_idx].len() > 1 {
-                let false_index = match Self::get_negative_positive_split(&self.sets[set_idx]) {
+                match &self.sets[set_idx].get_negative_positive_split_index() {
                     Some(index) => index,
                     None => continue 'set_loop,
                 };
 
-                let (p, n) = self.sets[set_idx].split_at(false_index);
+                let (p, n) = self.sets[set_idx].get_negative_positive_splits();
 
                 let mut p_index = 0;
                 let mut n_index = 0;
@@ -83,7 +88,7 @@ impl<A: Atomic> FormulaSet<A> {
             set_idx += 1;
         }
 
-        self.sets.sort_by(|a, b| literal_set_cmp(a, b));
+        self.sets.sort_by(|a, b| a.cmp(b));
     }
 
     pub fn is_dnf_bot(&self) -> bool {
@@ -105,8 +110,8 @@ impl<A: Atomic> FormulaSet<A> {
 
         'set_loop: while set_idx < limit {
             let base_set = &self.sets[set_idx];
-            for (literal_idx, literal) in base_set.iter().enumerate() {
-                if literal != &self.sets[set_idx + 1][literal_idx] {
+            for (literal_idx, literal) in base_set.set.iter().enumerate() {
+                if literal != &self.sets[set_idx + 1].set[literal_idx] {
                     set_idx += 1;
                     continue 'set_loop;
                 }
@@ -120,11 +125,14 @@ impl<A: Atomic> FormulaSet<A> {
     pub fn dnf_formula(&self) -> Formula<A> {
         match self.sets.as_slice() {
             [] => Formula::False,
-            [conjunction] => literal_set_to_formula(OpBinary::And, conjunction),
+            [conjunction] => FormulaSet::literal_set_to_formula(OpBinary::And, conjunction),
             [first, remaining @ ..] => {
-                let mut formula = literal_set_to_formula(OpBinary::And, first);
+                let mut formula = FormulaSet::literal_set_to_formula(OpBinary::And, first);
                 for other in remaining {
-                    formula = Formula::Or(formula, literal_set_to_formula(OpBinary::And, other))
+                    formula = Formula::Or(
+                        formula,
+                        FormulaSet::literal_set_to_formula(OpBinary::And, other),
+                    )
                 }
                 formula
             }

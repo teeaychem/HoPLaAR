@@ -1,14 +1,14 @@
 mod cnf;
 mod dnf;
+mod literal_set;
+use std::collections::HashMap;
+
+pub use literal_set::LiteralSet;
+
 mod propositional;
 mod transformations;
 
-use std::collections::HashMap;
-
 use crate::logic::{Atomic, Formula, Literal, OpBinary};
-
-// Invariant: Literals are sorted by `literal_cmp`.
-type LiteralSet<A> = Vec<Literal<A>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Mode {
@@ -25,38 +25,18 @@ pub struct FormulaSet<A: Atomic> {
     mode: Mode,
 }
 
-fn literal_set_cmp<A: Atomic>(a: &LiteralSet<A>, b: &LiteralSet<A>) -> std::cmp::Ordering {
-    use std::cmp::Ordering::*;
-
-    if a.is_empty() {
-        return Less;
-    }
-    if b.is_empty() {
-        return Greater;
-    }
-
-    let limit = std::cmp::min(a.len(), b.len());
-    for idx in 0..limit {
-        match a[idx].cmp(&b[idx]) {
-            Less => return Less,
-            Greater => return Greater,
-            Equal => continue,
-        }
-    }
-
-    a.len().cmp(&b.len())
-}
-
-fn literal_set_to_formula<A: Atomic>(op: OpBinary, ls: &LiteralSet<A>) -> Formula<A> {
-    match ls.as_slice() {
-        [] => Formula::True,
-        [literal] => literal.as_formula(),
-        [first, remaining @ ..] => {
-            let mut formula = first.as_formula();
-            for other in remaining {
-                formula = Formula::Binary(op, formula, other.as_formula());
+impl<A: Atomic> FormulaSet<A> {
+    fn literal_set_to_formula(op: OpBinary, ls: &LiteralSet<A>) -> Formula<A> {
+        match ls.as_slice() {
+            [] => Formula::True,
+            [literal] => literal.as_formula(),
+            [first, remaining @ ..] => {
+                let mut formula = first.as_formula();
+                for other in remaining {
+                    formula = Formula::Binary(op, formula, other.as_formula());
+                }
+                formula
             }
-            formula
         }
     }
 }
@@ -70,7 +50,7 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
             let inner_limit = expr.len().saturating_sub(1);
 
             let _ = write!(f, "{{");
-            for (inner_idx, literal) in expr.iter().enumerate() {
+            for (inner_idx, literal) in expr.set.iter().enumerate() {
                 let _ = write!(f, "{literal}");
                 if inner_idx < inner_limit {
                     let _ = write!(f, ", ");
@@ -95,10 +75,10 @@ impl<A: Atomic> Formula<A> {
             Mode::CNF => self.to_cnf_set_local(),
             Mode::DNF => self.to_dnf_set_local(),
         };
-        sets.sort_by(|a, b| literal_set_cmp(a, b));
+        sets.sort();
         sets.dedup();
 
-        for literal in sets.iter().flatten() {
+        for literal in sets.iter().flat_map(|s| &s.set) {
             fs.note_literal(literal);
         }
 
@@ -117,16 +97,16 @@ impl<A: Atomic> FormulaSet<A> {
     }
 
     pub fn setify_outer(&mut self) {
-        self.sets.sort_by(|a, b| literal_set_cmp(a, b));
+        self.sets.sort();
         self.sets.dedup();
     }
 
     pub fn sort_outer_and_inner(&mut self) {
         for set in &mut self.sets {
-            set.sort_unstable();
+            set.set.sort_unstable();
         }
 
-        self.sets.sort_by(|a, b| literal_set_cmp(a, b));
+        self.sets.sort();
     }
 }
 
@@ -184,28 +164,12 @@ impl<A: Atomic> FormulaSet<A> {
         }
     }
 
-    /// Returns the index which separates negative literals from positive literals, if such an index exists.
-    /// If all literals share the same value, None is returned.
-    /// Note, as a consequence of the above, the returned index is never 0.
-    /// (For, otherwise all literals must be positive.)
-    pub fn get_negative_positive_split(set: &[Literal<A>]) -> Option<usize> {
-        for (index, literal) in set.iter().enumerate() {
-            if literal.value() {
-                match index {
-                    0 => return None,
-                    _ => return Some(index),
-                }
-            }
-        }
-        None
-    }
-
     pub fn set_contains_complementary_literals(set: &LiteralSet<A>) -> bool {
         use std::cmp::Ordering::*;
 
-        match Self::get_negative_positive_split(set) {
+        match set.get_negative_positive_split_index() {
             Some(index) => {
-                let (p, n) = set.split_at(index);
+                let (p, n) = set.set.split_at(index);
 
                 let mut p_index = 0;
                 let mut n_index = 0;
@@ -259,17 +223,29 @@ mod tests {
     fn negative_positive_split() {
         let fm = FirstOrderFormula::from("P(a) & ~P(a) & ~Q(c)");
         let fms = fm.to_set_direct(Mode::DNF);
-        let split = FormulaSet::get_negative_positive_split(fms.sets().first().unwrap());
+        let split = fms
+            .sets()
+            .first()
+            .unwrap()
+            .get_negative_positive_split_index();
         assert_eq!(Some(2), split);
 
         let fm = FirstOrderFormula::from("~P(a) & ~P(a) & ~Q(c)");
         let fms = fm.to_set_direct(Mode::DNF);
-        let split = FormulaSet::get_negative_positive_split(fms.sets().first().unwrap());
+        let split = fms
+            .sets()
+            .first()
+            .unwrap()
+            .get_negative_positive_split_index();
         assert_eq!(None, split);
 
         let fm = FirstOrderFormula::from("P(a) & P(b) & Q(c)");
         let fms = fm.to_set_direct(Mode::DNF);
-        let split = FormulaSet::get_negative_positive_split(fms.sets().first().unwrap());
+        let split = fms
+            .sets()
+            .first()
+            .unwrap()
+            .get_negative_positive_split_index();
         assert_eq!(None, split);
     }
 }
