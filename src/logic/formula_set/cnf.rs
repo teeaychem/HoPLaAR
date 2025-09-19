@@ -59,16 +59,12 @@ impl<A: Atomic> Formula<A> {
             Formula::True => vec![],
             Formula::False => vec![LiteralSet::default()],
 
-            Formula::Atom(atom) => vec![LiteralSet {
-                set: vec![Literal::from(atom.clone(), true)],
-            }],
+            Formula::Atom(atom) => vec![LiteralSet::from(Literal::from(atom.clone(), true))],
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
                     if let Formula::Atom(atom) = expr.as_ref() {
-                        vec![LiteralSet {
-                            set: vec![Literal::from(atom.clone(), false)],
-                        }]
+                        vec![LiteralSet::from(Literal::from(atom.clone(), false))]
                     } else {
                         todo!()
                     }
@@ -84,15 +80,11 @@ impl<A: Atomic> Formula<A> {
                         let mut fm = Vec::with_capacity(lhs.sets.len() * rhs.sets.len());
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
-                                let mut product: Vec<Literal<A>> =
-                                    l_set.set.iter().chain(r_set.set.iter()).cloned().collect();
+                                let product = LiteralSet::from(
+                                    l_set.set.iter().chain(r_set.set.iter()).cloned(),
+                                );
 
-                                // 'Setify'
-                                // As the product is partially sorted, stable sort is preferred.
-                                product.sort();
-                                product.dedup();
-
-                                fm.push(LiteralSet { set: product });
+                                fm.push(product);
                             }
                         }
                         fm

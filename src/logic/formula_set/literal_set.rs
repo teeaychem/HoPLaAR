@@ -89,3 +89,26 @@ impl<A: Atomic> LiteralSet<A> {
         }
     }
 }
+
+impl<A: Atomic> LiteralSet<A> {
+    pub fn setify(&mut self) {
+        self.set.sort_unstable();
+        self.set.dedup();
+    }
+}
+
+impl<A: Atomic, I: Iterator<Item = Literal<A>>> From<I> for LiteralSet<A> {
+    fn from(value: I) -> Self {
+        let set: Vec<Literal<A>> = value.collect();
+
+        let mut ls = Self { set };
+        ls.setify();
+        ls
+    }
+}
+
+impl<A: Atomic> From<Literal<A>> for LiteralSet<A> {
+    fn from(value: Literal<A>) -> Self {
+        Self { set: vec![value] }
+    }
+}

@@ -1,6 +1,6 @@
 use crate::logic::{
     Atomic, Formula, Literal, OpBinary, OpUnary,
-    formula_set::{FormulaSet, LiteralSet, Mode, setify},
+    formula_set::{FormulaSet, LiteralSet, Mode},
 };
 
 impl<A: Atomic> Formula<A> {
@@ -9,16 +9,12 @@ impl<A: Atomic> Formula<A> {
             Formula::True => vec![LiteralSet::default()],
             Formula::False => vec![],
 
-            Formula::Atom(atom) => vec![LiteralSet {
-                set: vec![Literal::from(atom.clone(), true)],
-            }],
+            Formula::Atom(atom) => vec![LiteralSet::from(Literal::from(atom.clone(), true))],
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
                     if let Formula::Atom(atom) = expr.as_ref() {
-                        vec![LiteralSet {
-                            set: vec![Literal::from(atom.clone(), false)],
-                        }]
+                        vec![LiteralSet::from(Literal::from(atom.clone(), false))]
                     } else {
                         panic!()
                     }
@@ -34,10 +30,10 @@ impl<A: Atomic> Formula<A> {
                         let mut fm = Vec::with_capacity(lhs.sets.len() * rhs.sets.len());
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
-                                let mut product =
-                                    l_set.set.iter().chain(r_set.set.iter()).cloned().collect();
-                                setify(&mut product);
-                                fm.push(LiteralSet { set: product });
+                                let product = LiteralSet::from(
+                                    l_set.set.iter().chain(r_set.set.iter()).cloned(),
+                                );
+                                fm.push(product);
                             }
                         }
                         fm
@@ -88,7 +84,7 @@ impl<A: Atomic> FormulaSet<A> {
             set_idx += 1;
         }
 
-        self.sets.sort_by(|a, b| a.cmp(b));
+        self.sets.sort();
     }
 
     pub fn is_dnf_bot(&self) -> bool {

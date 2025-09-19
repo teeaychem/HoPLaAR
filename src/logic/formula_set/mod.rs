@@ -188,11 +188,6 @@ impl<A: Atomic> FormulaSet<A> {
     }
 }
 
-pub fn setify<A: Atomic>(set: &mut Vec<Literal<A>>) {
-    set.sort_unstable();
-    set.dedup();
-}
-
 #[cfg(test)]
 mod tests {
     use crate::logic::{
