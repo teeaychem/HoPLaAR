@@ -34,22 +34,24 @@ impl PartialOrd for Fun {
 
 impl Ord for Fun {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering;
+
         match self.arity().cmp(&other.arity()) {
-            core::cmp::Ordering::Equal => {}
+            Ordering::Equal => {}
             ord => return ord,
         }
 
         match self.id.cmp(&other.id) {
-            core::cmp::Ordering::Equal => {}
+            Ordering::Equal => {}
             ord => return ord,
         }
 
         match self.variant.cmp(&other.variant) {
-            core::cmp::Ordering::Equal => {}
+            Ordering::Equal => {}
             ord => return ord,
         }
 
-        self.args.cmp(&other.args)
+        Ordering::Equal
     }
 }
 

@@ -100,8 +100,11 @@ impl Unifier {
         let mut todo = eqs.to_vec();
 
         while let Some((lhs, rhs)) = todo.pop() {
+            println!("{lhs} {rhs}");
+
             match (lhs, rhs) {
                 (Term::F(f), Term::F(g)) => {
+                    println!("{:?}", f.cmp(&g));
                     use std::cmp::Ordering::*;
                     match f.cmp(&g) {
                         Equal => todo.extend(f.args.iter().cloned().zip(g.args.iter().cloned())),
