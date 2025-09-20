@@ -98,14 +98,11 @@ impl<A: Atomic> FormulaSet<A> {
     pub fn dnf_formula(&self) -> Formula<A> {
         match self.sets.as_slice() {
             [] => Formula::False,
-            [conjunction] => FormulaSet::literal_set_to_formula(OpBinary::And, conjunction),
+            [conjunction] => Formula::from((conjunction.clone(), OpBinary::And)),
             [first, remaining @ ..] => {
-                let mut formula = FormulaSet::literal_set_to_formula(OpBinary::And, first);
+                let mut formula = Formula::from((first.clone(), OpBinary::And));
                 for other in remaining {
-                    formula = Formula::Or(
-                        formula,
-                        FormulaSet::literal_set_to_formula(OpBinary::And, other),
-                    )
+                    formula = Formula::Or(formula, Formula::from((other.clone(), OpBinary::And)))
                 }
                 formula
             }

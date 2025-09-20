@@ -9,7 +9,7 @@ mod propositional;
 mod transformations;
 
 use crate::logic::{
-    Atomic, Formula, Literal, OpBinary,
+    Atomic, Formula, Literal,
     first_order::{Relation, terms::Var},
 };
 
@@ -26,22 +26,6 @@ pub struct FormulaSet<A: Atomic> {
     sets: Vec<LiteralSet<A>>,
     atoms: HashMap<String, (bool, bool)>,
     mode: Mode,
-}
-
-impl<A: Atomic> FormulaSet<A> {
-    fn literal_set_to_formula(op: OpBinary, ls: &LiteralSet<A>) -> Formula<A> {
-        match ls.as_slice() {
-            [] => Formula::True,
-            [literal] => Formula::from(literal.clone()),
-            [first, remaining @ ..] => {
-                let mut formula = Formula::from(first.clone());
-                for other in remaining {
-                    formula = Formula::Binary(op, formula, Formula::from(other.clone()));
-                }
-                formula
-            }
-        }
-    }
 }
 
 impl<A: Atomic> std::fmt::Display for FormulaSet<A> {

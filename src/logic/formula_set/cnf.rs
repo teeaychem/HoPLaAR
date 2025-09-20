@@ -35,14 +35,11 @@ impl<A: Atomic> FormulaSet<A> {
     pub fn cnf_formula(&self) -> Formula<A> {
         match self.sets.as_slice() {
             [] => Formula::False,
-            [conjunction] => FormulaSet::literal_set_to_formula(OpBinary::Or, conjunction),
+            [conjunction] => Formula::from((conjunction.clone(), OpBinary::Or)),
             [first, remaining @ ..] => {
-                let mut formula = FormulaSet::literal_set_to_formula(OpBinary::Or, first);
+                let mut formula = Formula::from((first.clone(), OpBinary::Or));
                 for other in remaining {
-                    formula = Formula::And(
-                        formula,
-                        FormulaSet::literal_set_to_formula(OpBinary::Or, other),
-                    )
+                    formula = Formula::And(formula, Formula::from((other.clone(), OpBinary::Or)))
                 }
                 formula
             }

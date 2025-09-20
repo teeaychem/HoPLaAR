@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::logic::{
-    Atomic, Literal,
+    Atomic, Formula, Literal, OpBinary,
     first_order::{Relation, Term, terms::Var},
 };
 
@@ -150,6 +150,22 @@ impl<A: Atomic> LiteralSet<A> {
 impl<A: Atomic> LiteralSet<A> {
     pub fn into_literals(self) -> std::vec::IntoIter<Literal<A>> {
         self.set.into_iter()
+    }
+}
+
+impl<A: Atomic> From<(LiteralSet<A>, OpBinary)> for Formula<A> {
+    fn from(value: (LiteralSet<A>, OpBinary)) -> Self {
+        match value.0.set.as_slice() {
+            [] => Formula::True,
+            [literal] => Formula::from(literal.clone()),
+            [first, remaining @ ..] => {
+                let mut formula = Formula::from(first.clone());
+                for other in remaining {
+                    formula = Formula::Binary(value.1, formula, Formula::from(other.clone()));
+                }
+                formula
+            }
+        }
     }
 }
 
