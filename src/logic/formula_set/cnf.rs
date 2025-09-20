@@ -18,20 +18,17 @@ impl<A: Atomic> FormulaSet<A> {
     // So from left to right, if all elements of A are in B, A ⊆ B.
     // And, then, A should be removed while B is preserved, as A and B are disjuncts.
     pub fn cnf_subsume(&mut self) {
-        let mut limit = self.sets.len();
-        let mut set_idx = 1;
+        let mut limit = self.sets.len() - 1;
+        let mut set_idx = 0;
 
-        'set_loop: while set_idx < limit {
-            let base_set = &self.sets[set_idx];
-            for (literal_idx, literal) in base_set.literals().enumerate() {
-                if literal != &self.sets[set_idx + 1].set[literal_idx] {
-                    set_idx += 1;
-                    continue 'set_loop;
+        while set_idx < limit {
+            match self.sets[set_idx].is_subset_of(&self.sets[set_idx + 1]) {
+                true => set_idx += 1,
+                false => {
+                    self.sets.remove(set_idx);
+                    limit -= 1
                 }
             }
-
-            self.sets.remove(set_idx);
-            limit -= 1;
         }
     }
 

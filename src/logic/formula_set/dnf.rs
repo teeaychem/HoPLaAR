@@ -84,17 +84,14 @@ impl<A: Atomic> FormulaSet<A> {
         let mut limit = self.sets.len() - 1;
         let mut set_idx = 0;
 
-        'set_loop: while set_idx < limit {
-            let base_set = &self.sets[set_idx];
-            for (literal_idx, literal) in base_set.set.iter().enumerate() {
-                if literal != &self.sets[set_idx + 1].set[literal_idx] {
-                    set_idx += 1;
-                    continue 'set_loop;
+        while set_idx < limit {
+            match self.sets[set_idx].is_subset_of(&self.sets[set_idx + 1]) {
+                true => {
+                    self.sets.remove(set_idx);
+                    limit -= 1
                 }
+                false => set_idx += 1,
             }
-
-            self.sets.remove(set_idx);
-            limit -= 1;
         }
     }
 
