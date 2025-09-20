@@ -153,23 +153,8 @@ impl<A: Atomic> LiteralSet<A> {
     }
 }
 
-impl<A: Atomic> From<(LiteralSet<A>, OpBinary)> for Formula<A> {
-    fn from(value: (LiteralSet<A>, OpBinary)) -> Self {
-        match value.0.set.as_slice() {
-            [] => Formula::True,
-            [literal] => Formula::from(literal.clone()),
-            [first, remaining @ ..] => {
-                let mut formula = Formula::from(first.clone());
-                for other in remaining {
-                    formula = Formula::Binary(value.1, formula, Formula::from(other.clone()));
-                }
-                formula
-            }
-        }
-    }
-}
-
 impl LiteralSet<Relation> {
+    /// Extend `collection` with the variables of `self`.
     pub fn extend_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
         for literal in &self.set {
             for term in &literal.atom().terms {
@@ -187,6 +172,7 @@ impl LiteralSet<Relation> {
         }
     }
 
+    /// The variables of `self`, collected in a hash set.
     pub fn variables(&self) -> HashSet<Var> {
         let mut fvs = HashSet::default();
         self.extend_with_variables(&mut fvs);
@@ -206,10 +192,9 @@ impl<A: Atomic> Default for LiteralSet<A> {
     }
 }
 
-impl<A: Atomic, I: Iterator<Item = Literal<A>>> From<I> for LiteralSet<A> {
-    fn from(value: I) -> Self {
+impl<A: Atomic, LiteralIter: Iterator<Item = Literal<A>>> From<LiteralIter> for LiteralSet<A> {
+    fn from(value: LiteralIter) -> Self {
         let set: Vec<Literal<A>> = value.collect();
-
         let mut ls = Self { set };
         ls.setify();
         ls
@@ -259,6 +244,24 @@ impl<A: Atomic> std::cmp::Ord for LiteralSet<A> {
 impl<A: Atomic> std::cmp::PartialOrd for LiteralSet<A> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+// From
+
+impl<A: Atomic> From<(LiteralSet<A>, OpBinary)> for Formula<A> {
+    fn from(value: (LiteralSet<A>, OpBinary)) -> Self {
+        match value.0.set.as_slice() {
+            [] => Formula::True,
+            [literal] => Formula::from(literal.clone()),
+            [first, remaining @ ..] => {
+                let mut formula = Formula::from(first.clone());
+                for other in remaining {
+                    formula = Formula::Binary(value.1, formula, Formula::from(other.clone()));
+                }
+                formula
+            }
+        }
     }
 }
 

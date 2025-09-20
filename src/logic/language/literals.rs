@@ -2,7 +2,10 @@ use crate::logic::{Atomic, Formula, OpUnary};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Literal<A> {
+    /// An atom, which typically implemenets the Atomic trait.
     atom: A,
+
+    /// The value (or polarity) of the literal.
     value: bool,
 }
 
@@ -11,14 +14,17 @@ impl<A: Atomic> Literal<A> {
         Literal { atom, value }
     }
 
+    /// The atom of `self`.
     pub fn atom(&self) -> &A {
         &self.atom
     }
 
+    /// The (atom) id of `self`.
     pub fn id(&self) -> &str {
         self.atom.id()
     }
 
+    /// The value of `self`.
     pub fn value(&self) -> bool {
         self.value
     }
