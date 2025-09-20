@@ -15,7 +15,8 @@ impl<A: Atomic> FormulaSet<A> {
 
         for index in 0..self.sets.len() {
             if let [_l] = self.sets[index].as_slice() {
-                let one_literal = self.sets.swap_remove(index).set.into_iter().next().unwrap();
+                let removed_set = self.sets.swap_remove(index);
+                let one_literal = removed_set.into_literals().next().unwrap();
                 one = Some(one_literal);
                 break;
             }
@@ -41,10 +42,11 @@ impl<A: Atomic> FormulaSet<A> {
                 // Check against each one literal.
 
                 // If the atoms match, either the set or the literal will be removed.
-                if one.atom() == self.sets[set_index].set[literal_index].atom() {
-                    if one.value() == self.sets[set_index].set[literal_index].value() {
+                if self.sets[set_index].atom_at(literal_index) == one.atom() {
+                    if self.sets[set_index].value_at(literal_index) == one.value() {
                         set_limit -= 1;
-                        removed_other.extend(self.sets.swap_remove(set_index).set);
+                        let removed_set = self.sets.swap_remove(set_index);
+                        removed_other.extend(removed_set.into_literals());
                         continue 'set_loop;
                     }
 
@@ -59,7 +61,7 @@ impl<A: Atomic> FormulaSet<A> {
 
                     // Otherwise, remove the literal.
                     literal_limit -= 1;
-                    self.sets[set_index].set.swap_remove(literal_index);
+                    self.sets[set_index].remove(literal_index);
 
                     continue 'literal_loop;
                 }
@@ -152,8 +154,8 @@ impl<A: Atomic> FormulaSet<A> {
             let literal_limit = self.sets[set_index].len();
 
             while literal_index < literal_limit {
-                if self.sets[set_index].set[literal_index].id() == id {
-                    let literal = self.sets[set_index].set.swap_remove(literal_index);
+                if self.sets[set_index].literal_at(literal_index).id() == id {
+                    let literal = self.sets[set_index].remove(literal_index);
 
                     match literal.value() {
                         true => positive.sets.push(self.sets.swap_remove(set_index)),

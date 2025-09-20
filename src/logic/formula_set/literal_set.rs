@@ -2,7 +2,7 @@ use crate::logic::{Atomic, Literal};
 
 #[derive(Clone, Debug)]
 pub struct LiteralSet<A: Atomic> {
-    pub set: Vec<Literal<A>>,
+    set: Vec<Literal<A>>,
 }
 
 impl<A: Atomic> Default for LiteralSet<A> {
@@ -102,23 +102,20 @@ impl<A: Atomic> LiteralSet<A> {
         }
     }
 
+    pub fn atom_at(&self, index: usize) -> &A {
+        self.set[index].atom()
+    }
+
+    pub fn literal_at(&self, index: usize) -> &Literal<A> {
+        &self.set[index]
+    }
+
+    pub fn value_at(&self, index: usize) -> bool {
+        self.set[index].value()
+    }
+
     pub fn literals(&self) -> std::slice::Iter<'_, Literal<A>> {
         self.set.iter()
-    }
-}
-
-impl<A: Atomic> LiteralSet<A> {
-    pub fn sort(&mut self) {
-        self.set.sort_unstable();
-    }
-
-    pub fn setify(&mut self) {
-        self.sort();
-        self.set.dedup();
-    }
-
-    pub fn extend<I: IntoIterator<Item = Literal<A>>>(&mut self, iter: I) {
-        self.set.extend(iter)
     }
 
     pub fn is_subset_of(&self, other: &LiteralSet<A>) -> bool {
@@ -167,6 +164,29 @@ impl<A: Atomic> LiteralSet<A> {
 
     pub fn has_complementary_literals(&self) -> bool {
         self.some_complementary_literal_index().is_some()
+    }
+}
+
+impl<A: Atomic> LiteralSet<A> {
+    pub fn remove(&mut self, index: usize) -> Literal<A> {
+        self.set.swap_remove(index)
+    }
+
+    pub fn sort(&mut self) {
+        self.set.sort_unstable();
+    }
+
+    pub fn setify(&mut self) {
+        self.sort();
+        self.set.dedup();
+    }
+
+    pub fn extend<I: IntoIterator<Item = Literal<A>>>(&mut self, iter: I) {
+        self.set.extend(iter)
+    }
+
+    pub fn into_literals(self) -> std::vec::IntoIter<Literal<A>> {
+        self.set.into_iter()
     }
 }
 

@@ -68,7 +68,7 @@ impl<A: Atomic> Formula<A> {
         sets.sort();
         sets.dedup();
 
-        for literal in sets.iter().flat_map(|s| &s.set) {
+        for literal in sets.iter().flat_map(|s| s.literals()) {
             fs.note_literal(literal);
         }
 
