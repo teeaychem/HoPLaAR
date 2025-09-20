@@ -45,25 +45,15 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let outer_limit = self.sets.len().saturating_sub(1);
 
-        let _ = write!(f, "{{");
+        write!(f, "{{")?;
         for (outer_idx, expr) in self.sets.iter().enumerate() {
-            let inner_limit = expr.len().saturating_sub(1);
+            write!(f, "{expr}")?;
 
-            let _ = write!(f, "{{");
-            for (inner_idx, literal) in expr.set.iter().enumerate() {
-                let _ = write!(f, "{literal}");
-                if inner_idx < inner_limit {
-                    let _ = write!(f, ", ");
-                }
-            }
-            let _ = write!(f, "}}");
             if outer_idx < outer_limit {
-                let _ = write!(f, ", ");
+                write!(f, ", ")?;
             }
         }
-        let _ = write!(f, "}}");
-
-        Ok(())
+        write!(f, "}}")
     }
 }
 
@@ -167,7 +157,7 @@ impl<A: Atomic> FormulaSet<A> {
     pub fn set_contains_complementary_literals(set: &LiteralSet<A>) -> bool {
         use std::cmp::Ordering::*;
 
-        match set.get_negative_positive_split_index() {
+        match set.non_empty_negative_positive_split_index() {
             Some(index) => {
                 let (p, n) = set.set.split_at(index);
 
@@ -222,7 +212,7 @@ mod tests {
             .sets()
             .first()
             .unwrap()
-            .get_negative_positive_split_index();
+            .non_empty_negative_positive_split_index();
         assert_eq!(Some(2), split);
 
         let fm = FirstOrderFormula::from("~P(a) & ~P(a) & ~Q(c)");
@@ -231,7 +221,7 @@ mod tests {
             .sets()
             .first()
             .unwrap()
-            .get_negative_positive_split_index();
+            .non_empty_negative_positive_split_index();
         assert_eq!(None, split);
 
         let fm = FirstOrderFormula::from("P(a) & P(b) & Q(c)");
@@ -240,7 +230,7 @@ mod tests {
             .sets()
             .first()
             .unwrap()
-            .get_negative_positive_split_index();
+            .non_empty_negative_positive_split_index();
         assert_eq!(None, split);
     }
 }

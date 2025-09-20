@@ -66,11 +66,24 @@ impl<A: Atomic> LiteralSet<A> {
         self.set.as_slice()
     }
 
+    pub fn negative_positive_split(&self) -> (&[Literal<A>], &[Literal<A>]) {
+        for (index, literal) in self.set.iter().enumerate() {
+            if literal.value() {
+                match index {
+                    0 => return (&[], &self.set),
+                    _ => return self.set.split_at(index),
+                }
+            }
+        }
+
+        (&self.set, &[])
+    }
+
     /// Returns the index which separates negative literals from positive literals, if such an index exists.
     /// If all literals share the same value, None is returned.
     /// Note, as a consequence of the above, the returned index is never 0.
     /// (For, otherwise all literals must be positive.)
-    pub fn get_negative_positive_split_index(&self) -> Option<usize> {
+    pub fn non_empty_negative_positive_split_index(&self) -> Option<usize> {
         for (index, literal) in self.set.iter().enumerate() {
             if literal.value() {
                 match index {
@@ -82,11 +95,15 @@ impl<A: Atomic> LiteralSet<A> {
         None
     }
 
-    pub fn get_negative_positive_splits(&self) -> (&[Literal<A>], &[Literal<A>]) {
-        match self.get_negative_positive_split_index() {
+    pub fn non_empty_negative_positive_split(&self) -> (&[Literal<A>], &[Literal<A>]) {
+        match self.non_empty_negative_positive_split_index() {
             Some(index) => self.set.split_at(index),
             None => (&[], &[]),
         }
+    }
+
+    pub fn literals(&self) -> std::slice::Iter<'_, Literal<A>> {
+        self.set.iter()
     }
 }
 
@@ -94,6 +111,33 @@ impl<A: Atomic> LiteralSet<A> {
     pub fn setify(&mut self) {
         self.set.sort_unstable();
         self.set.dedup();
+    }
+
+    pub fn extend<I: IntoIterator<Item = Literal<A>>>(&mut self, iter: I) {
+        self.set.extend(iter)
+    }
+
+    pub fn is_subset_of(&self, other: &LiteralSet<A>) -> bool {
+        let (s_n, s_p) = self.negative_positive_split();
+        let (o_n, o_p) = other.negative_positive_split();
+
+        if s_n.len() > o_n.len() || s_p.len() > o_p.len() {
+            return false;
+        }
+
+        for (s, o) in s_n.iter().zip(o_n[..s_n.len()].iter()) {
+            if o.atom() != s.atom() {
+                return false;
+            }
+        }
+
+        for (s, o) in s_p.iter().zip(o_p[..s_p.len()].iter()) {
+            if o.atom() != s.atom() {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -110,5 +154,48 @@ impl<A: Atomic, I: Iterator<Item = Literal<A>>> From<I> for LiteralSet<A> {
 impl<A: Atomic> From<Literal<A>> for LiteralSet<A> {
     fn from(value: Literal<A>) -> Self {
         Self { set: vec![value] }
+    }
+}
+
+impl<A: Atomic> std::fmt::Display for LiteralSet<A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let inner_limit = self.set.len().saturating_sub(1);
+        write!(f, "{{")?;
+        for (inner_idx, literal) in self.set.iter().enumerate() {
+            write!(f, "{literal}")?;
+            if inner_idx < inner_limit {
+                write!(f, ", ")?;
+            }
+        }
+        write!(f, "}}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logic::{first_order::FirstOrderFormula, formula_set::Mode};
+
+    #[test]
+    fn subset() {
+        let a = FirstOrderFormula::from("P(a)");
+        let a_set = &a.to_set_direct(Mode::DNF).sets[0];
+
+        let ab = FirstOrderFormula::from("(P(a) & P(b))");
+        let ab_set = &ab.to_set_direct(Mode::DNF).sets[0];
+
+        assert!(!ab_set.is_subset_of(a_set));
+        assert!(a_set.is_subset_of(ab_set));
+
+        let anb = FirstOrderFormula::from("(P(a) & ~P(b))");
+        let anb_set = &anb.to_set_direct(Mode::DNF).sets[0];
+
+        assert!(!anb_set.is_subset_of(a_set));
+        assert!(a_set.is_subset_of(anb_set));
+
+        let nanb = FirstOrderFormula::from("(~P(a) & ~P(b))");
+        let nanb_set = &nanb.to_set_direct(Mode::DNF).sets[0];
+
+        assert!(!nanb_set.is_subset_of(a_set));
+        assert!(!a_set.is_subset_of(nanb_set));
     }
 }

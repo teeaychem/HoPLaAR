@@ -23,7 +23,7 @@ impl<A: Atomic> FormulaSet<A> {
 
         'set_loop: while set_idx < limit {
             let base_set = &self.sets[set_idx];
-            for (literal_idx, literal) in base_set.set.iter().enumerate() {
+            for (literal_idx, literal) in base_set.literals().enumerate() {
                 if literal != &self.sets[set_idx + 1].set[literal_idx] {
                     set_idx += 1;
                     continue 'set_loop;
@@ -81,7 +81,7 @@ impl<A: Atomic> Formula<A> {
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
                                 let product = LiteralSet::from(
-                                    l_set.set.iter().chain(r_set.set.iter()).cloned(),
+                                    l_set.literals().chain(r_set.literals()).cloned(),
                                 );
 
                                 fm.push(product);

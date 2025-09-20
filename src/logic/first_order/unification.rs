@@ -252,7 +252,7 @@ impl Unifier {
         use std::cmp::Ordering;
         // Splits the set into positive and negative literals, then examines all possible complements.
 
-        let (p, n) = match set.get_negative_positive_split_index() {
+        let (p, n) = match set.non_empty_negative_positive_split_index() {
             Some(index) => set.set.split_at(index),
             None => return false,
         };

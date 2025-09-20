@@ -77,8 +77,7 @@ impl<A: Atomic> FormulaSet<A> {
             if self
                 .sets
                 .iter()
-                .map(|x| &x.set)
-                .flatten()
+                .flat_map(|set| set.literals())
                 .any(|l| l == &other)
             {
                 continue 'other_loop;
@@ -115,7 +114,7 @@ impl<A: Atomic> FormulaSet<A> {
         let mut set_limit = self.sets.len();
 
         'set_loop: while set_index < set_limit {
-            for literal in &self.sets[set_index].set {
+            for literal in self.sets[set_index].literals() {
                 for atom in &atom_ids {
                     if *atom == literal.id() {
                         set_limit -= 1;
@@ -177,7 +176,7 @@ impl<A: Atomic> FormulaSet<A> {
         for a in &positive.sets {
             for n in &negative.sets {
                 let mut fresh = a.clone();
-                fresh.set.extend(n.set.iter().cloned());
+                fresh.extend(n.literals().cloned());
                 fresh.setify();
 
                 // Skip tivial sets from resolution
@@ -205,7 +204,7 @@ impl<A: Atomic> FormulaSet<A> {
         let mut negative_count: isize = 0;
 
         for set in &self.sets {
-            for literal in &set.set {
+            for literal in set.literals() {
                 if literal.id() == id {
                     match literal.value() {
                         true => positive_count += 1,

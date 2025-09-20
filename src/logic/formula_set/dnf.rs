@@ -31,7 +31,7 @@ impl<A: Atomic> Formula<A> {
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
                                 let product = LiteralSet::from(
-                                    l_set.set.iter().chain(r_set.set.iter()).cloned(),
+                                    l_set.literals().chain(r_set.literals()).cloned(),
                                 );
                                 fm.push(product);
                             }
@@ -59,12 +59,12 @@ impl<A: Atomic> FormulaSet<A> {
 
         'set_loop: while set_idx < limit {
             if self.sets[set_idx].len() > 1 {
-                match &self.sets[set_idx].get_negative_positive_split_index() {
+                match &self.sets[set_idx].non_empty_negative_positive_split_index() {
                     Some(index) => index,
                     None => continue 'set_loop,
                 };
 
-                let (p, n) = self.sets[set_idx].get_negative_positive_splits();
+                let (p, n) = self.sets[set_idx].non_empty_negative_positive_split();
 
                 let mut p_index = 0;
                 let mut n_index = 0;
