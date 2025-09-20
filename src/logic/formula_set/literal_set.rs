@@ -139,6 +139,27 @@ impl<A: Atomic> LiteralSet<A> {
 
         true
     }
+
+    pub fn has_complementary_literals(&self) -> bool {
+        use std::cmp::Ordering;
+
+        let (n, p) = self.non_empty_negative_positive_split();
+
+        let mut p_index = 0;
+        let mut n_index = 0;
+
+        while p_index < p.len() && n_index < n.len() {
+            match p[p_index].atom().cmp(n[n_index].atom()) {
+                Ordering::Less => p_index += 1,
+                Ordering::Equal => {
+                    return true;
+                }
+                Ordering::Greater => n_index += 1,
+            }
+        }
+
+        false
+    }
 }
 
 impl<A: Atomic, I: Iterator<Item = Literal<A>>> From<I> for LiteralSet<A> {
@@ -197,5 +218,18 @@ mod tests {
 
         assert!(!nanb_set.is_subset_of(a_set));
         assert!(!a_set.is_subset_of(nanb_set));
+    }
+
+    #[test]
+    fn complementary() {
+        let anb = FirstOrderFormula::from("(P(a) & ~P(b))");
+        let anb_set = &anb.to_set_direct(Mode::DNF).sets[0];
+
+        assert!(!anb_set.has_complementary_literals());
+
+        let bnb = FirstOrderFormula::from("(P(b) & ~P(b))");
+        let bnb_set = &bnb.to_set_direct(Mode::DNF).sets[0];
+
+        assert!(bnb_set.has_complementary_literals());
     }
 }

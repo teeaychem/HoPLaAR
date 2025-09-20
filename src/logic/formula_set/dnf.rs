@@ -52,36 +52,16 @@ impl<A: Atomic> Formula<A> {
 
 impl<A: Atomic> FormulaSet<A> {
     pub fn dnf_filter_contradictions(&mut self) {
-        use std::cmp::Ordering::*;
-
         let mut limit = self.sets.len();
         let mut set_idx = 0;
 
-        'set_loop: while set_idx < limit {
-            if self.sets[set_idx].len() > 1 {
-                match &self.sets[set_idx].non_empty_negative_positive_split_index() {
-                    Some(index) => index,
-                    None => continue 'set_loop,
-                };
-
-                let (p, n) = self.sets[set_idx].non_empty_negative_positive_split();
-
-                let mut p_index = 0;
-                let mut n_index = 0;
-
-                while p_index < p.len() && n_index < n.len() {
-                    match p[p_index].atom().cmp(n[n_index].atom()) {
-                        Less => p_index += 1,
-                        Equal => {
-                            self.sets.swap_remove(set_idx);
-                            limit -= 1;
-                            continue 'set_loop;
-                        }
-                        Greater => n_index += 1,
-                    }
-                }
+        while set_idx < limit {
+            if self.sets[set_idx].len() > 1 && self.sets[set_idx].has_complementary_literals() {
+                self.sets.swap_remove(set_idx);
+                limit -= 1;
+            } else {
+                set_idx += 1;
             }
-            set_idx += 1;
         }
 
         self.sets.sort();
