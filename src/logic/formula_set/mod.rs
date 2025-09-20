@@ -93,7 +93,7 @@ impl<A: Atomic> FormulaSet<A> {
 
     pub fn sort_outer_and_inner(&mut self) {
         for set in &mut self.sets {
-            set.set.sort_unstable();
+            set.sort();
         }
 
         self.sets.sort();
@@ -153,37 +153,11 @@ impl<A: Atomic> FormulaSet<A> {
             Mode::DNF => self.dnf_formula(),
         }
     }
-
-    pub fn set_contains_complementary_literals(set: &LiteralSet<A>) -> bool {
-        use std::cmp::Ordering::*;
-
-        match set.non_empty_negative_positive_split_index() {
-            Some(index) => {
-                let (p, n) = set.set.split_at(index);
-
-                let mut p_index = 0;
-                let mut n_index = 0;
-
-                while p_index < p.len() && n_index < n.len() {
-                    match p[p_index].atom().cmp(n[n_index].atom()) {
-                        Less => p_index += 1,
-                        Equal => return true,
-                        Greater => n_index += 1,
-                    }
-                }
-                false
-            }
-            None => false,
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{
-        first_order::FirstOrderFormula,
-        formula_set::{FormulaSet, Mode},
-    };
+    use crate::logic::{first_order::FirstOrderFormula, formula_set::Mode};
 
     #[test]
     fn complementary_literals() {
@@ -192,7 +166,7 @@ mod tests {
         assert!(
             fms.sets()
                 .iter()
-                .any(FormulaSet::set_contains_complementary_literals)
+                .any(|set| set.has_complementary_literals())
         );
 
         let fm = FirstOrderFormula::from("(P(a) & ~P(b))");
@@ -200,7 +174,7 @@ mod tests {
         assert!(
             !fms.sets()
                 .iter()
-                .all(FormulaSet::set_contains_complementary_literals)
+                .all(|set| set.has_complementary_literals())
         );
     }
 

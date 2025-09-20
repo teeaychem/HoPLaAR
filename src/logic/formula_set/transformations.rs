@@ -180,7 +180,7 @@ impl<A: Atomic> FormulaSet<A> {
                 fresh.setify();
 
                 // Skip tivial sets from resolution
-                if !Self::set_contains_complementary_literals(&fresh) {
+                if !fresh.has_complementary_literals() {
                     // Extend the formula
                     self.sets.push(fresh);
                 }

@@ -108,8 +108,12 @@ impl<A: Atomic> LiteralSet<A> {
 }
 
 impl<A: Atomic> LiteralSet<A> {
-    pub fn setify(&mut self) {
+    pub fn sort(&mut self) {
         self.set.sort_unstable();
+    }
+
+    pub fn setify(&mut self) {
+        self.sort();
         self.set.dedup();
     }
 
@@ -140,7 +144,7 @@ impl<A: Atomic> LiteralSet<A> {
         true
     }
 
-    pub fn has_complementary_literals(&self) -> bool {
+    pub fn some_complementary_literal_index(&self) -> Option<(usize, usize)> {
         use std::cmp::Ordering;
 
         let (n, p) = self.non_empty_negative_positive_split();
@@ -152,13 +156,17 @@ impl<A: Atomic> LiteralSet<A> {
             match p[p_index].atom().cmp(n[n_index].atom()) {
                 Ordering::Less => p_index += 1,
                 Ordering::Equal => {
-                    return true;
+                    return Some((n_index, p_index));
                 }
                 Ordering::Greater => n_index += 1,
             }
         }
 
-        false
+        None
+    }
+
+    pub fn has_complementary_literals(&self) -> bool {
+        self.some_complementary_literal_index().is_some()
     }
 }
 
