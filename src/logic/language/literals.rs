@@ -11,13 +11,6 @@ impl<A: Atomic> Literal<A> {
         Literal { atom, value }
     }
 
-    pub fn as_formula(&self) -> Formula<A> {
-        match self.value {
-            true => Formula::Atom(self.atom.to_owned()),
-            false => Formula::Not(Formula::Atom(self.atom.to_owned())),
-        }
-    }
-
     pub fn atom(&self) -> &A {
         &self.atom
     }
@@ -32,21 +25,32 @@ impl<A: Atomic> Literal<A> {
 }
 
 impl<A: Atomic> Literal<A> {
+    /// A mutable borrow of the literal's atom.
+    pub fn atom_mut(&mut self) -> &mut A {
+        &mut self.atom
+    }
+
+    /// Set the value of the literal to `value`.
     pub fn set_value(&mut self, value: bool) {
         self.value = value
     }
 
+    /// Invert the literal's value.
+    /// That is, from true to false, or from false to true.
     pub fn invert_value(&mut self) {
         self.value = !self.value
     }
 }
 
 impl<A: Atomic> Literal<A> {
+    /// Returns a negated instance of the literal.
     pub fn negate(mut self) -> Self {
-        self.value = !self.value;
+        self.invert_value();
         self
     }
 }
+
+// std::etc...
 
 impl<A: Atomic> std::cmp::PartialOrd for Literal<A> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -70,6 +74,15 @@ impl<A: Atomic> std::fmt::Display for Literal<A> {
         match self.value {
             true => write!(f, "{}", self.atom),
             false => write!(f, "¬{}", self.atom),
+        }
+    }
+}
+
+impl<A: Atomic> From<Literal<A>> for Formula<A> {
+    fn from(value: Literal<A>) -> Self {
+        match value.value {
+            true => Formula::Atom(value.atom.to_owned()),
+            false => Formula::Not(Formula::Atom(value.atom.to_owned())),
         }
     }
 }

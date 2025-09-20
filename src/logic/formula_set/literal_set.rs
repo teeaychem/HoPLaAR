@@ -142,6 +142,12 @@ impl<A: Atomic> LiteralSet<A> {
         self.set.extend(iter)
     }
 
+    pub fn literals_mut(&mut self) -> std::slice::IterMut<'_, Literal<A>> {
+        self.set.iter_mut()
+    }
+}
+
+impl<A: Atomic> LiteralSet<A> {
     pub fn into_literals(self) -> std::vec::IntoIter<Literal<A>> {
         self.set.into_iter()
     }

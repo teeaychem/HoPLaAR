@@ -32,11 +32,11 @@ impl<A: Atomic> FormulaSet<A> {
     fn literal_set_to_formula(op: OpBinary, ls: &LiteralSet<A>) -> Formula<A> {
         match ls.as_slice() {
             [] => Formula::True,
-            [literal] => literal.as_formula(),
+            [literal] => Formula::from(literal.clone()),
             [first, remaining @ ..] => {
-                let mut formula = first.as_formula();
+                let mut formula = Formula::from(first.clone());
                 for other in remaining {
-                    formula = Formula::Binary(op, formula, other.as_formula());
+                    formula = Formula::Binary(op, formula, Formula::from(other.clone()));
                 }
                 formula
             }
@@ -174,6 +174,18 @@ impl FormulaSet<Relation> {
         self.extend_with_variables(&mut fvs);
         fvs
     }
+
+    pub fn on_variables<F: Fn(&mut Var)>(&mut self, op: F) {
+        for set in &mut self.sets {
+            for literal in set.literals_mut() {
+                for term in &mut literal.atom_mut().terms {
+                    for var in term.vars_mut_depth() {
+                        op(var)
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -213,5 +225,16 @@ mod tests {
         let expected = HashSet::from(["x", "y", "z"].map(Var::from));
 
         assert_eq!(variables, expected)
+    }
+
+    #[test]
+    fn on_variables() {
+        let increment = |var: &mut Var| var.variant += 1;
+
+        let fm = FirstOrderFormula::from("(P(x) & ~P(y))");
+        let mut fms = fm.to_set_direct(Mode::DNF);
+        fms.on_variables(increment);
+
+        println!("{fms}");
     }
 }
