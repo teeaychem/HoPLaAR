@@ -162,22 +162,12 @@ impl Term {
     }
 }
 
-pub struct TermIteratorD<'a> {
+pub struct TermIterD<'a> {
     stack: Vec<&'a Term>,
     expr: Option<&'a Term>,
 }
 
-impl Term {
-    // An iterator of the term and all sub-terms.
-    pub fn terms_d(&'_ self) -> TermIteratorD<'_> {
-        TermIteratorD {
-            stack: Vec::default(),
-            expr: Some(self),
-        }
-    }
-}
-
-impl<'a> Iterator for TermIteratorD<'a> {
+impl<'a> Iterator for TermIterD<'a> {
     type Item = &'a Term;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -197,6 +187,46 @@ impl<'a> Iterator for TermIteratorD<'a> {
 
             None => None,
         }
+    }
+}
+
+pub struct VarsIterMutD<'a> {
+    stack: Vec<&'a mut Term>,
+}
+
+impl<'a> Iterator for VarsIterMutD<'a> {
+    type Item = &'a mut Var;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.stack.pop();
+
+        match current {
+            Some(Term::V(v)) => Some(v),
+
+            Some(Term::F(f)) => {
+                for arg in f.args.iter_mut().rev() {
+                    self.stack.push(arg);
+                }
+
+                self.next()
+            }
+
+            None => None,
+        }
+    }
+}
+
+impl Term {
+    // An iterator of the term and all sub-terms.
+    pub fn terms_d(&'_ self) -> TermIterD<'_> {
+        TermIterD {
+            stack: Vec::default(),
+            expr: Some(self),
+        }
+    }
+
+    pub fn vars_mut_depth(&'_ mut self) -> VarsIterMutD<'_> {
+        VarsIterMutD { stack: vec![self] }
     }
 }
 
@@ -351,5 +381,18 @@ mod tests {
         assert_ne!(v, sorted);
         v.sort();
         assert_eq!(v, sorted);
+    }
+
+    #[test]
+    fn var_iter_mut() {
+        let mut t = Term::try_from("g(x, y)").unwrap();
+
+        for v in t.vars_mut_depth() {
+            v.variant += 1;
+        }
+
+        let e = Term::try_from("g(x_1, y_1)").unwrap();
+
+        assert_eq!(t, e);
     }
 }
