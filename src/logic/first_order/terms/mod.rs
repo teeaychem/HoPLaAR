@@ -123,6 +123,17 @@ impl Term {
         vars
     }
 
+    pub fn extend_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
+        for term in self.terms_d() {
+            match term {
+                Term::F(_) => {}
+                Term::V(var) => {
+                    collection.extend(std::iter::once(var.to_owned()));
+                }
+            }
+        }
+    }
+
     pub fn functions(&self) -> HashSet<Fun> {
         let mut vars = HashSet::default();
 

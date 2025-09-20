@@ -1,14 +1,17 @@
 mod cnf;
 mod dnf;
 mod literal_set;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub use literal_set::LiteralSet;
 
 mod propositional;
 mod transformations;
 
-use crate::logic::{Atomic, Formula, Literal, OpBinary};
+use crate::logic::{
+    Atomic, Formula, Literal, OpBinary,
+    first_order::{Relation, terms::Var},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Mode {
@@ -115,6 +118,10 @@ impl<A: Atomic> FormulaSet<A> {
         &self.sets
     }
 
+    pub fn set_at_index(&self, index: usize) -> &LiteralSet<A> {
+        &self.sets[index]
+    }
+
     pub fn mode(&self) -> Mode {
         self.mode
     }
@@ -155,9 +162,28 @@ impl<A: Atomic> FormulaSet<A> {
     }
 }
 
+impl FormulaSet<Relation> {
+    pub fn extend_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
+        for set in &self.sets {
+            set.extend_with_variables(collection);
+        }
+    }
+
+    pub fn variables(&self) -> HashSet<Var> {
+        let mut fvs = HashSet::default();
+        self.extend_with_variables(&mut fvs);
+        fvs
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::logic::{first_order::FirstOrderFormula, formula_set::Mode};
+    use std::collections::HashSet;
+
+    use crate::logic::{
+        first_order::{FirstOrderFormula, terms::Var},
+        formula_set::Mode,
+    };
 
     #[test]
     fn complementary_literals() {
@@ -179,32 +205,13 @@ mod tests {
     }
 
     #[test]
-    fn negative_positive_split() {
-        let fm = FirstOrderFormula::from("P(a) & ~P(a) & ~Q(c)");
+    fn free_variables() {
+        let fm = FirstOrderFormula::from("(P(x) & ~P(y) | P(z))");
         let fms = fm.to_set_direct(Mode::DNF);
-        let split = fms
-            .sets()
-            .first()
-            .unwrap()
-            .non_empty_negative_positive_split_index();
-        assert_eq!(Some(2), split);
+        let variables = fms.variables();
 
-        let fm = FirstOrderFormula::from("~P(a) & ~P(a) & ~Q(c)");
-        let fms = fm.to_set_direct(Mode::DNF);
-        let split = fms
-            .sets()
-            .first()
-            .unwrap()
-            .non_empty_negative_positive_split_index();
-        assert_eq!(None, split);
+        let expected = HashSet::from(["x", "y", "z"].map(Var::from));
 
-        let fm = FirstOrderFormula::from("P(a) & P(b) & Q(c)");
-        let fms = fm.to_set_direct(Mode::DNF);
-        let split = fms
-            .sets()
-            .first()
-            .unwrap()
-            .non_empty_negative_positive_split_index();
-        assert_eq!(None, split);
+        assert_eq!(variables, expected)
     }
 }

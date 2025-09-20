@@ -1,16 +1,13 @@
-use crate::logic::{Atomic, Literal};
+use std::collections::HashSet;
+
+use crate::logic::{
+    Atomic, Literal,
+    first_order::{Relation, Term, terms::Var},
+};
 
 #[derive(Clone, Debug)]
 pub struct LiteralSet<A: Atomic> {
     set: Vec<Literal<A>>,
-}
-
-impl<A: Atomic> Default for LiteralSet<A> {
-    fn default() -> Self {
-        Self {
-            set: Default::default(),
-        }
-    }
 }
 
 impl<A: Atomic> LiteralSet<A> {
@@ -21,47 +18,7 @@ impl<A: Atomic> LiteralSet<A> {
     pub fn is_empty(&self) -> bool {
         self.set.is_empty()
     }
-}
 
-impl<A: Atomic> std::cmp::PartialEq for LiteralSet<A> {
-    fn eq(&self, other: &Self) -> bool {
-        self.set == other.set
-    }
-}
-
-impl<A: Atomic> std::cmp::Eq for LiteralSet<A> {}
-
-impl<A: Atomic> std::cmp::Ord for LiteralSet<A> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        use std::cmp::Ordering::*;
-
-        if self.is_empty() {
-            return Less;
-        }
-        if other.is_empty() {
-            return Greater;
-        }
-
-        let limit = std::cmp::min(self.len(), other.len());
-        for idx in 0..limit {
-            match self.set[idx].cmp(&other.set[idx]) {
-                Less => return Less,
-                Greater => return Greater,
-                Equal => continue,
-            }
-        }
-
-        self.len().cmp(&other.len())
-    }
-}
-
-impl<A: Atomic> std::cmp::PartialOrd for LiteralSet<A> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<A: Atomic> LiteralSet<A> {
     pub fn as_slice(&self) -> &[Literal<A>] {
         self.set.as_slice()
     }
@@ -83,7 +40,7 @@ impl<A: Atomic> LiteralSet<A> {
     /// If all literals share the same value, None is returned.
     /// Note, as a consequence of the above, the returned index is never 0.
     /// (For, otherwise all literals must be positive.)
-    pub fn non_empty_negative_positive_split_index(&self) -> Option<usize> {
+    fn non_empty_negative_positive_split_index(&self) -> Option<usize> {
         for (index, literal) in self.set.iter().enumerate() {
             if literal.value() {
                 match index {
@@ -190,6 +147,43 @@ impl<A: Atomic> LiteralSet<A> {
     }
 }
 
+impl LiteralSet<Relation> {
+    pub fn extend_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
+        for literal in &self.set {
+            for term in &literal.atom().terms {
+                match term {
+                    Term::F(fun) => {
+                        for arg in &fun.args {
+                            arg.extend_with_variables(collection);
+                        }
+                    }
+                    Term::V(var) => {
+                        collection.extend(std::iter::once(var.clone()));
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn variables(&self) -> HashSet<Var> {
+        let mut fvs = HashSet::default();
+        self.extend_with_variables(&mut fvs);
+        fvs
+    }
+}
+
+// Trait impls
+
+// Construction
+
+impl<A: Atomic> Default for LiteralSet<A> {
+    fn default() -> Self {
+        Self {
+            set: Default::default(),
+        }
+    }
+}
+
 impl<A: Atomic, I: Iterator<Item = Literal<A>>> From<I> for LiteralSet<A> {
     fn from(value: I) -> Self {
         let set: Vec<Literal<A>> = value.collect();
@@ -205,6 +199,48 @@ impl<A: Atomic> From<Literal<A>> for LiteralSet<A> {
         Self { set: vec![value] }
     }
 }
+
+// Eq / Ord
+
+impl<A: Atomic> std::cmp::PartialEq for LiteralSet<A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.set == other.set
+    }
+}
+
+impl<A: Atomic> std::cmp::Eq for LiteralSet<A> {}
+
+impl<A: Atomic> std::cmp::Ord for LiteralSet<A> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering::*;
+
+        if self.is_empty() {
+            return Less;
+        }
+        if other.is_empty() {
+            return Greater;
+        }
+
+        let limit = std::cmp::min(self.len(), other.len());
+        for idx in 0..limit {
+            match self.set[idx].cmp(&other.set[idx]) {
+                Less => return Less,
+                Greater => return Greater,
+                Equal => continue,
+            }
+        }
+
+        self.len().cmp(&other.len())
+    }
+}
+
+impl<A: Atomic> std::cmp::PartialOrd for LiteralSet<A> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+// Etc...
 
 impl<A: Atomic> std::fmt::Display for LiteralSet<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -259,5 +295,29 @@ mod tests {
         let bnb_set = &bnb.to_set_direct(Mode::DNF).sets[0];
 
         assert!(bnb_set.has_complementary_literals());
+    }
+
+    #[test]
+    fn negative_positive_split() {
+        let fm = FirstOrderFormula::from("P(a) & ~P(a) & ~Q(c)");
+        let fms = fm.to_set_direct(Mode::DNF);
+        let split = fms
+            .set_at_index(0)
+            .non_empty_negative_positive_split_index();
+        assert_eq!(Some(2), split);
+
+        let fm = FirstOrderFormula::from("~P(a) & ~P(a) & ~Q(c)");
+        let fms = fm.to_set_direct(Mode::DNF);
+        let split = fms
+            .set_at_index(0)
+            .non_empty_negative_positive_split_index();
+        assert_eq!(None, split);
+
+        let fm = FirstOrderFormula::from("P(a) & P(b) & Q(c)");
+        let fms = fm.to_set_direct(Mode::DNF);
+        let split = fms
+            .set_at_index(0)
+            .non_empty_negative_positive_split_index();
+        assert_eq!(None, split);
     }
 }
