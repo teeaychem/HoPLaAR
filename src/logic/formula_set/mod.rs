@@ -19,12 +19,14 @@ pub enum Mode {
     DNF,
 }
 
+type AtomCache = HashMap<String, (bool, bool)>;
+
 // A formula, as a set of sets.
 // Invariant: `formula` is sorted by `literal_set_cmp`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FormulaSet<A: Atomic> {
     sets: Vec<LiteralSet<A>>,
-    atoms: HashMap<String, (bool, bool)>,
+    atoms: AtomCache,
     mode: Mode,
 }
 
@@ -52,29 +54,46 @@ impl<A: Atomic> Formula<A> {
             Mode::CNF => self.to_cnf_set_local(),
             Mode::DNF => self.to_dnf_set_local(),
         };
-        sets.sort();
-        sets.dedup();
 
         for literal in sets.iter().flat_map(|s| s.literals()) {
-            fs.note_literal(literal);
+            fs.cache_literal(literal);
         }
 
         std::mem::swap(&mut fs.sets, &mut sets);
+
+        fs.setify_outer();
 
         fs
     }
 }
 
 impl<A: Atomic> FormulaSet<A> {
-    pub fn note_literal(&mut self, literal: &Literal<A>) {
+    fn update_atom_cache(cache: &mut AtomCache, literal: &Literal<A>) {
         match literal.value() {
-            true => self.atoms.entry(literal.id().to_owned()).or_default().0 = true,
-            false => self.atoms.entry(literal.id().to_owned()).or_default().1 = true,
+            true => cache.entry(literal.id().to_owned()).or_default().0 = true,
+            false => cache.entry(literal.id().to_owned()).or_default().1 = true,
         }
     }
 
+    pub fn cache_literal(&mut self, literal: &Literal<A>) {
+        Self::update_atom_cache(&mut self.atoms, literal);
+    }
+
+    pub fn refresh_literal_cache(&mut self) {
+        let mut atom_cache = std::mem::take(&mut self.atoms);
+        atom_cache.clear();
+
+        for set in &self.sets {
+            for literal in set.literals() {
+                Self::update_atom_cache(&mut atom_cache, literal);
+            }
+        }
+
+        let _ = std::mem::replace(&mut self.atoms, atom_cache);
+    }
+
     pub fn setify_outer(&mut self) {
-        self.sets.sort();
+        self.sets.sort_unstable();
         self.sets.dedup();
     }
 
@@ -153,7 +172,7 @@ impl FormulaSet<Relation> {
         }
     }
 
-    pub fn variables(&self) -> HashSet<Var> {
+    pub fn variable_set(&self) -> HashSet<Var> {
         let mut fvs = HashSet::default();
         self.extend_with_variables(&mut fvs);
         fvs
@@ -204,21 +223,10 @@ mod tests {
     fn free_variables() {
         let fm = FirstOrderFormula::from("(P(x) & ~P(y) | P(z))");
         let fms = fm.to_set_direct(Mode::DNF);
-        let variables = fms.variables();
+        let variables = fms.variable_set();
 
         let expected = HashSet::from(["x", "y", "z"].map(Var::from));
 
         assert_eq!(variables, expected)
-    }
-
-    #[test]
-    fn on_variables() {
-        let increment = |var: &mut Var| var.variant += 1;
-
-        let fm = FirstOrderFormula::from("(P(x) & ~P(y))");
-        let mut fms = fm.to_set_direct(Mode::DNF);
-        fms.on_variables(increment);
-
-        println!("{fms}");
     }
 }

@@ -108,11 +108,31 @@ impl<A: Atomic> FormulaSet<A> {
             }
         }
     }
+
+    pub fn dnf_conjoin(&self, other: &FormulaSet<A>) -> FormulaSet<A> {
+        let mut conjunction = FormulaSet::empty(Mode::DNF);
+
+        for self_literal_set in &self.sets {
+            for other_literal_set in &other.sets {
+                let mut merge = self_literal_set.clone();
+                merge.extend(other_literal_set.literals().cloned());
+                conjunction.sets.push(merge);
+            }
+        }
+
+        conjunction.refresh_literal_cache();
+
+        conjunction.setify_outer();
+
+        conjunction
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{Formula, formula_set::Mode, parse_propositional};
+    use crate::logic::{
+        Formula, first_order::FirstOrderFormula, formula_set::Mode, parse_propositional,
+    };
 
     #[test]
     fn dnf_set_bot() {
@@ -162,5 +182,26 @@ mod tests {
         let fm = dnf.as_formula();
 
         assert!(Formula::Iff(expr, fm).is_tautology());
+    }
+
+    #[test]
+    fn dnf_conjoin() {
+        let fax = FirstOrderFormula::from("(P(x) & P(y)) | (~P(x) & ~P(y))");
+        let fmas = fax.to_set_direct(Mode::DNF);
+
+        let fmb = FirstOrderFormula::from("P(y) | ~P(y)");
+        let fmbs = fmb.to_set_direct(Mode::DNF);
+
+        let fme = FirstOrderFormula::from(
+            "(P(x) & P(y))
+           | (~P(x) & ~P(y) & P(y))
+           | (P(x) & P(y) & ~P(y))
+           | (~P(x) & ~P(y))",
+        );
+        let fmes = fme.to_set_direct(Mode::DNF);
+
+        let fmcs = fmas.dnf_conjoin(&fmbs);
+
+        assert_eq!(fmcs, fmes);
     }
 }

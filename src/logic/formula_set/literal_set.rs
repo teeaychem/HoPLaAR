@@ -139,7 +139,8 @@ impl<A: Atomic> LiteralSet<A> {
     }
 
     pub fn extend<I: IntoIterator<Item = Literal<A>>>(&mut self, iter: I) {
-        self.set.extend(iter)
+        self.set.extend(iter);
+        self.setify();
     }
 
     pub fn literals_mut(&mut self) -> std::slice::IterMut<'_, Literal<A>> {
