@@ -19,14 +19,14 @@ pub enum Mode {
     DNF,
 }
 
-type AtomCache = HashMap<String, (bool, bool)>;
+type AtomCache<A> = HashMap<A, (bool, bool)>;
 
 // A formula, as a set of sets.
 // Invariant: `formula` is sorted by `literal_set_cmp`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FormulaSet<A: Atomic> {
     sets: Vec<LiteralSet<A>>,
-    atoms: AtomCache,
+    atoms: AtomCache<A>,
     mode: Mode,
 }
 
@@ -68,10 +68,10 @@ impl<A: Atomic> Formula<A> {
 }
 
 impl<A: Atomic> FormulaSet<A> {
-    fn update_atom_cache(cache: &mut AtomCache, literal: &Literal<A>) {
+    fn update_atom_cache(cache: &mut AtomCache<A>, literal: &Literal<A>) {
         match literal.value() {
-            true => cache.entry(literal.id().to_owned()).or_default().0 = true,
-            false => cache.entry(literal.id().to_owned()).or_default().1 = true,
+            true => cache.entry(literal.atom().to_owned()).or_default().0 = true,
+            false => cache.entry(literal.atom().to_owned()).or_default().1 = true,
         }
     }
 

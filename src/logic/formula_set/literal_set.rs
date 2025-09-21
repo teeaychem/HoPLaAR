@@ -32,10 +32,6 @@ impl<A: Atomic> LiteralSet<A> {
         (&self.set, &[])
     }
 
-    pub fn atom_at(&self, index: usize) -> &A {
-        self.set[index].atom()
-    }
-
     pub fn literals(&self) -> std::slice::Iter<'_, Literal<A>> {
         self.set.iter()
     }
@@ -91,6 +87,34 @@ impl<A: Atomic> LiteralSet<A> {
     pub fn has_complementary_literals(&self) -> bool {
         self.some_complementary_literal_index().is_some()
     }
+
+    pub fn atom_value(&self, atom: &A) -> Option<bool> {
+        let (n, p) = self.negative_positive_split();
+
+        for e in n {
+            if e.atom() == atom {
+                return Some(false);
+            }
+        }
+
+        for e in p {
+            if e.atom() == atom {
+                return Some(true);
+            }
+        }
+
+        None
+    }
+
+    pub fn remove_atom(&mut self, atom: &A) -> Option<Literal<A>> {
+        for index in 0..self.set.len() {
+            if self.set[index].atom() == atom {
+                return Some(self.set.swap_remove(index));
+            }
+        }
+
+        None
+    }
 }
 
 pub enum LiteralQuery {
@@ -100,10 +124,6 @@ pub enum LiteralQuery {
 }
 
 impl<A: Atomic> LiteralSet<A> {
-    pub fn remove(&mut self, index: usize) -> Literal<A> {
-        self.set.swap_remove(index)
-    }
-
     pub fn sort(&mut self) {
         self.set.sort_unstable();
     }

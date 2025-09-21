@@ -61,7 +61,7 @@ impl<A: Atomic> FormulaSet<A> {
             }
         }
 
-        self.atoms.remove(one.id());
+        self.atoms.remove(one.atom());
 
         'other_loop: for other in removed_other {
             if self
@@ -71,7 +71,7 @@ impl<A: Atomic> FormulaSet<A> {
                 .any(|l| l == &other)
             {
                 continue 'other_loop;
-            } else if let Some((t, f)) = self.atoms.get_mut(other.id()) {
+            } else if let Some((t, f)) = self.atoms.get_mut(other.atom()) {
                 match other.value() {
                     true => *t = false,
                     false => *f = false,
@@ -89,7 +89,7 @@ impl<A: Atomic> FormulaSet<A> {
     pub fn affirmative_negative_rule(&mut self) -> bool {
         // Map each atom id to a pair, capturing whether the atom has appear in a (true, false) literal.
         // Retain only those instance when the atom has not appear both as true and false.
-        let atom_ids: Vec<String> = self
+        let atom_ids: Vec<A> = self
             .atoms
             .iter()
             .filter_map(|(id, (t, f))| match !(*t && *f) {
@@ -106,7 +106,7 @@ impl<A: Atomic> FormulaSet<A> {
         'set_loop: while set_index < set_limit {
             for literal in self.sets[set_index].literals() {
                 for atom in &atom_ids {
-                    if *atom == literal.id() {
+                    if atom == literal.atom() {
                         set_limit -= 1;
                         self.sets.swap_remove(set_index);
                         mutation = true;
@@ -128,7 +128,7 @@ impl<A: Atomic> FormulaSet<A> {
     /// Applies the affirmative / negative rule to `self`, using `atom` as a pivot.
     /// Nominally returns true if a mutation occurred, and false otherwise.
     /// Though, at present panics if `atom` occurrs only positively or negatively.
-    pub fn resolve_on(&mut self, id: &str) -> bool {
+    pub fn resolve_on(&mut self, atom: &A) -> bool {
         // Each set of literals containing atom / ~atom will be moved to local storage.
         // Further, one move atom / ~atom will be removed from the set to ease taking the product later.
         let mut positive = FormulaSet::<A>::empty(Mode::CNF);
@@ -138,28 +138,20 @@ impl<A: Atomic> FormulaSet<A> {
         let mut set_limit = self.sets.len();
 
         'set_loop: while set_index < set_limit {
-            let mut literal_index = 0;
-            let literal_limit = self.sets[set_index].len();
-
-            while literal_index < literal_limit {
-                if self.sets[set_index].atom_at(literal_index).id() == id {
-                    let literal = self.sets[set_index].remove(literal_index);
-
-                    match literal.value() {
-                        true => positive.sets.push(self.sets.swap_remove(set_index)),
-                        false => negative.sets.push(self.sets.swap_remove(set_index)),
-                    }
-                    set_limit -= 1;
-                    continue 'set_loop;
+            if let Some(literal) = self.sets[set_index].remove_atom(atom) {
+                match literal.value() {
+                    true => positive.sets.push(self.sets.swap_remove(set_index)),
+                    false => negative.sets.push(self.sets.swap_remove(set_index)),
                 }
-
-                literal_index += 1;
+                set_limit -= 1;
+                continue 'set_loop;
             }
+
             set_index += 1;
         }
 
         if positive.is_top() || negative.is_top() {
-            panic!("Resolution called on {id} without complimentary literals")
+            panic!("Resolution called on {atom} without complimentary literals")
         }
 
         // Take the cartersian product
@@ -180,13 +172,13 @@ impl<A: Atomic> FormulaSet<A> {
         self.setify_outer();
 
         // Remove the atom used as a pivot.
-        self.atoms.remove(id);
+        self.atoms.remove(atom);
 
         true
     }
 
     /// The relative size of `self` after applying `resolve_on` with `atom`.
-    pub fn resolution_blowup(&self, id: &str) -> isize {
+    pub fn resolution_blowup(&self, atom: &A) -> isize {
         // Note, an isize is returned as the formula *may* shrink.
 
         let mut positive_count: isize = 0;
@@ -194,7 +186,7 @@ impl<A: Atomic> FormulaSet<A> {
 
         for set in &self.sets {
             for literal in set.literals() {
-                if literal.id() == id {
+                if literal.id() == atom.id() {
                     match literal.value() {
                         true => positive_count += 1,
                         false => negative_count += 1,
