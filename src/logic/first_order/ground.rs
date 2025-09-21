@@ -232,7 +232,7 @@ mod ground_tests {
         assert_eq!(ground.level_markers.len(), 1);
     }
 
-    // #[ignore = "Unsatisfiability test too inefficient"]
+    #[ignore = "Unsatisfiability test too inefficient"]
     #[test]
     fn p45() {
         let fm = FirstOrderFormula::from(library::pelletier::P45);

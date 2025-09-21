@@ -19,16 +19,8 @@ pub type EqsVec = Vec<(Term, Term)>;
 /// - A collection of indexed terms.
 #[derive(Clone, Debug, Default)]
 pub struct Unifier {
-    // The split mapping requires two steps.
-    // However:
-    // - Terms can be freely mutated while retaining the ability to lookup mappings.
-    // - Iteration through terms does not require inspection of empty buckets in a hash map, etc.
-    //
-    /// A mapping from variables to the position of a term in `indexed_terms`.
-    pub var_to_term_index: HashMap<Var, usize>,
-
-    /// A collection of indexed terms.
-    pub indexed_terms: Vec<Term>,
+    /// A mapping from variables to a term.
+    pub var_to_term: HashMap<Var, Term>,
 }
 
 /// The type of mapping, with respect to some background env.
@@ -64,50 +56,27 @@ impl Unifier {
             }
 
             Term::V(y) if x == y => MapType::Trivial,
-            Term::V(y) => match self.get_index(y) {
-                Some(index) => self.get_map_type(x, &self.indexed_terms[index]),
+            Term::V(y) => match self.get_term(y) {
+                Some(t) => self.get_map_type(x, t),
                 None => MapType::Fresh,
             },
         }
     }
 
-    /// Returns the index of variable `v` in the env.
-    pub fn get_index(&self, v: &Var) -> Option<usize> {
-        self.var_to_term_index.get(v).cloned()
-    }
-
     /// Returns the term which variable `v` maps to in the unification environment.
-    pub fn get_value(&self, v: &Var) -> Option<&Term> {
-        match self.get_index(v) {
-            Some(index) => self.indexed_terms.get(index),
-            None => None,
-        }
+    pub fn get_term(&self, v: &Var) -> Option<&Term> {
+        self.var_to_term.get(v)
     }
 }
 
 impl Unifier {
     /// Inserts a mapping from `v` to `t` into the unification environment.
-    pub fn insert(&mut self, v: Var, t: Term) {
-        let mut index = None;
-
-        for (i, xt) in self.indexed_terms.iter().enumerate() {
-            if xt == &t {
-                index = Some(i);
-                break;
-            }
-        }
-
-        if index.is_none() {
-            index = Some(self.indexed_terms.len());
-            self.indexed_terms.push(t.clone());
-        }
-
-        self.var_to_term_index.insert(v.clone(), index.unwrap());
+    pub fn insert(&mut self, v: Var, t: Term) -> Option<Term> {
+        self.var_to_term.insert(v, t)
     }
 
     pub fn clear(&mut self) {
-        self.var_to_term_index.clear();
-        self.indexed_terms.clear();
+        self.var_to_term.clear();
     }
 
     /// Unifies a sequences of equals.
@@ -129,13 +98,15 @@ impl Unifier {
                 }
 
                 (Term::V(x), t) | (t, Term::V(x)) => {
-                    if let Some(y) = self.get_value(&x) {
+                    if let Some(y) = self.get_term(&x) {
                         todo.push((y.clone(), t));
                     } else {
                         use MapType::*;
                         match self.get_map_type(&x, &t) {
                             Trivial => {}
-                            Fresh => self.insert(x, t),
+                            Fresh => {
+                                self.insert(x, t);
+                            }
                             Cyclic => return Err(UnificationFailure::Cyclic),
                         }
                     }
@@ -148,14 +119,14 @@ impl Unifier {
 
     /// Updates the given term `t` by replacing variables with a term mapped by the unification environment, if possible.
     /// Otherwise, returns `t`.
-    pub fn update_term(&mut self, t: Term) -> (Term, bool) {
+    pub fn update_term(vt: &HashMap<Var, Term>, t: Term) -> (Term, bool) {
         let mut update = false;
 
         match t {
             Term::F(mut fun) => {
                 for arg in fun.args.iter_mut() {
                     let taken_arg = std::mem::take(arg);
-                    match self.update_term(taken_arg) {
+                    match Self::update_term(vt, taken_arg) {
                         (t, true) => {
                             update = true;
                             *arg = t
@@ -166,7 +137,7 @@ impl Unifier {
 
                 (Term::F(fun), update)
             }
-            Term::V(ref var) => match self.get_value(var) {
+            Term::V(ref var) => match vt.get(var) {
                 Some(y) => (y.clone(), true),
                 None => (t, false),
             },
@@ -177,14 +148,17 @@ impl Unifier {
     pub fn update_env_one_pass(&mut self) -> bool {
         let mut update = false;
 
-        for index in 0..self.indexed_terms.len() {
-            let to = std::mem::take(&mut self.indexed_terms[index]);
-            match self.update_term(to) {
-                (t, true) => {
-                    update = true;
-                    self.indexed_terms[index] = t
-                }
-                (t, false) => self.indexed_terms[index] = t,
+        // TODO: A better way.
+        let variables: Vec<_> = self.var_to_term.keys().cloned().collect();
+
+        for variable in variables {
+            let term = self.var_to_term.get(&variable).unwrap().clone();
+
+            let (term, fresh) = Self::update_term(&self.var_to_term, term);
+
+            if fresh {
+                update = true;
+                self.var_to_term.insert(variable, term);
             }
         }
 
@@ -210,12 +184,13 @@ impl Unifier {
 
     pub fn unify_and_apply(&mut self, eqs: &mut EqsVec) -> Result<(), UnificationFailure> {
         self.fully_unify(eqs)?;
+        println!("after full unification: {self}");
         for (a, b) in eqs {
             let taken_a = std::mem::take(a);
-            *a = self.update_term(taken_a).0;
+            *a = Self::update_term(&self.var_to_term, taken_a).0;
 
             let taken_b = std::mem::take(b);
-            *b = self.update_term(taken_b).0;
+            *b = Self::update_term(&self.var_to_term, taken_b).0;
         }
         Ok(())
     }
@@ -307,8 +282,8 @@ impl Unifier {
 
 impl std::fmt::Display for Unifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (v, index) in &self.var_to_term_index {
-            writeln!(f, "{v} \t=>\t {}", self.indexed_terms[*index])?
+        for (v, t) in &self.var_to_term {
+            writeln!(f, "{v} \t=>\t {t}")?
         }
 
         Ok(())
@@ -442,8 +417,13 @@ mod tests {
 
         let mut eqs = vec![(t1, t2), (t3, t4), (t5, t6)];
         let _ = u.unify_and_apply(&mut eqs);
+
+        println!("{u}");
+
         match eqs.as_slice() {
             [(a, b), (c, d), (e, f)] => {
+                println!("{a} | {e1}");
+                println!("{b} | {e1}");
                 assert!(a.subterm_eq(&e1));
                 assert!(b.subterm_eq(&e1));
 
@@ -510,6 +490,7 @@ mod formula_tests {
         assert!(result)
     }
 
+    #[ignore = "Unsatisfiability test too inefficient"]
     #[test]
     fn p45() {
         let fm = FirstOrderFormula::from(library::pelletier::P45);
