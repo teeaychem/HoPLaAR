@@ -241,7 +241,11 @@ impl Unifier {
         use std::cmp::Ordering;
         // Splits the set into positive and negative literals, then examines all possible complements.
 
-        let (n, p) = set.non_empty_negative_positive_split();
+        let (n, p) = set.negative_positive_split();
+
+        if n.is_empty() || p.is_empty() {
+            return false;
+        }
 
         // Here, using the inariant that literals of the same value are lexicographically ordered.
         let mut p_index = 0;

@@ -14,7 +14,7 @@ impl<A: Atomic> FormulaSet<A> {
         let mut one = None;
 
         for index in 0..self.sets.len() {
-            if let [_l] = self.sets[index].as_slice() {
+            if let 1 = self.sets[index].len() {
                 let removed_set = self.sets.swap_remove(index);
                 let one_literal = removed_set.into_literals().next().unwrap();
                 one = Some(one_literal);
@@ -154,7 +154,7 @@ impl<A: Atomic> FormulaSet<A> {
             let literal_limit = self.sets[set_index].len();
 
             while literal_index < literal_limit {
-                if self.sets[set_index].literal_at(literal_index).id() == id {
+                if self.sets[set_index].atom_at(literal_index).id() == id {
                     let literal = self.sets[set_index].remove(literal_index);
 
                     match literal.value() {

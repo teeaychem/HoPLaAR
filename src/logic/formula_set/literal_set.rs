@@ -19,10 +19,6 @@ impl<A: Atomic> LiteralSet<A> {
         self.set.is_empty()
     }
 
-    pub fn as_slice(&self) -> &[Literal<A>] {
-        self.set.as_slice()
-    }
-
     pub fn negative_positive_split(&self) -> (&[Literal<A>], &[Literal<A>]) {
         for (index, literal) in self.set.iter().enumerate() {
             if literal.value() {
@@ -36,35 +32,8 @@ impl<A: Atomic> LiteralSet<A> {
         (&self.set, &[])
     }
 
-    /// Returns the index which separates negative literals from positive literals, if such an index exists.
-    /// If all literals share the same value, None is returned.
-    /// Note, as a consequence of the above, the returned index is never 0.
-    /// (For, otherwise all literals must be positive.)
-    fn non_empty_negative_positive_split_index(&self) -> Option<usize> {
-        for (index, literal) in self.set.iter().enumerate() {
-            if literal.value() {
-                match index {
-                    0 => return None,
-                    _ => return Some(index),
-                }
-            }
-        }
-        None
-    }
-
-    pub fn non_empty_negative_positive_split(&self) -> (&[Literal<A>], &[Literal<A>]) {
-        match self.non_empty_negative_positive_split_index() {
-            Some(index) => self.set.split_at(index),
-            None => (&[], &[]),
-        }
-    }
-
     pub fn atom_at(&self, index: usize) -> &A {
         self.set[index].atom()
-    }
-
-    pub fn literal_at(&self, index: usize) -> &Literal<A> {
-        &self.set[index]
     }
 
     pub fn value_at(&self, index: usize) -> bool {
@@ -101,7 +70,11 @@ impl<A: Atomic> LiteralSet<A> {
     pub fn some_complementary_literal_index(&self) -> Option<(usize, usize)> {
         use std::cmp::Ordering;
 
-        let (n, p) = self.non_empty_negative_positive_split();
+        let (n, p) = self.negative_positive_split();
+
+        if n.is_empty() || p.is_empty() {
+            return None;
+        }
 
         let mut p_index = 0;
         let mut n_index = 0;
@@ -327,23 +300,17 @@ mod tests {
     fn negative_positive_split() {
         let fm = FirstOrderFormula::from("P(a) & ~P(a) & ~Q(c)");
         let fms = fm.to_set_direct(Mode::DNF);
-        let split = fms
-            .set_at_index(0)
-            .non_empty_negative_positive_split_index();
-        assert_eq!(Some(2), split);
+        let (n, _) = fms.set_at_index(0).negative_positive_split();
+        assert_eq!(2, n.len());
 
         let fm = FirstOrderFormula::from("~P(a) & ~P(a) & ~Q(c)");
         let fms = fm.to_set_direct(Mode::DNF);
-        let split = fms
-            .set_at_index(0)
-            .non_empty_negative_positive_split_index();
-        assert_eq!(None, split);
+        let (n, _) = fms.set_at_index(0).negative_positive_split();
+        assert_eq!(2, n.len());
 
         let fm = FirstOrderFormula::from("P(a) & P(b) & Q(c)");
         let fms = fm.to_set_direct(Mode::DNF);
-        let split = fms
-            .set_at_index(0)
-            .non_empty_negative_positive_split_index();
-        assert_eq!(None, split);
+        let (n, _) = fms.set_at_index(0).negative_positive_split();
+        assert_eq!(0, n.len());
     }
 }

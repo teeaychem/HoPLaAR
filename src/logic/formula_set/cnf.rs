@@ -105,8 +105,8 @@ impl<A: Atomic> FormulaSet<A> {
         'set_loop: while set_index < set_limit {
             self.sets[set_index].sort();
             for literal_index in 1..self.sets[set_index].len() {
-                if self.sets[set_index].literal_at(literal_index - 1).id()
-                    == self.sets[set_index].literal_at(literal_index).id()
+                if self.sets[set_index].atom_at(literal_index - 1).id()
+                    == self.sets[set_index].atom_at(literal_index).id()
                 {
                     self.sets.swap_remove(set_index);
                     set_limit -= 1;
