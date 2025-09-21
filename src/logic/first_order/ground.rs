@@ -171,7 +171,8 @@ impl FirstOrderFormula {
         let mut ground = Ground::from(&sfm);
         let mut propositional = PropFormula::conjoin(ground.top_soil_formulas());
 
-        for _ in 0..limit.unwrap_or(usize::MAX) {
+        for counter in 0..limit.unwrap_or(usize::MAX) {
+            println!("{counter}");
             if propositional.is_unsatisfiable() {
                 return (true, ground, propositional);
             }
@@ -187,10 +188,10 @@ impl FirstOrderFormula {
 }
 
 #[cfg(test)]
-mod tests {
+mod ground_tests {
 
     use super::*;
-    use crate::logic::first_order::FirstOrderFormula;
+    use crate::logic::first_order::{FirstOrderFormula, library};
 
     #[test]
     fn ground_basic() {
@@ -216,47 +217,25 @@ mod tests {
         assert_eq!(ground.level_markers.len(), 2);
     }
 
-    #[ignore = "Unsatisfiability test too inefficient"]
     #[test]
     fn p20() {
-        let fm = FirstOrderFormula::from(
-            "forall x (forall y. (exists z. (forall w. (P(x) & Q(y) ==> R(z) & U(w))))) ==> exists x (exists y. (P(x) & Q(y))) ==> exists z. R(z)",
-        );
-        let (result, _ground, _) = fm.is_valid_gilmore(None);
+        let fm = FirstOrderFormula::from(library::pelletier::P20);
+        let (result, _, _) = fm.is_valid_gilmore(None);
         assert!(result);
     }
 
     #[test]
     fn p24() {
-        let fm = FirstOrderFormula::from(
-            "
-~(exists x. (U(x) & Q(x))) &
-(forall x. (P(x) ==> Q(x) | R(x))) &
-~(exists x. (P(x) ==> (exists x. Q(x)))) &
-(forall x. (Q(x) & R(x) ==> U(x)))
-==>
-(exists x. P(x) & R(x))
-",
-        );
+        let fm = FirstOrderFormula::from(library::pelletier::P24);
         let (result, ground, _) = fm.is_valid_gilmore(None);
         assert!(result);
         assert_eq!(ground.level_markers.len(), 1);
     }
 
-    #[ignore = "Unsatisfiability test too inefficient"]
+    // #[ignore = "Unsatisfiability test too inefficient"]
     #[test]
     fn p45() {
-        let fm = FirstOrderFormula::from(
-            "
-forall x. (P(x) & (forall y. G(y) & H(x,y) ==> J(x,y)) ==> (forall y. G(y) & H(x,y) ==> R(y)))
-&
-~exists y. (L(y) & R(y))
-&
-exists x. (P(x) & (forall y. H(x,y) ==> L(y))
-&
-forall y. (G(y) & H(x,y) ==> J(x,y))) ==> exists x. (P(x) & ~exists y. (G(y) & H(x,y)))
-",
-        );
+        let fm = FirstOrderFormula::from(library::pelletier::P45);
         let (result, ground, _) = fm.is_valid_gilmore(Some(6));
         assert!(result);
         assert_eq!(ground.level_markers.len(), 1);

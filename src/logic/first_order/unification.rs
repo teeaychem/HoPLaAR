@@ -6,7 +6,7 @@ use crate::logic::{
         FirstOrderFormula, Relation, Term,
         terms::{Fun, Var},
     },
-    formula_set::{FormulaSet, LiteralSet},
+    formula_set::{FormulaSet, LiteralSet, Mode},
 };
 
 pub type EqsSlice = [(Term, Term)];
@@ -25,10 +25,10 @@ pub struct Unifier {
     // - Iteration through terms does not require inspection of empty buckets in a hash map, etc.
     //
     /// A mapping from variables to the position of a term in `indexed_terms`.
-    term_indicies: HashMap<Var, usize>,
+    pub var_to_term_index: HashMap<Var, usize>,
 
     /// A collection of indexed terms.
-    indexed_terms: Vec<Term>,
+    pub indexed_terms: Vec<Term>,
 }
 
 /// The type of mapping, with respect to some background env.
@@ -73,7 +73,7 @@ impl Unifier {
 
     /// Returns the index of variable `v` in the env.
     pub fn get_index(&self, v: &Var) -> Option<usize> {
-        self.term_indicies.get(v).cloned()
+        self.var_to_term_index.get(v).cloned()
     }
 
     /// Returns the term which variable `v` maps to in the unification environment.
@@ -88,9 +88,26 @@ impl Unifier {
 impl Unifier {
     /// Inserts a mapping from `v` to `t` into the unification environment.
     pub fn insert(&mut self, v: Var, t: Term) {
-        self.term_indicies
-            .insert(v.clone(), self.indexed_terms.len());
-        self.indexed_terms.push(t);
+        let mut index = None;
+
+        for (i, xt) in self.indexed_terms.iter().enumerate() {
+            if xt == &t {
+                index = Some(i);
+                break;
+            }
+        }
+
+        if index.is_none() {
+            index = Some(self.indexed_terms.len());
+            self.indexed_terms.push(t.clone());
+        }
+
+        self.var_to_term_index.insert(v.clone(), index.unwrap());
+    }
+
+    pub fn clear(&mut self) {
+        self.var_to_term_index.clear();
+        self.indexed_terms.clear();
     }
 
     /// Unifies a sequences of equals.
@@ -100,11 +117,8 @@ impl Unifier {
         let mut todo = eqs.to_vec();
 
         while let Some((lhs, rhs)) = todo.pop() {
-            println!("{lhs} {rhs}");
-
             match (lhs, rhs) {
                 (Term::F(f), Term::F(g)) => {
-                    println!("{:?}", f.cmp(&g));
                     use std::cmp::Ordering::*;
                     match f.cmp(&g) {
                         Equal => todo.extend(f.args.iter().cloned().zip(g.args.iter().cloned())),
@@ -293,11 +307,54 @@ impl Unifier {
 
 impl std::fmt::Display for Unifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (v, index) in &self.term_indicies {
+        for (v, index) in &self.var_to_term_index {
             writeln!(f, "{v} \t=>\t {}", self.indexed_terms[*index])?
         }
 
         Ok(())
+    }
+}
+
+// etc.
+
+impl FirstOrderFormula {
+    pub fn prawitz(&self, limit: Option<usize>) -> (bool, usize) {
+        let mut base = self
+            .clone()
+            .generalize()
+            .negate()
+            .skolemize()
+            .raw_dnf()
+            .to_set_direct(Mode::DNF);
+
+        let mut unifier = Unifier::default();
+
+        let limit = limit.unwrap_or(usize::MAX);
+
+        let v_increment = std::cmp::max(
+            1,
+            base.variable_set()
+                .iter()
+                .map(|v| v.variant)
+                .max()
+                .unwrap_or_default(),
+        );
+
+        let increment_var = |var: &mut Var| var.variant += v_increment;
+
+        let mut fm = base.clone();
+
+        for attempt in 0..limit {
+            if unifier.unify_refute(&fm) {
+                return (true, attempt);
+            }
+            unifier.clear();
+
+            base.on_variables(increment_var);
+            fm = fm.dnf_conjoin(&base);
+        }
+
+        (false, limit)
     }
 }
 
@@ -429,5 +486,35 @@ mod tests {
 
         println!("{result:?}");
         println!("Unified complements: {u}");
+    }
+}
+
+#[cfg(test)]
+mod formula_tests {
+
+    use crate::logic::first_order::{FirstOrderFormula, library};
+
+    #[test]
+    fn p20() {
+        let f = FirstOrderFormula::from(library::pelletier::P20);
+        let (result, _) = f.prawitz(None);
+
+        assert!(result)
+    }
+
+    #[test]
+    fn p24() {
+        let f = FirstOrderFormula::from(library::pelletier::P24);
+        let (result, _) = f.prawitz(None);
+
+        assert!(result)
+    }
+
+    #[test]
+    fn p45() {
+        let fm = FirstOrderFormula::from(library::pelletier::P45);
+        let (result, _) = fm.prawitz(Some(10));
+
+        assert!(result);
     }
 }

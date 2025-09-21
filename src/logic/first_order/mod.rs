@@ -4,6 +4,8 @@ pub use domains::Element;
 
 pub mod ground;
 
+pub mod library;
+
 mod semantics;
 pub use semantics::{Model, Valuation, eval_first_order, eval_relation, eval_term};
 
