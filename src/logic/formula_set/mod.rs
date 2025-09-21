@@ -168,7 +168,7 @@ impl<A: Atomic> FormulaSet<A> {
 impl FormulaSet<Relation> {
     pub fn extend_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
         for set in &self.sets {
-            set.extend_with_variables(collection);
+            set.variables_to_collection(collection);
         }
     }
 

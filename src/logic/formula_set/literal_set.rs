@@ -36,10 +36,6 @@ impl<A: Atomic> LiteralSet<A> {
         self.set[index].atom()
     }
 
-    pub fn value_at(&self, index: usize) -> bool {
-        self.set[index].value()
-    }
-
     pub fn literals(&self) -> std::slice::Iter<'_, Literal<A>> {
         self.set.iter()
     }
@@ -97,6 +93,12 @@ impl<A: Atomic> LiteralSet<A> {
     }
 }
 
+pub enum LiteralQuery {
+    Missing,
+    Matching,
+    Conflicting,
+}
+
 impl<A: Atomic> LiteralSet<A> {
     pub fn remove(&mut self, index: usize) -> Literal<A> {
         self.set.swap_remove(index)
@@ -119,6 +121,30 @@ impl<A: Atomic> LiteralSet<A> {
     pub fn literals_mut(&mut self) -> std::slice::IterMut<'_, Literal<A>> {
         self.set.iter_mut()
     }
+
+    pub fn one_literal(
+        &mut self,
+        literal: &Literal<A>,
+        remove_complementary: bool,
+    ) -> LiteralQuery {
+        let limit = self.set.len();
+
+        for index in 0..limit {
+            if self.set[index].atom() == literal.atom() {
+                if self.set[index].value() == literal.value() {
+                    return LiteralQuery::Matching;
+                } else {
+                    if remove_complementary {
+                        self.set.swap_remove(index);
+                    }
+
+                    return LiteralQuery::Conflicting;
+                }
+            }
+        }
+
+        LiteralQuery::Missing
+    }
 }
 
 impl<A: Atomic> LiteralSet<A> {
@@ -129,7 +155,7 @@ impl<A: Atomic> LiteralSet<A> {
 
 impl LiteralSet<Relation> {
     /// Extend `collection` with the variables of `self`.
-    pub fn extend_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
+    pub fn variables_to_collection<C: Extend<Var>>(&self, collection: &mut C) {
         for literal in &self.set {
             for term in &literal.atom().terms {
                 match term {
@@ -149,7 +175,7 @@ impl LiteralSet<Relation> {
     /// The variables of `self`, collected in a hash set.
     pub fn variables(&self) -> HashSet<Var> {
         let mut fvs = HashSet::default();
-        self.extend_with_variables(&mut fvs);
+        self.variables_to_collection(&mut fvs);
         fvs
     }
 }

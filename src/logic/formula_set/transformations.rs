@@ -35,42 +35,30 @@ impl<A: Atomic> FormulaSet<A> {
         let mut set_limit = self.sets.len();
 
         'set_loop: while set_index < set_limit {
-            let mut literal_index = 0;
-            let mut literal_limit = self.sets[set_index].len();
+            // Check against each one literal.
 
-            'literal_loop: while literal_index < literal_limit {
-                // Check against each one literal.
+            use super::literal_set::LiteralQuery;
 
-                // If the atoms match, either the set or the literal will be removed.
-                if self.sets[set_index].atom_at(literal_index) == one.atom() {
-                    if self.sets[set_index].value_at(literal_index) == one.value() {
-                        set_limit -= 1;
-                        let removed_set = self.sets.swap_remove(set_index);
-                        removed_other.extend(removed_set.into_literals());
-                        continue 'set_loop;
-                    }
-
-                    // Conflicting literals
-
-                    // If the literal is unit, have φ ∧ ¬φ, so rewrite to basic ⊥ form.
-                    if self.sets[set_index].len() == 1 {
+            match self.sets[set_index].one_literal(&one, true) {
+                LiteralQuery::Missing => {
+                    // As the set was not removed, and all literals were examined, consider the next set.
+                    set_index += 1;
+                }
+                LiteralQuery::Matching => {
+                    set_limit -= 1;
+                    let removed_set = self.sets.swap_remove(set_index);
+                    removed_other.extend(removed_set.into_literals());
+                    continue 'set_loop;
+                }
+                LiteralQuery::Conflicting => {
+                    // If the literal was unit, have φ ∧ ¬φ, so rewrite to basic ⊥ form.
+                    if self.sets[set_index].is_empty() {
                         self.sets.drain(0..set_limit);
                         self.sets.push(LiteralSet::default());
                         return true;
                     }
-
-                    // Otherwise, remove the literal.
-                    literal_limit -= 1;
-                    self.sets[set_index].remove(literal_index);
-
-                    continue 'literal_loop;
                 }
-
-                // As the set was not removed, consider the next literal.
-                literal_index += 1;
             }
-            // As the set was not removed, and all literals were examined, consider the next set.
-            set_index += 1;
         }
 
         self.atoms.remove(one.id());
@@ -175,11 +163,10 @@ impl<A: Atomic> FormulaSet<A> {
         }
 
         // Take the cartersian product
-        for a in &positive.sets {
+        for p in &positive.sets {
             for n in &negative.sets {
-                let mut fresh = a.clone();
+                let mut fresh = p.clone();
                 fresh.extend(n.literals().cloned());
-                fresh.setify();
 
                 // Skip tivial sets from resolution
                 if !fresh.has_complementary_literals() {
