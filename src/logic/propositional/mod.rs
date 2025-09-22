@@ -96,7 +96,9 @@ impl PropFormula {
 
     pub fn is_tautology(&self) -> bool {
         let mut valuation = Valuation::from_prop_set(self.atoms());
-        for _ in 0..valuation.permutation_count() {
+        let permutation_count = valuation.permutation_count();
+
+        for p in 0..permutation_count {
             if !self.eval(&valuation) {
                 return false;
             }
@@ -106,7 +108,7 @@ impl PropFormula {
     }
 
     pub fn is_unsatisfiable(&self) -> bool {
-        let negated = PropFormula::Not(self.clone());
+        let negated = self.clone().negate();
         negated.is_tautology()
     }
 

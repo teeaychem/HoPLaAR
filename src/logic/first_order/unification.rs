@@ -184,7 +184,6 @@ impl Unifier {
 
     pub fn unify_and_apply(&mut self, eqs: &mut EqsVec) -> Result<(), UnificationFailure> {
         self.fully_unify(eqs)?;
-        println!("after full unification: {self}");
         for (a, b) in eqs {
             let taken_a = std::mem::take(a);
             *a = Self::update_term(&self.var_to_term, taken_a).0;
@@ -238,7 +237,6 @@ impl Unifier {
     /// Returns true on the first unifier found, with `self` is updated with the unifier
     /// Returns false, otherwise.
     pub fn unify_complements(&mut self, set: &LiteralSet<Relation>) -> bool {
-        use std::cmp::Ordering;
         // Splits the set into positive and negative literals, then examines all possible complements.
 
         let (n, p) = set.negative_positive_split();
@@ -247,23 +245,11 @@ impl Unifier {
             return false;
         }
 
-        // Here, using the inariant that literals of the same value are lexicographically ordered.
-        let mut p_index = 0;
-        let mut n_index = 0;
-
-        while p_index < p.len() && n_index < n.len() {
-            match p[p_index].id().cmp(n[n_index].id()) {
-                Ordering::Less => p_index += 1,
-                Ordering::Equal => {
-                    match self.unify_relations(p[p_index].atom(), n[n_index].atom()) {
-                        Ok(()) => return true,
-                        Err(_) => {
-                            p_index += 1;
-                            n_index += 1;
-                        }
-                    }
+        for nx in n {
+            for px in p {
+                if let Ok(()) = self.unify_relations(nx.atom(), px.atom()) {
+                    return true;
                 }
-                Ordering::Greater => n_index += 1,
             }
         }
 
@@ -298,13 +284,11 @@ impl std::fmt::Display for Unifier {
 
 impl FirstOrderFormula {
     pub fn prawitz(&self, limit: Option<usize>) -> (bool, usize) {
-        let mut base = self
-            .clone()
-            .generalize()
-            .negate()
-            .skolemize()
-            .raw_dnf()
-            .to_set_direct(Mode::DNF);
+        let base_clone = self.clone();
+        let generalized = base_clone.generalize();
+        let negated = generalized.negate();
+        let skolemized = negated.skolemize();
+        let mut base = skolemized.raw_dnf().to_set_direct(Mode::DNF);
 
         let mut unifier = Unifier::default();
 
@@ -327,8 +311,6 @@ impl FirstOrderFormula {
             if unifier.unify_refute(&fm) {
                 return (true, attempt);
             }
-            unifier.clear();
-
             base.on_variables(increment_var);
             fm = fm.dnf_conjoin(&base);
         }
@@ -479,6 +461,14 @@ mod formula_tests {
     use crate::logic::first_order::{FirstOrderFormula, library};
 
     #[test]
+    fn p18() {
+        let f = FirstOrderFormula::from(library::pelletier::P18);
+        let (result, _) = f.prawitz(None);
+
+        assert!(result)
+    }
+
+    #[test]
     fn p20() {
         let f = FirstOrderFormula::from(library::pelletier::P20);
         let (result, _) = f.prawitz(None);
@@ -494,7 +484,7 @@ mod formula_tests {
         assert!(result)
     }
 
-    #[ignore = "Unsatisfiability test too inefficient"]
+    // #[ignore = "Unsatisfiability test too inefficient"]
     #[test]
     fn p45() {
         let fm = FirstOrderFormula::from(library::pelletier::P45);

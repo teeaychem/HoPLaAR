@@ -39,7 +39,7 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
             write!(f, "{expr}")?;
 
             if outer_idx < outer_limit {
-                write!(f, ", ")?;
+                writeln!(f, ", ")?;
             }
         }
         write!(f, "}}")
@@ -117,6 +117,14 @@ impl<A: Atomic> FormulaSet<A> {
 }
 
 impl<A: Atomic> FormulaSet<A> {
+    pub fn len(&self) -> usize {
+        self.sets.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sets.is_empty()
+    }
+
     pub fn sets(&self) -> &Vec<LiteralSet<A>> {
         &self.sets
     }
