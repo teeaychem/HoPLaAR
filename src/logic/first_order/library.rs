@@ -4,7 +4,7 @@ pub mod pelletier {
 exists y. forall x. (F(y) => F(x))";
 
     pub const P19: &str = "
-exists y. forall x. forall z. ((P(y) => Q(z)) => (P(x) => Q(x)))";
+exists x. forall y. forall z. ((P(y) => Q(z)) => (P(x) => Q(x)))";
 
     pub const P20: &str = "
 forall x.
