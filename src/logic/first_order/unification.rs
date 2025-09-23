@@ -312,7 +312,7 @@ impl FirstOrderFormula {
                 return (true, attempt);
             }
             base.on_variables(increment_var);
-            fm = fm.dnf_conjoin(&base);
+            fm = fm.dnf_conjoin(base.clone());
         }
 
         (false, limit)
@@ -463,6 +463,14 @@ mod formula_tests {
     #[test]
     fn p18() {
         let f = FirstOrderFormula::from(library::pelletier::P18);
+        let (result, _) = f.prawitz(None);
+
+        assert!(result)
+    }
+
+    #[test]
+    fn p19() {
+        let f = FirstOrderFormula::from(library::pelletier::P19);
         let (result, _) = f.prawitz(None);
 
         assert!(result)

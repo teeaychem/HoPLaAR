@@ -48,17 +48,17 @@ impl<A: Atomic> FormulaSet<A> {
 }
 
 impl<A: Atomic> Formula<A> {
-    pub(super) fn to_cnf_set_local(&self) -> Vec<LiteralSet<A>> {
+    pub(super) fn into_cnf_set_local(self) -> Vec<LiteralSet<A>> {
         match self {
             Formula::True => vec![],
             Formula::False => vec![LiteralSet::default()],
 
-            Formula::Atom(atom) => vec![LiteralSet::from(Literal::from(atom.clone(), true))],
+            Formula::Atom(atom) => vec![LiteralSet::from(Literal::from(atom, true))],
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
-                    if let Formula::Atom(atom) = expr.as_ref() {
-                        vec![LiteralSet::from(Literal::from(atom.clone(), false))]
+                    if let Formula::Atom(atom) = *expr {
+                        vec![LiteralSet::from(Literal::from(atom, false))]
                     } else {
                         todo!()
                     }
@@ -71,7 +71,7 @@ impl<A: Atomic> Formula<A> {
 
                 match op {
                     OpBinary::Or => {
-                        let mut fm = Vec::with_capacity(lhs.sets.len() * rhs.sets.len());
+                        let mut fm = Vec::with_capacity(lhs.sets.len() * rhs.sets.len() / 2);
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
                                 let product = LiteralSet::from(

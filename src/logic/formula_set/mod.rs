@@ -47,12 +47,12 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
 }
 
 impl<A: Atomic> Formula<A> {
-    pub fn to_set_direct(&self, mode: Mode) -> FormulaSet<A> {
+    pub fn to_set_direct(self, mode: Mode) -> FormulaSet<A> {
         let mut fs = FormulaSet::empty(mode);
 
         let mut sets = match mode {
-            Mode::CNF => self.to_cnf_set_local(),
-            Mode::DNF => self.to_dnf_set_local(),
+            Mode::CNF => self.into_cnf_set_local(),
+            Mode::DNF => self.into_dnf_set_local(),
         };
 
         for literal in sets.iter().flat_map(|s| s.literals()) {
@@ -176,7 +176,7 @@ impl<A: Atomic> FormulaSet<A> {
 impl FormulaSet<Relation> {
     pub fn extend_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
         for set in &self.sets {
-            set.variables_to_collection(collection);
+            set.extend_collection_with_variables(collection);
         }
     }
 

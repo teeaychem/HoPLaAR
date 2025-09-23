@@ -175,7 +175,7 @@ impl<A: Atomic> LiteralSet<A> {
 
 impl LiteralSet<Relation> {
     /// Extend `collection` with the variables of `self`.
-    pub fn variables_to_collection<C: Extend<Var>>(&self, collection: &mut C) {
+    pub fn extend_collection_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
         for literal in &self.set {
             for term in &literal.atom().terms {
                 match term {
@@ -195,7 +195,7 @@ impl LiteralSet<Relation> {
     /// The variables of `self`, collected in a hash set.
     pub fn variables(&self) -> HashSet<Var> {
         let mut fvs = HashSet::default();
-        self.variables_to_collection(&mut fvs);
+        self.extend_collection_with_variables(&mut fvs);
         fvs
     }
 }

@@ -4,17 +4,17 @@ use crate::logic::{
 };
 
 impl<A: Atomic> Formula<A> {
-    pub(super) fn to_dnf_set_local(&self) -> Vec<LiteralSet<A>> {
+    pub(super) fn into_dnf_set_local(self) -> Vec<LiteralSet<A>> {
         match self {
             Formula::True => vec![LiteralSet::default()],
             Formula::False => vec![],
 
-            Formula::Atom(atom) => vec![LiteralSet::from(Literal::from(atom.clone(), true))],
+            Formula::Atom(atom) => vec![LiteralSet::from(Literal::from(atom, true))],
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
-                    if let Formula::Atom(atom) = expr.as_ref() {
-                        vec![LiteralSet::from(Literal::from(atom.clone(), false))]
+                    if let Formula::Atom(atom) = *expr {
+                        vec![LiteralSet::from(Literal::from(atom, false))]
                     } else {
                         panic!()
                     }
@@ -109,13 +109,18 @@ impl<A: Atomic> FormulaSet<A> {
         }
     }
 
-    pub fn dnf_conjoin(&self, other: &FormulaSet<A>) -> FormulaSet<A> {
+    pub fn dnf_conjoin(self, other: FormulaSet<A>) -> FormulaSet<A> {
         let mut conjunction = FormulaSet::empty(Mode::DNF);
 
-        for self_literal_set in &self.sets {
+        for self_literal_set in self.sets {
             for other_literal_set in &other.sets {
-                let mut merge = self_literal_set.clone();
-                merge.extend(other_literal_set.literals().cloned());
+                let merge = LiteralSet::from(
+                    self_literal_set
+                        .literals()
+                        .chain(other_literal_set.literals())
+                        .cloned(),
+                );
+
                 conjunction.sets.push(merge);
             }
         }
@@ -178,7 +183,8 @@ mod tests {
     #[test]
     fn dnf_formula() {
         let expr = parse_propositional("(p | q & r) & (~p | ~r)");
-        let dnf = expr.to_set_direct(Mode::DNF);
+        let dnf = expr.clone().to_set_direct(Mode::DNF);
+
         let fm = dnf.as_formula();
 
         assert!(Formula::Iff(expr, fm).is_tautology());
@@ -200,7 +206,7 @@ mod tests {
         );
         let fmes = fme.to_set_direct(Mode::DNF);
 
-        let fmcs = fmas.dnf_conjoin(&fmbs);
+        let fmcs = fmas.dnf_conjoin(fmbs);
 
         assert_eq!(fmcs, fmes);
     }
