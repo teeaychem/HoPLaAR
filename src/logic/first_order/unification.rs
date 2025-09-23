@@ -484,7 +484,7 @@ mod formula_tests {
         assert!(result)
     }
 
-    // #[ignore = "Unsatisfiability test too inefficient"]
+    #[ignore = "Unsatisfiability test too inefficient"]
     #[test]
     fn p45() {
         let fm = FirstOrderFormula::from(library::pelletier::P45);

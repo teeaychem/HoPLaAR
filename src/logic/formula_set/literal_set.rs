@@ -271,17 +271,20 @@ impl<A: Atomic> std::cmp::PartialOrd for LiteralSet<A> {
 
 impl<A: Atomic> From<(LiteralSet<A>, OpBinary)> for Formula<A> {
     fn from(value: (LiteralSet<A>, OpBinary)) -> Self {
-        match value.0.set.as_slice() {
-            [] => Formula::True,
-            [literal] => Formula::from(literal.clone()),
-            [first, remaining @ ..] => {
-                let mut formula = Formula::from(first.clone());
-                for other in remaining {
-                    formula = Formula::Binary(value.1, formula, Formula::from(other.clone()));
-                }
-                formula
-            }
+        let set = value.0;
+        let op = value.1;
+
+        let mut literals = set.into_literals();
+        let mut formula = match literals.next() {
+            Some(literal) => Formula::from(literal),
+            None => return Formula::True,
+        };
+
+        while let Some(literal) = literals.next() {
+            formula = Formula::Binary(op, formula, Formula::from(literal));
         }
+
+        formula
     }
 }
 
