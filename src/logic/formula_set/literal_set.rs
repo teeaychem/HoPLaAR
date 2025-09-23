@@ -7,33 +7,35 @@ use crate::logic::{
 
 #[derive(Clone, Debug)]
 pub struct LiteralSet<A: Atomic> {
-    set: Vec<Literal<A>>,
+    n: Vec<Literal<A>>,
+    p: Vec<Literal<A>>,
 }
 
 impl<A: Atomic> LiteralSet<A> {
     pub fn len(&self) -> usize {
-        self.set.len()
+        self.n.len() + self.p.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.set.is_empty()
+        self.n.is_empty() && self.p.is_empty()
     }
 
     pub fn negative_positive_split(&self) -> (&[Literal<A>], &[Literal<A>]) {
-        for (index, literal) in self.set.iter().enumerate() {
-            if literal.value() {
-                match index {
-                    0 => return (&[], &self.set),
-                    _ => return self.set.split_at(index),
-                }
-            }
-        }
-
-        (&self.set, &[])
+        (&self.n, &self.p)
     }
 
-    pub fn literals(&self) -> std::slice::Iter<'_, Literal<A>> {
-        self.set.iter()
+    pub fn negative_literals(&self) -> std::slice::Iter<'_, Literal<A>> {
+        self.n.iter()
+    }
+
+    pub fn positive_literals(&self) -> std::slice::Iter<'_, Literal<A>> {
+        self.p.iter()
+    }
+
+    pub fn literals(
+        &self,
+    ) -> std::iter::Chain<std::slice::Iter<'_, Literal<A>>, std::slice::Iter<'_, Literal<A>>> {
+        self.negative_literals().chain(self.positive_literals())
     }
 
     pub fn is_subset_of(&self, other: &LiteralSet<A>) -> bool {
@@ -107,9 +109,15 @@ impl<A: Atomic> LiteralSet<A> {
     }
 
     pub fn remove_atom(&mut self, atom: &A) -> Option<Literal<A>> {
-        for index in 0..self.set.len() {
-            if self.set[index].atom() == atom {
-                return Some(self.set.swap_remove(index));
+        for index in 0..self.n.len() {
+            if self.n[index].atom() == atom {
+                return Some(self.n.swap_remove(index));
+            }
+        }
+
+        for index in 0..self.p.len() {
+            if self.p[index].atom() == atom {
+                return Some(self.p.swap_remove(index));
             }
         }
 
@@ -125,21 +133,40 @@ pub enum LiteralQuery {
 
 impl<A: Atomic> LiteralSet<A> {
     pub fn sort(&mut self) {
-        self.set.sort_unstable();
+        self.n.sort_unstable();
+        self.p.sort_unstable();
     }
 
     pub fn setify(&mut self) {
         self.sort();
-        self.set.dedup();
+        self.n.dedup();
+        self.p.dedup();
     }
 
     pub fn extend<I: IntoIterator<Item = Literal<A>>>(&mut self, iter: I) {
-        self.set.extend(iter);
+        for literal in iter {
+            match literal.value() {
+                false => self.n.push(literal),
+                true => self.p.push(literal),
+            }
+        }
+
         self.setify();
     }
 
-    pub fn literals_mut(&mut self) -> std::slice::IterMut<'_, Literal<A>> {
-        self.set.iter_mut()
+    pub fn negative_literals_mut(&mut self) -> std::slice::IterMut<'_, Literal<A>> {
+        self.n.iter_mut()
+    }
+
+    pub fn positive_literals_mut(&mut self) -> std::slice::IterMut<'_, Literal<A>> {
+        self.p.iter_mut()
+    }
+
+    pub fn literals_mut(
+        &mut self,
+    ) -> std::iter::Chain<std::slice::IterMut<'_, Literal<A>>, std::slice::IterMut<'_, Literal<A>>>
+    {
+        self.n.iter_mut().chain(self.p.iter_mut())
     }
 
     pub fn one_literal(
@@ -147,15 +174,27 @@ impl<A: Atomic> LiteralSet<A> {
         literal: &Literal<A>,
         remove_complementary: bool,
     ) -> LiteralQuery {
-        let limit = self.set.len();
-
-        for index in 0..limit {
-            if self.set[index].atom() == literal.atom() {
-                if self.set[index].value() == literal.value() {
+        for index in 0..self.n.len() {
+            if self.n[index].atom() == literal.atom() {
+                if self.n[index].value() == literal.value() {
                     return LiteralQuery::Matching;
                 } else {
                     if remove_complementary {
-                        self.set.swap_remove(index);
+                        self.n.swap_remove(index);
+                    }
+
+                    return LiteralQuery::Conflicting;
+                }
+            }
+        }
+
+        for index in 0..self.p.len() {
+            if self.p[index].atom() == literal.atom() {
+                if self.p[index].value() == literal.value() {
+                    return LiteralQuery::Matching;
+                } else {
+                    if remove_complementary {
+                        self.p.swap_remove(index);
                     }
 
                     return LiteralQuery::Conflicting;
@@ -168,15 +207,17 @@ impl<A: Atomic> LiteralSet<A> {
 }
 
 impl<A: Atomic> LiteralSet<A> {
-    pub fn into_literals(self) -> std::vec::IntoIter<Literal<A>> {
-        self.set.into_iter()
+    pub fn into_literals(
+        self,
+    ) -> std::iter::Chain<std::vec::IntoIter<Literal<A>>, std::vec::IntoIter<Literal<A>>> {
+        self.n.into_iter().chain(self.p)
     }
 }
 
 impl LiteralSet<Relation> {
     /// Extend `collection` with the variables of `self`.
     pub fn extend_collection_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
-        for literal in &self.set {
+        for literal in self.n.iter().chain(self.p.iter()) {
             for term in &literal.atom().terms {
                 match term {
                     Term::F(fun) => {
@@ -207,15 +248,25 @@ impl LiteralSet<Relation> {
 impl<A: Atomic> Default for LiteralSet<A> {
     fn default() -> Self {
         Self {
-            set: Default::default(),
+            n: Default::default(),
+            p: Default::default(),
         }
     }
 }
 
 impl<A: Atomic, LiteralIter: Iterator<Item = Literal<A>>> From<LiteralIter> for LiteralSet<A> {
     fn from(value: LiteralIter) -> Self {
-        let set: Vec<Literal<A>> = value.collect();
-        let mut ls = Self { set };
+        let mut n = Vec::default();
+        let mut p = Vec::default();
+
+        for literal in value {
+            match literal.value() {
+                true => p.push(literal),
+                false => n.push(literal),
+            }
+        }
+
+        let mut ls = Self { n, p };
         ls.setify();
         ls
     }
@@ -223,7 +274,16 @@ impl<A: Atomic, LiteralIter: Iterator<Item = Literal<A>>> From<LiteralIter> for 
 
 impl<A: Atomic> From<Literal<A>> for LiteralSet<A> {
     fn from(value: Literal<A>) -> Self {
-        Self { set: vec![value] }
+        match value.value() {
+            true => Self {
+                p: vec![value],
+                ..Default::default()
+            },
+            false => Self {
+                n: vec![value],
+                ..Default::default()
+            },
+        }
     }
 }
 
@@ -231,7 +291,7 @@ impl<A: Atomic> From<Literal<A>> for LiteralSet<A> {
 
 impl<A: Atomic> std::cmp::PartialEq for LiteralSet<A> {
     fn eq(&self, other: &Self) -> bool {
-        self.set == other.set
+        self.n == other.n && self.p == other.p
     }
 }
 
@@ -241,23 +301,24 @@ impl<A: Atomic> std::cmp::Ord for LiteralSet<A> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         use std::cmp::Ordering::*;
 
-        if self.is_empty() {
-            return Less;
-        }
-        if other.is_empty() {
-            return Greater;
-        }
+        match self.len().cmp(&other.len()) {
+            Less => Less,
+            Greater => Greater,
+            Equal => {
+                let self_lits = self.n.iter().chain(self.p.iter());
+                let other_lits = other.n.iter().chain(other.p.iter());
 
-        let limit = std::cmp::min(self.len(), other.len());
-        for idx in 0..limit {
-            match self.set[idx].cmp(&other.set[idx]) {
-                Less => return Less,
-                Greater => return Greater,
-                Equal => continue,
+                for (s, o) in self_lits.zip(other_lits) {
+                    match s.cmp(o) {
+                        Less => return Less,
+                        Greater => return Greater,
+                        Equal => continue,
+                    }
+                }
+
+                Equal
             }
         }
-
-        self.len().cmp(&other.len())
     }
 }
 
@@ -292,9 +353,9 @@ impl<A: Atomic> From<(LiteralSet<A>, OpBinary)> for Formula<A> {
 
 impl<A: Atomic> std::fmt::Display for LiteralSet<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let inner_limit = self.set.len().saturating_sub(1);
+        let inner_limit = self.len().saturating_sub(1);
         write!(f, "{{")?;
-        for (inner_idx, literal) in self.set.iter().enumerate() {
+        for (inner_idx, literal) in self.n.iter().chain(self.p.iter()).enumerate() {
             write!(f, "{literal}")?;
             if inner_idx < inner_limit {
                 write!(f, ", ")?;
