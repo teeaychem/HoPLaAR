@@ -130,16 +130,20 @@ impl FirstOrderFormula {
 
 /// Skolemization
 impl FirstOrderFormula {
-    fn skolem(self, taken: &mut HashSet<Fun>) -> FirstOrderFormula {
-        match &self {
+    fn skolem(mut self, taken: &mut HashSet<Fun>) -> FirstOrderFormula {
+        match self {
             Formula::True | Formula::False | Formula::Atom(_) | Formula::Unary { .. } => self,
-            Formula::Binary { op, lhs, rhs } => {
+            Formula::Binary {
+                op,
+                ref mut lhs,
+                ref mut rhs,
+            } => {
                 //
                 match op {
                     OpBinary::And | OpBinary::Or => {
-                        let lhs = lhs.clone().skolem(taken);
-                        let rhs = rhs.clone().skolem(taken);
-                        Formula::Binary(*op, lhs, rhs)
+                        let lhs = std::mem::take(lhs).skolem(taken);
+                        let rhs = std::mem::take(rhs).skolem(taken);
+                        Formula::Binary(op, lhs, rhs)
                     }
 
                     OpBinary::Imp | OpBinary::Iff => self,
@@ -148,28 +152,29 @@ impl FirstOrderFormula {
             Formula::Quantified { q, var, fm } => {
                 //
                 match q {
-                    Quantifier::ForAll => Formula::ForAll(var.clone(), fm.clone().skolem(taken)),
+                    Quantifier::ForAll => Formula::ForAll(var, fm.skolem(taken)),
                     Quantifier::Exists => {
                         //
-                        let xs = self.free_variables();
+                        let mut fvs = fm.free_variables();
+                        fvs.remove(&var);
 
-                        let id = match xs.is_empty() {
+                        let id = match fvs.is_empty() {
                             true => format!("c_{var}"),
                             false => format!("f_{var}"),
                         };
 
-                        let fresh_f = Fun {
+                        let fresh_function = Fun {
                             id,
                             variant: 0,
-                            args: xs.iter().map(|x| Term::V(x.clone())).collect(),
+                            args: fvs.into_iter().map(Term::V).collect(),
                         };
 
-                        let fresh_f = fresh_f.fresh_variant(taken.iter());
+                        let fresh_f = fresh_function.fresh_variant(taken.iter());
                         taken.insert(fresh_f.clone());
 
                         let mut substitution = Substitution::default();
-                        substitution.add_interrupt(var, Some(Term::F(fresh_f)));
-                        let fm = fm.clone().term_substitution(&mut substitution);
+                        substitution.add_interrupt(&var, Some(Term::F(fresh_f)));
+                        let fm = fm.term_substitution(&mut substitution);
                         fm.skolem(taken)
                     }
                 }
@@ -257,7 +262,7 @@ mod tests {
         // Note, c_y is a constant function
         let expected = FirstOrderFormula::from("~P(x) | Q(c_y()) | ~P(z) | ~Q(z)");
 
-        let sk = fm.clone().skolemize();
+        let sk = fm.skolemize();
 
         assert_eq!(sk, expected);
     }
