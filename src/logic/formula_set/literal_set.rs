@@ -276,12 +276,12 @@ impl<A: Atomic> From<Literal<A>> for LiteralSet<A> {
     fn from(value: Literal<A>) -> Self {
         match value.value() {
             true => Self {
+                n: vec![],
                 p: vec![value],
-                ..Default::default()
             },
             false => Self {
                 n: vec![value],
-                ..Default::default()
+                p: vec![],
             },
         }
     }

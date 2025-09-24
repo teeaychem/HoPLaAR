@@ -6,7 +6,7 @@ use crate::logic::{
         FirstOrderFormula, Relation, Term,
         terms::{Fun, Var},
     },
-    formula_set::{FormulaSet, LiteralSet, Mode},
+    formula_set::{FormulaSet, Mode},
 };
 
 pub type EqsSlice = [(Term, Term)];
@@ -21,6 +21,8 @@ pub type EqsVec = Vec<(Term, Term)>;
 pub struct Unifier {
     /// A mapping from variables to a term.
     pub var_to_term: HashMap<Var, Term>,
+
+    pub trail: Vec<Var>,
 }
 
 /// The type of mapping, with respect to some background env.
@@ -72,49 +74,66 @@ impl Unifier {
 impl Unifier {
     /// Inserts a mapping from `v` to `t` into the unification environment.
     pub fn insert(&mut self, v: Var, t: Term) -> Option<Term> {
+        self.trail.push(v.clone());
         self.var_to_term.insert(v, t)
     }
 
-    pub fn clear(&mut self) {
-        self.var_to_term.clear();
+    pub fn pop(&mut self) -> Option<Term> {
+        match self.trail.pop() {
+            Some(var) => self.var_to_term.remove(&var),
+            None => None,
+        }
+    }
+
+    pub fn pop_some(&mut self, count: usize) {
+        for _ in 0..count {
+            let var = self.trail.pop().unwrap();
+            self.var_to_term.remove(&var);
+        }
     }
 
     /// Unifies a sequences of equals.
     ///
     /// An iterative variant of a recursive implementation from the book.
-    pub fn unify(&mut self, eqs: &EqsSlice) -> Result<(), UnificationFailure> {
+    pub fn unify(&mut self, eqs: &EqsSlice) -> Result<usize, UnificationFailure> {
         let mut todo = eqs.to_vec();
+        // Store a count of unification made in order to undo additions on failure.
+        // And, to return a count of unifications made.
+        let mut fresh_unifications = 0;
 
         while let Some((lhs, rhs)) = todo.pop() {
             match (lhs, rhs) {
-                (Term::F(f), Term::F(g)) => {
-                    use std::cmp::Ordering::*;
-                    match f.cmp(&g) {
-                        Equal => todo.extend(f.args.iter().cloned().zip(g.args.iter().cloned())),
-                        _ => {
-                            return Err(UnificationFailure::Distinct);
-                        }
+                (Term::F(f), Term::F(g)) => match f.cmp(&g) {
+                    std::cmp::Ordering::Equal => {
+                        todo.extend(f.args.iter().cloned().zip(g.args.iter().cloned()).rev())
                     }
-                }
+                    _ => {
+                        self.pop_some(fresh_unifications);
+                        return Err(UnificationFailure::Distinct);
+                    }
+                },
 
                 (Term::V(x), t) | (t, Term::V(x)) => {
                     if let Some(y) = self.get_term(&x) {
                         todo.push((y.clone(), t));
                     } else {
-                        use MapType::*;
                         match self.get_map_type(&x, &t) {
-                            Trivial => {}
-                            Fresh => {
+                            MapType::Trivial => {}
+                            MapType::Fresh => {
                                 self.insert(x, t);
+                                fresh_unifications += 1;
                             }
-                            Cyclic => return Err(UnificationFailure::Cyclic),
+                            MapType::Cyclic => {
+                                self.pop_some(fresh_unifications);
+                                return Err(UnificationFailure::Cyclic);
+                            }
                         }
                     }
                 }
             }
         }
 
-        Ok(())
+        Ok(fresh_unifications)
     }
 
     /// Updates the given term `t` by replacing variables with a term mapped by the unification environment, if possible.
@@ -145,7 +164,7 @@ impl Unifier {
     }
 
     /// Takes a single pass over the unification environment, updating each term mapped to, whenever possible.
-    pub fn update_env_one_pass(&mut self) -> bool {
+    pub fn flatten_once(&mut self) -> bool {
         let mut update = false;
 
         // TODO: A better way.
@@ -162,6 +181,13 @@ impl Unifier {
             }
         }
 
+        // TODO: Establish whether this is required.
+        // The issue is whether an earlier variable may now map to a later term.
+        // If so, there's no way to remove unifications.
+        if update {
+            self.trail.clear();
+        }
+
         update
     }
 
@@ -169,7 +195,7 @@ impl Unifier {
     /// A count of update passes until the fixed point is returned.
     pub fn solve(&mut self) -> usize {
         let mut passes = 0;
-        while self.update_env_one_pass() {
+        while self.flatten_once() {
             passes += 1;
         }
         passes
@@ -198,7 +224,7 @@ impl Unifier {
         &mut self,
         l: &FirstOrderFormula,
         r: &FirstOrderFormula,
-    ) -> Result<(), UnificationFailure> {
+    ) -> Result<usize, UnificationFailure> {
         use {Formula::*, OpUnary::*};
         match (l, r) {
             (Atom(l), Atom(r)) => self.unify_relations(l, r),
@@ -207,7 +233,7 @@ impl Unifier {
                 self.unify_literals(l_e, r_e)
             }
 
-            (False, False) => Ok(()),
+            (False, False) => Ok(0),
 
             _ => Err(UnificationFailure::FormulaMismatch),
         }
@@ -218,12 +244,13 @@ impl Unifier {
         &mut self,
         l: &Relation,
         r: &Relation,
-    ) -> Result<(), UnificationFailure> {
+    ) -> Result<usize, UnificationFailure> {
         match l.id == r.id && l.terms.len() == r.terms.len() {
             true => {
                 let l_terms = l.terms.iter().cloned();
                 let r_terms = r.terms.iter().cloned();
                 let eqs: Vec<_> = l_terms.zip(r_terms).collect();
+
                 self.unify(&eqs)
             }
 
@@ -236,37 +263,89 @@ impl Unifier {
     /// Searches for a pair of complementary literals.
     /// Returns true on the first unifier found, with `self` is updated with the unifier
     /// Returns false, otherwise.
-    pub fn unify_complements(&mut self, set: &LiteralSet<Relation>) -> bool {
-        // Splits the set into positive and negative literals, then examines all possible complements.
+    // pub fn unify_complements(&mut self, set: &LiteralSet<Relation>) -> bool {
+    //     // Splits the set into positive and negative literals, then examines all possible complements.
 
-        let (n, p) = set.negative_positive_split();
+    //     let (n, p) = set.negative_positive_split();
 
-        if n.is_empty() || p.is_empty() {
-            return false;
-        }
+    //     if n.is_empty() || p.is_empty() {
+    //         return false;
+    //     }
 
-        for nx in n {
-            for px in p {
-                if let Ok(()) = self.unify_relations(nx.atom(), px.atom()) {
-                    return true;
-                }
-            }
-        }
+    //     for nx in n {
+    //         for px in p {
+    //             if let Ok(()) = self.unify_relations(nx.atom(), px.atom()) {
+    //                 return true;
+    //             }
+    //         }
+    //     }
 
-        false
+    //     false
+    // }
+
+    pub fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> bool {
+        self.unify_refute_recursive(fs, 0)
     }
 
-    /// Attemps to extend `self` with a unifier for a pair of complementary literals for each set of relations in `fs`.
-    /// Returns true if a unifier for complementary literals has been found for each set of `fs`.
-    /// Returns false otherwise --- specifically, immediately on finding a set for which no unifier is available.
-    pub fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> bool {
-        for disjunct in fs.sets().iter() {
-            match self.unify_complements(disjunct) {
-                true => {}
-                false => return false,
-            }
+    pub fn apply_to_relation(&self, relation: &Relation) -> Relation {
+        Relation {
+            id: relation.id.clone(),
+            terms: relation
+                .terms
+                .iter()
+                .map(|t| Self::update_term(&self.var_to_term, t.clone()).0)
+                .collect(),
         }
-        true
+    }
+
+    // Quite inefficient, as the same unification may be explored multiple (multiple) times.
+    #[allow(clippy::single_match)]
+    fn unify_refute_recursive(&mut self, fs: &FormulaSet<Relation>, index: usize) -> bool {
+        // println!("Refuting from {index} / {}", fs.len());
+        if index == fs.len() {
+            // Base case, there are no more sets to consider.
+            true
+        } else {
+            // Work through every negative-positive pair
+            let (n, p) = fs.set_at_index(index).negative_positive_split();
+            for nl in n {
+                for pl in p {
+                    // If the relations are the same, investigate...
+                    if nl.atom().id == pl.atom().id {
+                        // To check if the relations are in conflict, apply the current unifier.
+                        let nlu = self.apply_to_relation(nl.atom());
+                        let plu = self.apply_to_relation(pl.atom());
+
+                        if nlu == plu {
+                            // The literals are complementary given the current unification.
+                            // So, move to the next disjunct.
+                            match self.unify_refute_recursive(fs, index + 1) {
+                                true => return true,
+                                false => {}
+                            }
+                        } else {
+                            // The literals are not complementary, so attempt unification.
+                            match self.unify_relations(nl.atom(), pl.atom()) {
+                                Ok(0) | Err(_) => {
+                                    // As no unifier was found, continue the refutation search.
+                                }
+                                Ok(fresh) => {
+                                    // The unifier has been expanded.
+                                    // Every terms pair was either trivial or freshly mapped.
+                                    // So, a conflict has been found, so continue.
+                                    match self.unify_refute_recursive(fs, index + 1) {
+                                        true => return true,
+                                        false => self.pop_some(fresh), // Tidy from the dead end.
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            false
+        }
     }
 }
 
@@ -308,6 +387,7 @@ impl FirstOrderFormula {
         let mut fm = base.clone();
 
         for attempt in 0..limit {
+            println!("{attempt}");
             if unifier.unify_refute(&fm) {
                 return (true, attempt);
             }
@@ -404,12 +484,8 @@ mod tests {
         let mut eqs = vec![(t1, t2), (t3, t4), (t5, t6)];
         let _ = u.unify_and_apply(&mut eqs);
 
-        println!("{u}");
-
         match eqs.as_slice() {
             [(a, b), (c, d), (e, f)] => {
-                println!("{a} | {e1}");
-                println!("{b} | {e1}");
                 assert!(a.subterm_eq(&e1));
                 assert!(b.subterm_eq(&e1));
 
@@ -431,12 +507,11 @@ mod tests {
         let t1 = FirstOrderFormula::from("R(x, y)");
         let t2 = FirstOrderFormula::from("R(y, x)");
 
-        let _ = u.unify_literals(&t1, &t2);
-
-        println!("{u}");
+        let unification_result = u.unify_literals(&t1, &t2);
+        assert_eq!(Ok(1), unification_result);
     }
 
-    #[test]
+    // #[test]
     fn udebug() {
         // let mut fm = FirstOrderFormula::from("exists x. (P(x) & ~P(x))");
         let mut fm = FirstOrderFormula::from("forall x. (P(x) | ~P(x))");
@@ -448,7 +523,7 @@ mod tests {
         println!("{fms}");
 
         let mut u = Unifier::default();
-        let result = u.unify_refute(&fms);
+        let result = u.unify_refute_recursive(&fms, 0);
 
         println!("{result:?}");
         println!("Unified complements: {u}");
@@ -464,40 +539,35 @@ mod formula_tests {
     fn p18() {
         let f = FirstOrderFormula::from(library::pelletier::P18);
         let (result, _) = f.prawitz(None);
-
         assert!(result)
     }
 
     #[test]
     fn p19() {
         let f = FirstOrderFormula::from(library::pelletier::P19);
-        let (result, _) = f.prawitz(None);
-
-        assert!(result)
+        let (result, _) = f.prawitz(Some(4));
+        assert!(result);
     }
 
     #[test]
     fn p20() {
         let f = FirstOrderFormula::from(library::pelletier::P20);
         let (result, _) = f.prawitz(None);
-
         assert!(result)
     }
 
     #[test]
     fn p24() {
         let f = FirstOrderFormula::from(library::pelletier::P24);
-        let (result, _) = f.prawitz(None);
-
+        let (result, _) = f.prawitz(Some(2));
         assert!(result)
     }
 
-    #[ignore = "Unsatisfiability test too inefficient"]
+    // #[ignore = "Unsatisfiability test too inefficient"]
     #[test]
     fn p45() {
         let fm = FirstOrderFormula::from(library::pelletier::P45);
         let (result, _) = fm.prawitz(Some(10));
-
         assert!(result);
     }
 }
