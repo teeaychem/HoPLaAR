@@ -7,8 +7,8 @@ use crate::logic::{
 
 #[derive(Clone, Debug)]
 pub struct LiteralSet<A: Atomic> {
-    n: Vec<Literal<A>>,
-    p: Vec<Literal<A>>,
+    pub n: Vec<Literal<A>>,
+    pub p: Vec<Literal<A>>,
 }
 
 impl<A: Atomic> LiteralSet<A> {

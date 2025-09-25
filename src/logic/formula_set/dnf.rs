@@ -114,12 +114,19 @@ impl<A: Atomic> FormulaSet<A> {
 
         for self_literal_set in self.sets {
             for other_literal_set in &other.sets {
-                let merge = LiteralSet::from(
-                    self_literal_set
-                        .literals()
-                        .chain(other_literal_set.literals())
-                        .cloned(),
-                );
+                let mut merge = LiteralSet {
+                    n: self_literal_set
+                        .negative_literals()
+                        .chain(other_literal_set.negative_literals())
+                        .cloned()
+                        .collect(),
+                    p: self_literal_set
+                        .positive_literals()
+                        .chain(other_literal_set.positive_literals())
+                        .cloned()
+                        .collect(),
+                };
+                merge.setify();
 
                 conjunction.sets.push(merge);
             }
