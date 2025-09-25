@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::logic::{
     Formula, OpUnary,
     first_order::{
@@ -11,6 +9,8 @@ use crate::logic::{
 
 pub type EqsSlice = [(Term, Term)];
 pub type EqsVec = Vec<(Term, Term)>;
+pub type VarTermMap = std::collections::HashMap<Var, Term>;
+pub type VarTermMapCache = Vec<VarTermMap>;
 
 /// A struct which handles the state of unification, and bundles methods for unification.
 ///
@@ -20,7 +20,7 @@ pub type EqsVec = Vec<(Term, Term)>;
 #[derive(Clone, Debug, Default)]
 pub struct Unifier {
     /// A mapping from variables to a term.
-    pub var_to_term: HashMap<Var, Term>,
+    pub var_to_term: VarTermMap,
 
     pub trail: Vec<Var>,
 }
@@ -138,7 +138,7 @@ impl Unifier {
 
     /// Updates the given term `t` by replacing variables with a term mapped by the unification environment, if possible.
     /// Otherwise, returns `t`.
-    pub fn update_term(vt: &HashMap<Var, Term>, t: Term) -> (Term, bool) {
+    pub fn update_term(vt: &VarTermMap, t: Term) -> (Term, bool) {
         let mut update = false;
 
         match t {
@@ -284,7 +284,8 @@ impl Unifier {
     // }
 
     pub fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> bool {
-        self.unify_refute_recursive(fs, 0)
+        let mut cache = VarTermMapCache::default();
+        self.unify_refute_recursive(fs, 0, &mut cache)
     }
 
     pub fn apply_to_relation(&self, relation: &Relation) -> Relation {
@@ -300,8 +301,13 @@ impl Unifier {
 
     // Quite inefficient, as the same unification may be explored multiple (multiple) times.
     #[allow(clippy::single_match)]
-    fn unify_refute_recursive(&mut self, fs: &FormulaSet<Relation>, index: usize) -> bool {
-        // println!("Refuting from {index} / {}", fs.len());
+    fn unify_refute_recursive(
+        &mut self,
+        fs: &FormulaSet<Relation>,
+        index: usize,
+        cache: &mut VarTermMapCache,
+    ) -> bool {
+        println!("{index} / {} | {self}", fs.len());
         if index == fs.len() {
             // Base case, there are no more sets to consider.
             true
@@ -318,11 +324,8 @@ impl Unifier {
 
                         if nlu == plu {
                             // The literals are complementary given the current unification.
-                            // So, move to the next disjunct.
-                            match self.unify_refute_recursive(fs, index + 1) {
-                                true => return true,
-                                false => {}
-                            }
+                            // So, there's no reason to consider the set any further.
+                            return self.unify_refute_recursive(fs, index + 1, cache);
                         } else {
                             // The literals are not complementary, so attempt unification.
                             match self.unify_relations(nl.atom(), pl.atom()) {
@@ -333,10 +336,19 @@ impl Unifier {
                                     // The unifier has been expanded.
                                     // Every terms pair was either trivial or freshly mapped.
                                     // So, a conflict has been found, so continue.
-                                    match self.unify_refute_recursive(fs, index + 1) {
-                                        true => return true,
-                                        false => self.pop_some(fresh), // Tidy from the dead end.
+                                    if !cache.iter().any(|e| e == &self.var_to_term) {
+                                        println!("Fresh: {self}");
+
+                                        match self.unify_refute_recursive(fs, index + 1, cache) {
+                                            true => return true,
+                                            false => {
+                                                if !cache.iter().any(|e| e == &self.var_to_term) {
+                                                    cache.push(self.var_to_term.to_owned());
+                                                }
+                                            }
+                                        }
                                     }
+                                    self.pop_some(fresh); // Tidy from the dead end.
                                 }
                             }
                         }
@@ -352,7 +364,7 @@ impl Unifier {
 impl std::fmt::Display for Unifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (v, t) in &self.var_to_term {
-            writeln!(f, "{v} \t=>\t {t}")?
+            write!(f, "{v} \t=>\t {t}, ")?
         }
 
         Ok(())
@@ -404,7 +416,7 @@ mod tests {
     use crate::logic::{
         first_order::{
             FirstOrderFormula, Term,
-            unification::{UnificationFailure, Unifier},
+            unification::{UnificationFailure, Unifier, VarTermMapCache},
         },
         formula_set::Mode,
     };
@@ -523,7 +535,9 @@ mod tests {
         println!("{fms}");
 
         let mut u = Unifier::default();
-        let result = u.unify_refute_recursive(&fms, 0);
+        let mut cache = VarTermMapCache::default();
+
+        let result = u.unify_refute_recursive(&fms, 0, &mut cache);
 
         println!("{result:?}");
         println!("Unified complements: {u}");
