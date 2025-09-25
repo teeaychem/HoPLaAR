@@ -1,12 +1,15 @@
 use crate::logic::{
     Variable,
-    first_order::{Term, TermId, terms::id_and_variant},
+    first_order::{
+        Term, TermId,
+        terms::{Variant, id_and_variant},
+    },
 };
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Var {
     pub id: TermId,
-    pub variant: usize,
+    pub variant: Variant,
 }
 
 impl Variable for Var {

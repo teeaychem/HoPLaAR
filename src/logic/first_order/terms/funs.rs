@@ -9,12 +9,12 @@
 //!
 //! As a consequence of the hashing of [Fun]'s is (also) independent of argument instances.
 
-use crate::logic::first_order::{Term, TermId};
+use crate::logic::first_order::{Term, TermId, terms::Variant};
 
 #[derive(Clone, Debug)]
 pub struct Fun {
     pub id: TermId,
-    pub variant: usize,
+    pub variant: Variant,
     pub args: Vec<Term>,
 }
 

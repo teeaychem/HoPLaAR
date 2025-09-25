@@ -12,6 +12,7 @@ use crate::logic::{
 };
 
 pub type TermId = String;
+pub type Variant = u8;
 
 #[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Term {
@@ -27,7 +28,7 @@ impl Default for Term {
     fn default() -> Self {
         Term::V(Var {
             id: "!".to_string(),
-            variant: usize::MAX,
+            variant: Variant::MAX,
         })
     }
 }
@@ -97,7 +98,7 @@ impl Term {
         }
     }
 
-    pub fn variant(&self) -> usize {
+    pub fn variant(&self) -> Variant {
         match self {
             Term::V(Var { variant, .. }) | Term::F(Fun { variant, .. }) => *variant,
         }
@@ -231,7 +232,7 @@ impl Term {
 }
 
 /// Splits a trailing `_[\d+]` from an otherwise non-empty `value` and returns the prefix and digits as a pair.
-pub fn id_and_variant(value: &str) -> (String, usize) {
+pub fn id_and_variant(value: &str) -> (String, Variant) {
     let mut parts = value.split('_').enumerate().peekable();
     let mut variant = 0;
 
@@ -239,7 +240,7 @@ pub fn id_and_variant(value: &str) -> (String, usize) {
     while let Some((idx, part)) = parts.next() {
         if parts.peek().is_none()
             && !base_id.is_empty()
-            && let Ok(id_variant) = part.parse::<usize>()
+            && let Ok(id_variant) = part.parse::<Variant>()
         {
             variant = id_variant;
             break;
