@@ -10,7 +10,6 @@ use crate::logic::{
 pub type EqsSlice = [(Term, Term)];
 pub type EqsVec = Vec<(Term, Term)>;
 pub type VarTermMap = std::collections::HashMap<Var, Term>;
-pub type VarTermMapCache = Vec<VarTermMap>;
 
 /// A struct which handles the state of unification, and bundles methods for unification.
 ///
@@ -283,11 +282,6 @@ impl Unifier {
     //     false
     // }
 
-    pub fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> bool {
-        let mut cache = VarTermMapCache::default();
-        self.unify_refute_recursive(fs, 0, &mut cache)
-    }
-
     pub fn apply_to_relation(&self, relation: &Relation) -> Relation {
         Relation {
             id: relation.id.clone(),
@@ -301,63 +295,83 @@ impl Unifier {
 
     // Quite inefficient, as the same unification may be explored multiple (multiple) times.
     #[allow(clippy::single_match)]
-    fn unify_refute_recursive(
-        &mut self,
-        fs: &FormulaSet<Relation>,
-        index: usize,
-        cache: &mut VarTermMapCache,
-    ) -> bool {
-        println!("{index} / {} | {self}", fs.len());
-        if index == fs.len() {
-            // Base case, there are no more sets to consider.
-            true
-        } else {
-            // Work through every negative-positive pair
-            let (n, p) = fs.set_at_index(index).negative_positive_split();
-            for nl in n {
-                for pl in p {
-                    // If the relations are the same, investigate...
-                    if nl.atom().id == pl.atom().id {
-                        // To check if the relations are in conflict, apply the current unifier.
-                        let nlu = self.apply_to_relation(nl.atom());
-                        let plu = self.apply_to_relation(pl.atom());
+    fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> bool {
+        // A stack to emulate a recursive search.
+        // Stores:
+        // - The negative literal index.
+        // - The positive literal index.
+        // - The count of fresh unifications made on the disjunct.
+        // When a recursive call fails, the literal indicies are restored and the unifications removed.
+        // The positive literal index is also incremented by one, as it's the inner literal loop.
+        let mut stack: Vec<(usize, usize, usize)> = Vec::default();
 
-                        if nlu == plu {
-                            // The literals are complementary given the current unification.
-                            // So, there's no reason to consider the set any further.
-                            return self.unify_refute_recursive(fs, index + 1, cache);
-                        } else {
-                            // The literals are not complementary, so attempt unification.
-                            match self.unify_relations(nl.atom(), pl.atom()) {
-                                Ok(0) | Err(_) => {
-                                    // As no unifier was found, continue the refutation search.
-                                }
-                                Ok(fresh) => {
-                                    // The unifier has been expanded.
-                                    // Every terms pair was either trivial or freshly mapped.
-                                    // So, a conflict has been found, so continue.
-                                    if !cache.iter().any(|e| e == &self.var_to_term) {
-                                        println!("Fresh: {self}");
+        let mut nl_index = 0;
+        let mut pl_index = 0;
 
-                                        match self.unify_refute_recursive(fs, index + 1, cache) {
-                                            true => return true,
-                                            false => {
-                                                if !cache.iter().any(|e| e == &self.var_to_term) {
-                                                    cache.push(self.var_to_term.to_owned());
-                                                }
-                                            }
-                                        }
+        let mut disjunct_index = 0;
+        let limit = fs.len();
+
+        'disjunct_examination: while disjunct_index <= limit {
+            if disjunct_index == limit {
+                // Base case, there are no more sets to consider.
+                return true;
+            } else {
+                // Work through every negative-positive pair
+
+                let (n, p) = fs.set_at_index(disjunct_index).negative_positive_split();
+
+                while nl_index < n.len() {
+                    while pl_index < p.len() {
+                        // If the relations are the same, investigate...
+                        if n[nl_index].atom().id == p[pl_index].atom().id {
+                            // To check if the relations are in conflict, apply the current unifier.
+                            let nlu = self.apply_to_relation(n[nl_index].atom());
+                            let plu = self.apply_to_relation(p[pl_index].atom());
+
+                            if nlu == plu {
+                                // The literals are complementary given the current unification.
+                                // So, there's no reason to consider the set any further.
+                                stack.push((n.len(), p.len(), 0));
+                                nl_index = 0;
+                                pl_index = 0;
+                                disjunct_index += 1;
+                                continue 'disjunct_examination;
+                            } else {
+                                // The literals are not complementary, so attempt unification.
+                                match self.unify_relations(n[nl_index].atom(), p[pl_index].atom()) {
+                                    Ok(0) | Err(_) => {} // As no unifier was found, continue the refutation search.
+                                    Ok(fresh) => {
+                                        // The unifier has been expanded.
+                                        // Every terms pair was either trivial or freshly mapped.
+                                        // So, a conflict has been found, so continue.
+                                        stack.push((nl_index, pl_index, fresh));
+                                        nl_index = 0;
+                                        pl_index = 0;
+                                        disjunct_index += 1;
+                                        continue 'disjunct_examination;
                                     }
-                                    self.pop_some(fresh); // Tidy from the dead end.
                                 }
                             }
                         }
+
+                        pl_index += 1;
                     }
+                    pl_index = 0;
+                    nl_index += 1;
+                }
+
+                match stack.pop() {
+                    Some((a, b, c)) => {
+                        disjunct_index -= 1;
+                        nl_index = a;
+                        pl_index = b + 1;
+                        self.pop_some(c);
+                    }
+                    None => return false,
                 }
             }
-
-            false
         }
+        false
     }
 }
 
@@ -399,7 +413,6 @@ impl FirstOrderFormula {
         let mut fm = base.clone();
 
         for attempt in 0..limit {
-            println!("{attempt}");
             if unifier.unify_refute(&fm) {
                 return (true, attempt);
             }
@@ -416,7 +429,7 @@ mod tests {
     use crate::logic::{
         first_order::{
             FirstOrderFormula, Term,
-            unification::{UnificationFailure, Unifier, VarTermMapCache},
+            unification::{UnificationFailure, Unifier},
         },
         formula_set::Mode,
     };
@@ -535,9 +548,7 @@ mod tests {
         println!("{fms}");
 
         let mut u = Unifier::default();
-        let mut cache = VarTermMapCache::default();
-
-        let result = u.unify_refute_recursive(&fms, 0, &mut cache);
+        let result = u.unify_refute(&fms);
 
         println!("{result:?}");
         println!("Unified complements: {u}");
@@ -577,11 +588,31 @@ mod formula_tests {
         assert!(result)
     }
 
-    // #[ignore = "Unsatisfiability test too inefficient"]
     #[test]
     fn p45() {
         let fm = FirstOrderFormula::from(library::pelletier::P45);
         let (result, _) = fm.prawitz(Some(10));
         assert!(result);
+    }
+
+    #[test]
+    fn sat_1() {
+        let fm = FirstOrderFormula::from(library::satisfiable::AxPxQx);
+        let (result, _) = fm.prawitz(Some(5));
+        assert!(!result);
+    }
+
+    #[test]
+    fn sat_2() {
+        let fm = FirstOrderFormula::from(library::satisfiable::AxAyPxQy);
+        let (result, _) = fm.prawitz(Some(5));
+        assert!(!result);
+    }
+
+    #[test]
+    fn sat_3() {
+        let fm = FirstOrderFormula::from(library::satisfiable::AxEyPxQx);
+        let (result, _) = fm.prawitz(Some(5));
+        assert!(!result);
     }
 }

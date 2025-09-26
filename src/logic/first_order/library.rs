@@ -31,3 +31,12 @@ forall x. (F(x) & forall y. [G(y) & H(x, y) => J(x, y)] => forall y. (G(y) & H(x
 => exists x. (F(x) & ~exists y. (G(y) & H(x,y)))
 ";
 }
+
+#[allow(non_upper_case_globals)]
+pub mod satisfiable {
+    pub const AxPxQx: &str = "forall x. P(x) | Q(x)";
+
+    pub const AxAyPxQy: &str = "forall x. forall y. (P(x) | Q(y))";
+
+    pub const AxEyPxQx: &str = "forall x. exists y. (P(x) => ~P(y))";
+}
