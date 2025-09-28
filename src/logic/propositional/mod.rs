@@ -98,7 +98,7 @@ impl PropFormula {
         let mut valuation = Valuation::from_prop_set(self.atoms());
         let permutation_count = valuation.permutation_count();
 
-        for p in 0..permutation_count {
+        for _ in 0..permutation_count {
             if !self.eval(&valuation) {
                 return false;
             }

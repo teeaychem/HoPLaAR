@@ -345,7 +345,7 @@ impl<A: Atomic> From<(LiteralSet<A>, OpBinary)> for Formula<A> {
             None => return Formula::True,
         };
 
-        while let Some(literal) = literals.next() {
+        for literal in literals {
             formula = Formula::Binary(op, formula, Formula::from(literal));
         }
 
