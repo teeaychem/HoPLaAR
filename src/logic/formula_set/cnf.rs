@@ -53,16 +53,16 @@ impl<A: Atomic> Formula<A> {
 
         match self {
             Formula::True => {}
-            Formula::False => fs.add_literal_set(LiteralSet::default()),
+            Formula::False => fs.add_set(LiteralSet::default()),
 
             Formula::Atom(atom) => {
-                fs.add_literal_set(LiteralSet::from(Literal::from(atom, true)));
+                fs.add_set(LiteralSet::from(Literal::from(atom, true)));
             }
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
                     if let Formula::Atom(atom) = *expr {
-                        fs.add_literal_set(LiteralSet::from(Literal::from(atom, false)))
+                        fs.add_set(LiteralSet::from(Literal::from(atom, false)))
                     } else {
                         todo!()
                     }
@@ -81,14 +81,14 @@ impl<A: Atomic> Formula<A> {
                                     l_set.literals().chain(r_set.literals()).cloned(),
                                 );
 
-                                fs.add_literal_set(product);
+                                fs.add_set(product);
                             }
                         }
                     }
 
                     OpBinary::And => {
                         for set in lhs.sets.into_iter().chain(rhs.sets) {
-                            fs.add_literal_set(set);
+                            fs.add_set(set);
                         }
                     }
 

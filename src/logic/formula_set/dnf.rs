@@ -8,15 +8,15 @@ impl<A: Atomic> Formula<A> {
         let mut fs = FormulaSet::empty(Mode::DNF);
 
         match self {
-            Formula::True => fs.add_literal_set(LiteralSet::default()),
+            Formula::True => fs.add_set(LiteralSet::default()),
             Formula::False => {}
 
-            Formula::Atom(atom) => fs.add_literal_set(LiteralSet::from(Literal::from(atom, true))),
+            Formula::Atom(atom) => fs.add_set(LiteralSet::from(Literal::from(atom, true))),
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
                     if let Formula::Atom(atom) = *expr {
-                        fs.add_literal_set(LiteralSet::from(Literal::from(atom, false)));
+                        fs.add_set(LiteralSet::from(Literal::from(atom, false)));
                     } else {
                         panic!()
                     }
@@ -34,14 +34,14 @@ impl<A: Atomic> Formula<A> {
                                 let product = LiteralSet::from(
                                     l_set.literals().chain(r_set.literals()).cloned(),
                                 );
-                                fs.add_literal_set(product);
+                                fs.add_set(product);
                             }
                         }
                     }
 
                     OpBinary::Or => {
                         for set in lhs.sets.into_iter().chain(rhs.sets) {
-                            fs.add_literal_set(set);
+                            fs.add_set(set);
                         }
                     }
 
@@ -135,7 +135,7 @@ impl<A: Atomic> FormulaSet<A> {
                 };
                 merge.setify();
 
-                conjunction.add_literal_set(merge);
+                conjunction.add_set(merge);
             }
         }
 

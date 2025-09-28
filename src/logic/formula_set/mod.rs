@@ -20,6 +20,7 @@ pub enum Mode {
 }
 
 type AtomCache<A> = HashMap<A, (bool, bool)>;
+type OccurrenceMap<A> = HashMap<A, (usize, usize)>;
 
 // A formula, as a set of sets.
 // Invariant: `formula` is sorted by `literal_set_cmp`.
@@ -80,7 +81,7 @@ impl<A: Atomic> FormulaSet<A> {
         self.sets.sort();
     }
 
-    pub fn add_literal_set(&mut self, mut literal_set: LiteralSet<A>) {
+    pub fn add_set(&mut self, mut literal_set: LiteralSet<A>) {
         self.index += 1;
         literal_set.index = self.index;
         self.sets.push(literal_set);
@@ -153,8 +154,8 @@ impl<A: Atomic> FormulaSet<A> {
         }
     }
 
-    pub fn occurrence_map(&self) -> HashMap<A, (usize, usize)> {
-        let mut map: HashMap<A, (usize, usize)> = HashMap::default();
+    pub fn occurrence_map(&self) -> OccurrenceMap<A> {
+        let mut map = OccurrenceMap::<A>::default();
 
         for n in self.sets.iter().flat_map(|s| s.negative_literals()) {
             map.entry(n.atom().clone()).or_default().0 += 1;

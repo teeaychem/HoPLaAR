@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::logic::{
     Atomic, Literal,
-    formula_set::{FormulaSet, LiteralSet, Mode},
+    formula_set::{FormulaSet, LiteralSet, Mode, OccurrenceMap},
 };
 
 impl<A: Atomic> FormulaSet<A> {
@@ -54,7 +54,7 @@ impl<A: Atomic> FormulaSet<A> {
                     // If the literal was unit, have φ ∧ ¬φ, so rewrite to basic ⊥ form.
                     if self.sets[set_index].is_empty() {
                         self.sets.drain(0..set_limit);
-                        self.add_literal_set(LiteralSet::default());
+                        self.add_set(LiteralSet::default());
                         return true;
                     }
                 }
@@ -84,7 +84,7 @@ impl<A: Atomic> FormulaSet<A> {
             .occurrence_map()
             .into_iter()
             .filter_map(|(id, (n, p))| match n == 0 || p == 0 {
-                true => Some(id.to_owned()),
+                true => Some(id),
                 false => None,
             })
             .collect();
@@ -126,8 +126,8 @@ impl<A: Atomic> FormulaSet<A> {
         'set_loop: while set_index < set_limit {
             if let Some(literal) = self.sets[set_index].remove_atom(atom) {
                 match literal.value() {
-                    true => positive.add_literal_set(self.sets.swap_remove(set_index)),
-                    false => negative.add_literal_set(self.sets.swap_remove(set_index)),
+                    true => positive.add_set(self.sets.swap_remove(set_index)),
+                    false => negative.add_set(self.sets.swap_remove(set_index)),
                 }
                 set_limit -= 1;
                 continue 'set_loop;
@@ -137,19 +137,20 @@ impl<A: Atomic> FormulaSet<A> {
         }
 
         if positive.is_top() || negative.is_top() {
-            panic!("Resolution called on {atom} without complimentary literals")
+            todo!("Resolution called on {atom} without complimentary literals")
         }
 
         // Take the cartersian product
-        for p in &positive.sets {
-            for n in &negative.sets {
-                let mut fresh = p.clone();
-                fresh.extend(n.literals().cloned());
+        for n in &negative.sets {
+            for p in &positive.sets {
+                let mut fresh_set: LiteralSet<A> = LiteralSet::default();
+                fresh_set.extend(p.literals().cloned());
+                fresh_set.extend(n.literals().cloned());
 
                 // Skip tivial sets from resolution
-                if !fresh.has_complementary_literals() {
+                if !fresh_set.has_complementary_literals() {
                     // Extend the formula
-                    self.add_literal_set(fresh);
+                    self.add_set(fresh_set);
                 }
             }
         }
@@ -161,43 +162,38 @@ impl<A: Atomic> FormulaSet<A> {
     }
 
     /// The relative size of `self` after applying `resolve_on` with `atom`.
-    pub fn resolution_blowup(&self, atom: &A) -> isize {
+    pub fn resolution_blowup(occurrence_map: &OccurrenceMap<A>, atom: &A) -> isize {
         // Note, an isize is returned as the formula *may* shrink.
 
-        let mut positive_count: isize = 0;
-        let mut negative_count: isize = 0;
+        match occurrence_map.get(atom) {
+            Some((n, p)) => {
+                let n: isize = (*n).try_into().unwrap();
+                let p: isize = (*p).try_into().unwrap();
 
-        for set in &self.sets {
-            for literal in set.literals() {
-                if literal.id() == atom.id() {
-                    match literal.value() {
-                        true => positive_count += 1,
-                        false => negative_count += 1,
-                    }
-                }
+                (p * n) - (p + n)
             }
+            None => todo!(),
         }
-
-        (positive_count * negative_count) - (positive_count + negative_count)
     }
 
     pub fn resolution_rule(&mut self) -> bool {
-        let min_atom = match self
-            .occurrence_map()
-            .into_iter()
-            .filter_map(|(id, (n, p))| match n > 0 && p > 0 {
+        let occurrence_map = self.occurrence_map();
+
+        let min_atom = match occurrence_map
+            .iter()
+            .filter_map(|(id, (n, p))| match *n > 0 && *p > 0 {
                 true => Some(id),
                 false => None,
             })
-            .min_by(|a, b| self.resolution_blowup(a).cmp(&self.resolution_blowup(b)))
-        {
-            Some(a) => a.clone(),
+            .min_by(|a, b| {
+                Self::resolution_blowup(&occurrence_map, a)
+                    .cmp(&Self::resolution_blowup(&occurrence_map, b))
+            }) {
+            Some(atom) => atom,
             None => return false,
         };
 
-        println!("{min_atom}");
-
-        self.resolve_on(&min_atom)
+        self.resolve_on(min_atom)
     }
 
     pub fn is_sat_dp(&mut self) -> bool {
@@ -205,7 +201,9 @@ impl<A: Atomic> FormulaSet<A> {
         loop {
             if self.is_bot() {
                 return false;
-            } else if self.is_top() {
+            }
+
+            if self.is_top() {
                 return true;
             }
 
