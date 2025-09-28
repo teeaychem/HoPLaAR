@@ -24,6 +24,20 @@ forall x.
 exists x. (P(x) & R(x))
 ";
 
+    pub const P38: &str = "
+forall x. (P(a) & (P(x) ==> exists y. (P(y) & R(x,y))) ==> exists z. exists w. (P(z) & R(x,w) & R(w,z)))
+<=>
+forall x. (  (  ~P(a)
+              | P(x)
+              | exists z. exists w. (P(z) & R(x,w) & R(w,z))
+             )
+           & ( ~P(a)
+              | ~exists y. (P(y) & R(x,y))
+              | exists z. exists w. (P(z) & R(x,w) & R(w,z))
+             )
+          )
+";
+
     pub const P45: &str = "
 forall x. (F(x) & forall y. [G(y) & H(x, y) => J(x, y)] => forall y. (G(y) & H(x,y) => K(y)))
 & ~exists y. (L(y) & K(y))
