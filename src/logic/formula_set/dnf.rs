@@ -4,17 +4,19 @@ use crate::logic::{
 };
 
 impl<A: Atomic> Formula<A> {
-    pub(super) fn into_dnf_set_local(self) -> Vec<LiteralSet<A>> {
-        match self {
-            Formula::True => vec![LiteralSet::default()],
-            Formula::False => vec![],
+    pub(super) fn into_dnf_set_local(self) -> FormulaSet<A> {
+        let mut fs = FormulaSet::empty(Mode::DNF);
 
-            Formula::Atom(atom) => vec![LiteralSet::from(Literal::from(atom, true))],
+        match self {
+            Formula::True => fs.add_literal_set(LiteralSet::default()),
+            Formula::False => {}
+
+            Formula::Atom(atom) => fs.add_literal_set(LiteralSet::from(Literal::from(atom, true))),
 
             Formula::Unary { op, expr } => match op {
                 OpUnary::Not => {
                     if let Formula::Atom(atom) = *expr {
-                        vec![LiteralSet::from(Literal::from(atom, false))]
+                        fs.add_literal_set(LiteralSet::from(Literal::from(atom, false)));
                     } else {
                         panic!()
                     }
@@ -27,26 +29,30 @@ impl<A: Atomic> Formula<A> {
 
                 match op {
                     OpBinary::And => {
-                        let mut fm = Vec::with_capacity(lhs.sets.len() * rhs.sets.len());
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
                                 let product = LiteralSet::from(
                                     l_set.literals().chain(r_set.literals()).cloned(),
                                 );
-                                fm.push(product);
+                                fs.add_literal_set(product);
                             }
                         }
-                        fm
                     }
 
-                    OpBinary::Or => lhs.sets.into_iter().chain(rhs.sets).collect(),
+                    OpBinary::Or => {
+                        for set in lhs.sets.into_iter().chain(rhs.sets) {
+                            fs.add_literal_set(set);
+                        }
+                    }
 
                     OpBinary::Imp | OpBinary::Iff => panic!(),
                 }
             }
 
             Formula::Quantified { .. } => todo!(),
-        }
+        };
+
+        fs
     }
 }
 
@@ -125,10 +131,11 @@ impl<A: Atomic> FormulaSet<A> {
                         .chain(other_literal_set.positive_literals())
                         .cloned()
                         .collect(),
+                    index: 0,
                 };
                 merge.setify();
 
-                conjunction.sets.push(merge);
+                conjunction.add_literal_set(merge);
             }
         }
 

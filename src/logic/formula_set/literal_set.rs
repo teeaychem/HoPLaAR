@@ -9,6 +9,7 @@ use crate::logic::{
 pub struct LiteralSet<A: Atomic> {
     pub n: Vec<Literal<A>>,
     pub p: Vec<Literal<A>>,
+    pub index: usize,
 }
 
 impl<A: Atomic> LiteralSet<A> {
@@ -250,6 +251,7 @@ impl<A: Atomic> Default for LiteralSet<A> {
         Self {
             n: Default::default(),
             p: Default::default(),
+            index: 0,
         }
     }
 }
@@ -266,7 +268,7 @@ impl<A: Atomic, LiteralIter: Iterator<Item = Literal<A>>> From<LiteralIter> for 
             }
         }
 
-        let mut ls = Self { n, p };
+        let mut ls = Self { n, p, index: 0 };
         ls.setify();
         ls
     }
@@ -278,10 +280,12 @@ impl<A: Atomic> From<Literal<A>> for LiteralSet<A> {
             true => Self {
                 n: vec![],
                 p: vec![value],
+                index: 0,
             },
             false => Self {
                 n: vec![value],
                 p: vec![],
+                index: 0,
             },
         }
     }

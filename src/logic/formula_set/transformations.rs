@@ -54,7 +54,7 @@ impl<A: Atomic> FormulaSet<A> {
                     // If the literal was unit, have φ ∧ ¬φ, so rewrite to basic ⊥ form.
                     if self.sets[set_index].is_empty() {
                         self.sets.drain(0..set_limit);
-                        self.sets.push(LiteralSet::default());
+                        self.add_literal_set(LiteralSet::default());
                         return true;
                     }
                 }
@@ -140,8 +140,8 @@ impl<A: Atomic> FormulaSet<A> {
         'set_loop: while set_index < set_limit {
             if let Some(literal) = self.sets[set_index].remove_atom(atom) {
                 match literal.value() {
-                    true => positive.sets.push(self.sets.swap_remove(set_index)),
-                    false => negative.sets.push(self.sets.swap_remove(set_index)),
+                    true => positive.add_literal_set(self.sets.swap_remove(set_index)),
+                    false => negative.add_literal_set(self.sets.swap_remove(set_index)),
                 }
                 set_limit -= 1;
                 continue 'set_loop;
@@ -163,7 +163,7 @@ impl<A: Atomic> FormulaSet<A> {
                 // Skip tivial sets from resolution
                 if !fresh.has_complementary_literals() {
                     // Extend the formula
-                    self.sets.push(fresh);
+                    self.add_literal_set(fresh);
                 }
             }
         }

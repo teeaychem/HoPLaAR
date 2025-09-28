@@ -23,11 +23,12 @@ type AtomCache<A> = HashMap<A, (bool, bool)>;
 
 // A formula, as a set of sets.
 // Invariant: `formula` is sorted by `literal_set_cmp`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct FormulaSet<A: Atomic> {
     sets: Vec<LiteralSet<A>>,
     atoms: AtomCache<A>,
     mode: Mode,
+    index: usize,
 }
 
 impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
@@ -48,18 +49,19 @@ impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
 
 impl<A: Atomic> Formula<A> {
     pub fn to_set_direct(self, mode: Mode) -> FormulaSet<A> {
-        let mut fs = FormulaSet::empty(mode);
-
-        let mut sets = match mode {
+        let mut fs = match mode {
             Mode::CNF => self.into_cnf_set_local(),
             Mode::DNF => self.into_dnf_set_local(),
         };
 
-        for literal in sets.iter().flat_map(|s| s.literals()) {
+        let mut sets_swp = Vec::default();
+        std::mem::swap(&mut sets_swp, &mut fs.sets);
+
+        for literal in sets_swp.iter().flat_map(|s| s.literals()) {
             fs.cache_literal(literal);
         }
 
-        std::mem::swap(&mut fs.sets, &mut sets);
+        std::mem::swap(&mut sets_swp, &mut fs.sets);
 
         fs.setify_outer();
 
@@ -104,6 +106,12 @@ impl<A: Atomic> FormulaSet<A> {
 
         self.sets.sort();
     }
+
+    pub fn add_literal_set(&mut self, mut literal_set: LiteralSet<A>) {
+        self.index += 1;
+        literal_set.index = self.index;
+        self.sets.push(literal_set);
+    }
 }
 
 impl<A: Atomic> FormulaSet<A> {
@@ -112,6 +120,7 @@ impl<A: Atomic> FormulaSet<A> {
             sets: vec![],
             atoms: HashMap::default(),
             mode,
+            index: 0,
         }
     }
 }
@@ -198,6 +207,14 @@ impl FormulaSet<Relation> {
         }
     }
 }
+
+impl<A: Atomic> std::cmp::PartialEq for FormulaSet<A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.sets == other.sets && self.atoms == other.atoms && self.mode == other.mode
+    }
+}
+
+impl<A: Atomic> std::cmp::Eq for FormulaSet<A> {}
 
 #[cfg(test)]
 mod tests {
