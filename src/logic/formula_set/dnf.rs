@@ -139,8 +139,6 @@ impl<A: Atomic> FormulaSet<A> {
             }
         }
 
-        conjunction.refresh_literal_cache();
-
         conjunction.setify_outer();
 
         conjunction

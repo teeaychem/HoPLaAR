@@ -26,7 +26,6 @@ type AtomCache<A> = HashMap<A, (bool, bool)>;
 #[derive(Clone, Debug)]
 pub struct FormulaSet<A: Atomic> {
     sets: Vec<LiteralSet<A>>,
-    atoms: AtomCache<A>,
     mode: Mode,
     index: usize,
 }
@@ -54,15 +53,6 @@ impl<A: Atomic> Formula<A> {
             Mode::DNF => self.into_dnf_set_local(),
         };
 
-        let mut sets_swp = Vec::default();
-        std::mem::swap(&mut sets_swp, &mut fs.sets);
-
-        for literal in sets_swp.iter().flat_map(|s| s.literals()) {
-            fs.cache_literal(literal);
-        }
-
-        std::mem::swap(&mut sets_swp, &mut fs.sets);
-
         fs.setify_outer();
 
         fs
@@ -75,23 +65,6 @@ impl<A: Atomic> FormulaSet<A> {
             true => cache.entry(literal.atom().to_owned()).or_default().0 = true,
             false => cache.entry(literal.atom().to_owned()).or_default().1 = true,
         }
-    }
-
-    pub fn cache_literal(&mut self, literal: &Literal<A>) {
-        Self::update_atom_cache(&mut self.atoms, literal);
-    }
-
-    pub fn refresh_literal_cache(&mut self) {
-        let mut atom_cache = std::mem::take(&mut self.atoms);
-        atom_cache.clear();
-
-        for set in &self.sets {
-            for literal in set.literals() {
-                Self::update_atom_cache(&mut atom_cache, literal);
-            }
-        }
-
-        let _ = std::mem::replace(&mut self.atoms, atom_cache);
     }
 
     pub fn setify_outer(&mut self) {
@@ -118,7 +91,6 @@ impl<A: Atomic> FormulaSet<A> {
     pub fn empty(mode: Mode) -> Self {
         FormulaSet {
             sets: vec![],
-            atoms: HashMap::default(),
             mode,
             index: 0,
         }
@@ -180,6 +152,20 @@ impl<A: Atomic> FormulaSet<A> {
             Mode::DNF => self.dnf_formula(),
         }
     }
+
+    pub fn occurrence_map(&self) -> HashMap<A, (usize, usize)> {
+        let mut map: HashMap<A, (usize, usize)> = HashMap::default();
+
+        for n in self.sets.iter().flat_map(|s| s.negative_literals()) {
+            map.entry(n.atom().clone()).or_default().0 += 1;
+        }
+
+        for p in self.sets.iter().flat_map(|s| s.positive_literals()) {
+            map.entry(p.atom().clone()).or_default().1 += 1;
+        }
+
+        map
+    }
 }
 
 impl FormulaSet<Relation> {
@@ -210,7 +196,7 @@ impl FormulaSet<Relation> {
 
 impl<A: Atomic> std::cmp::PartialEq for FormulaSet<A> {
     fn eq(&self, other: &Self) -> bool {
-        self.sets == other.sets && self.atoms == other.atoms && self.mode == other.mode
+        self.sets == other.sets && self.mode == other.mode
     }
 }
 

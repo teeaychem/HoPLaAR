@@ -61,8 +61,6 @@ impl<A: Atomic> FormulaSet<A> {
             }
         }
 
-        self.atoms.remove(one.atom());
-
         'other_loop: for other in removed_other {
             if self
                 .sets
@@ -71,15 +69,8 @@ impl<A: Atomic> FormulaSet<A> {
                 .any(|l| l == &other)
             {
                 continue 'other_loop;
-            } else if let Some((t, f)) = self.atoms.get_mut(other.atom()) {
-                match other.value() {
-                    true => *t = false,
-                    false => *f = false,
-                }
             }
         }
-
-        // TODO: Atom may now contain false / false values.
 
         true
     }
@@ -90,9 +81,9 @@ impl<A: Atomic> FormulaSet<A> {
         // Map each atom id to a pair, capturing whether the atom has appear in a (true, false) literal.
         // Retain only those instance when the atom has not appear both as true and false.
         let atom_ids: Vec<A> = self
-            .atoms
-            .iter()
-            .filter_map(|(id, (t, f))| match !(*t && *f) {
+            .occurrence_map()
+            .into_iter()
+            .filter_map(|(id, (n, p))| match n == 0 || p == 0 {
                 true => Some(id.to_owned()),
                 false => None,
             })
@@ -115,11 +106,6 @@ impl<A: Atomic> FormulaSet<A> {
                 }
             }
             set_index += 1;
-        }
-
-        // Remove from atoms any affirmative / negative atoms.
-        for id in atom_ids {
-            self.atoms.remove(&id);
         }
 
         mutation
@@ -171,9 +157,6 @@ impl<A: Atomic> FormulaSet<A> {
         // Ensure the formula continues to emulate a set
         self.setify_outer();
 
-        // Remove the atom used as a pivot.
-        self.atoms.remove(atom);
-
         true
     }
 
@@ -200,9 +183,9 @@ impl<A: Atomic> FormulaSet<A> {
 
     pub fn resolution_rule(&mut self) -> bool {
         let min_atom = match self
-            .atoms
-            .iter()
-            .filter_map(|(id, (t, f))| match *t && *f {
+            .occurrence_map()
+            .into_iter()
+            .filter_map(|(id, (n, p))| match n > 0 && p > 0 {
                 true => Some(id),
                 false => None,
             })
