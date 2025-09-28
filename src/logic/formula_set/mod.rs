@@ -9,7 +9,7 @@ mod propositional;
 mod transformations;
 
 use crate::logic::{
-    Atomic, Formula, Literal,
+    Atomic, Formula,
     first_order::{Relation, terms::Var},
 };
 
@@ -21,6 +21,7 @@ pub enum Mode {
 
 type AtomCache<A> = HashMap<A, (bool, bool)>;
 type OccurrenceMap<A> = HashMap<A, (usize, usize)>;
+type VariableSet = HashSet<Var>;
 
 // A formula, as a set of sets.
 // Invariant: `formula` is sorted by `literal_set_cmp`.
@@ -33,13 +34,11 @@ pub struct FormulaSet<A: Atomic> {
 
 impl<A: Atomic> std::fmt::Display for FormulaSet<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let outer_limit = self.sets.len().saturating_sub(1);
-
         write!(f, "{{")?;
         for (outer_idx, expr) in self.sets.iter().enumerate() {
             write!(f, "{expr}")?;
 
-            if outer_idx < outer_limit {
+            if outer_idx + 1 < self.sets.len() {
                 writeln!(f, ", ")?;
             }
         }
@@ -61,13 +60,6 @@ impl<A: Atomic> Formula<A> {
 }
 
 impl<A: Atomic> FormulaSet<A> {
-    fn update_atom_cache(cache: &mut AtomCache<A>, literal: &Literal<A>) {
-        match literal.value() {
-            true => cache.entry(literal.atom().to_owned()).or_default().0 = true,
-            false => cache.entry(literal.atom().to_owned()).or_default().1 = true,
-        }
-    }
-
     pub fn setify_outer(&mut self) {
         self.sets.sort_unstable();
         self.sets.dedup();
@@ -176,8 +168,8 @@ impl FormulaSet<Relation> {
         }
     }
 
-    pub fn variable_set(&self) -> HashSet<Var> {
-        let mut fvs = HashSet::default();
+    pub fn variable_set(&self) -> VariableSet {
+        let mut fvs = VariableSet::default();
         self.extend_with_variables(&mut fvs);
         fvs
     }
@@ -208,8 +200,10 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::logic::{
+        Literal,
         first_order::{FirstOrderFormula, terms::Var},
-        formula_set::Mode,
+        formula_set::{FormulaSet, LiteralSet, Mode},
+        propositional::Prop,
     };
 
     #[test]
@@ -240,5 +234,47 @@ mod tests {
         let expected = HashSet::from(["x", "y", "z"].map(Var::from));
 
         assert_eq!(variables, expected)
+    }
+
+    #[test]
+    fn order() {
+        let mut fm = FormulaSet::empty(Mode::CNF);
+
+        let ls = LiteralSet::from(
+            ["a", "b"]
+                .into_iter()
+                .map(|a| Literal::<Prop>::from(Prop::from(a), true)),
+        );
+        fm.add_set(ls);
+
+        let ls = LiteralSet::from(
+            ["c", "d"]
+                .into_iter()
+                .map(|a| Literal::<Prop>::from(Prop::from(a), true)),
+        );
+        fm.add_set(ls);
+
+        let ls = LiteralSet::from(
+            ["e"]
+                .into_iter()
+                .map(|a| Literal::<Prop>::from(Prop::from(a), true)),
+        );
+        fm.add_set(ls);
+
+        let e = Literal::<Prop>::from(Prop::from("e"), true);
+
+        assert!(
+            !fm.sets
+                .iter()
+                .filter(|s| s.index == 1)
+                .any(|l| l.literals().any(|l| l == &e))
+        );
+
+        assert!(
+            fm.sets
+                .iter()
+                .filter(|s| s.index > 1)
+                .any(|l| l.literals().any(|l| l == &e))
+        );
     }
 }
