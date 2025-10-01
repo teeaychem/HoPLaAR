@@ -18,6 +18,8 @@ pub use terms::{Term, TermId};
 mod relations;
 pub use relations::Relation;
 
+mod tableaux;
+
 mod unification;
 
 // Local usage
