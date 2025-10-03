@@ -93,19 +93,26 @@ impl<A: Atomic> FormulaSet<A> {
 
         let mut set_index = 0;
         let mut set_limit = self.sets.len();
+        let mut remove = false;
 
-        'set_loop: while set_index < set_limit {
-            for literal in self.sets[set_index].literals() {
+        while set_index < set_limit {
+            'literal_loop: for literal in self.sets[set_index].literals() {
                 for atom in &atom_ids {
                     if atom == literal.atom() {
                         set_limit -= 1;
-                        self.sets.swap_remove(set_index);
-                        mutation = true;
-                        continue 'set_loop;
+                        remove = true;
+                        break 'literal_loop;
                     }
                 }
             }
-            set_index += 1;
+            match remove {
+                true => {
+                    self.sets.swap_remove(set_index);
+                    remove = false;
+                    mutation = true;
+                }
+                false => set_index += 1,
+            }
         }
 
         mutation

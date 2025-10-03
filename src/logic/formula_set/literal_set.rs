@@ -25,17 +25,15 @@ impl<A: Atomic> LiteralSet<A> {
         (&self.n, &self.p)
     }
 
-    pub fn negative_literals(&self) -> std::slice::Iter<'_, Literal<A>> {
+    pub fn negative_literals(&self) -> impl Iterator<Item = &Literal<A>> {
         self.n.iter()
     }
 
-    pub fn positive_literals(&self) -> std::slice::Iter<'_, Literal<A>> {
+    pub fn positive_literals(&self) -> impl Iterator<Item = &Literal<A>> {
         self.p.iter()
     }
 
-    pub fn literals(
-        &self,
-    ) -> std::iter::Chain<std::slice::Iter<'_, Literal<A>>, std::slice::Iter<'_, Literal<A>>> {
+    pub fn literals(&self) -> impl Iterator<Item = &Literal<A>> {
         self.negative_literals().chain(self.positive_literals())
     }
 
@@ -155,18 +153,15 @@ impl<A: Atomic> LiteralSet<A> {
         self.setify();
     }
 
-    pub fn negative_literals_mut(&mut self) -> std::slice::IterMut<'_, Literal<A>> {
+    pub fn negative_literals_mut(&mut self) -> impl Iterator<Item = &mut Literal<A>> {
         self.n.iter_mut()
     }
 
-    pub fn positive_literals_mut(&mut self) -> std::slice::IterMut<'_, Literal<A>> {
+    pub fn positive_literals_mut(&mut self) -> impl Iterator<Item = &mut Literal<A>> {
         self.p.iter_mut()
     }
 
-    pub fn literals_mut(
-        &mut self,
-    ) -> std::iter::Chain<std::slice::IterMut<'_, Literal<A>>, std::slice::IterMut<'_, Literal<A>>>
-    {
+    pub fn literals_mut(&mut self) -> impl Iterator<Item = &mut Literal<A>> {
         self.n.iter_mut().chain(self.p.iter_mut())
     }
 
@@ -208,9 +203,7 @@ impl<A: Atomic> LiteralSet<A> {
 }
 
 impl<A: Atomic> LiteralSet<A> {
-    pub fn into_literals(
-        self,
-    ) -> std::iter::Chain<std::vec::IntoIter<Literal<A>>, std::vec::IntoIter<Literal<A>>> {
+    pub fn into_literals(self) -> impl Iterator<Item = Literal<A>> {
         self.n.into_iter().chain(self.p)
     }
 }
