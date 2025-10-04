@@ -273,9 +273,15 @@ impl TryFrom<&str> for Term {
 
 #[cfg(test)]
 mod tests {
+    use crate::logic::first_order::{FirstOrderFormula, library::pelletier};
 
     #[test]
     fn debug() {
+        let f = FirstOrderFormula::from(pelletier::P22);
+        println!("{f}");
+        let r = f.tableaux(None);
+        println!("{r:?}");
+
         // let _term = Term::unary(
         //     "sqrt",
         //     Term::binary(

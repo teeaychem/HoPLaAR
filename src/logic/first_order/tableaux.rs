@@ -150,12 +150,14 @@ impl Unifier {
     }
 }
 
-fn tableaux(fm: FirstOrderFormula) -> Result<TableauOk, TableauErr> {
-    let sfm = fm.generalize().negate().skolemize_basic();
+impl FirstOrderFormula {
+    pub fn tableaux(self, instantiation_limit: Option<usize>) -> Result<TableauOk, TableauErr> {
+        let sfm = self.generalize().negate().skolemize_basic();
 
-    let mut u = Unifier::default();
+        let mut u = Unifier::default();
 
-    u.tableau(sfm, Some(10))
+        u.tableau(sfm, instantiation_limit)
+    }
 }
 
 #[cfg(test)]
@@ -166,13 +168,13 @@ mod tests {
 
     #[test]
     fn p18() {
-        let result = tableaux(FirstOrderFormula::from(P18));
+        let result = FirstOrderFormula::from(P18).tableaux(None);
         assert!(matches!(result, Ok(TableauOk::Refuted(_))));
     }
 
     #[test]
     fn p38() {
-        let result = tableaux(FirstOrderFormula::from(P38));
+        let result = FirstOrderFormula::from(P38).tableaux(None);
         assert!(matches!(result, Ok(TableauOk::Refuted(_))));
     }
 }

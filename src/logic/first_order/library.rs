@@ -47,6 +47,12 @@ pub mod pelletier {
 
         pub const P20: &str = "∀x. (∀y. (∃z. (∀w. ((P(x) ∧ Q(y)) → (R(z) ∧ U(w))) → (∃x. (∃y. ((P(x) ∧ Q(y)) → ∃z. (R(z))))))))";
 
+        pub const P21: &str = "∃x. (p → F(x)) ∧ ∃x. (F(x) → p) → ∃x. (p ↔ F(x))";
+
+        pub const P22: &str = "∀x. (p ↔ F(x)) ↔ (p ↔ ∀x. F(x))";
+
+        pub const P23: &str = "∀x.(p ∨ F(x)) ↔ (p ∨ ∀x. F(x))";
+
         pub const P24: &str = "
   ¬(∃x. (U(x) ∧ Q(x))) ∧ (∀x. (P(x) → Q(x) ∨ R(x))) ∧ ¬(∃x. (P(x) → (∃x. Q(x))))∧ (∀x. (Q(x) ∧ R(x) → U(x)))
 → ∃x. (P(x) ∧ R(x))
