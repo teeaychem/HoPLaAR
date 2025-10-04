@@ -4,7 +4,7 @@ use crate::logic::{
         FirstOrderFormula, Relation, Term,
         terms::{Fun, Var},
     },
-    formula_set::{FormulaSet, Mode},
+    formula_set::{FormulaSet, LiteralSet, Mode},
 };
 
 pub type EqsSlice = [(Term, Term)];
@@ -84,7 +84,7 @@ impl Unifier {
         }
     }
 
-    pub fn pop_some(&mut self, count: usize) {
+    pub fn pop_multiple(&mut self, count: usize) {
         for _ in 0..count {
             let var = self.trail.pop().unwrap();
             self.var_to_term.remove(&var);
@@ -107,7 +107,7 @@ impl Unifier {
                         todo.extend(f.args.iter().cloned().zip(g.args.iter().cloned()).rev())
                     }
                     _ => {
-                        self.pop_some(fresh_unifications);
+                        self.pop_multiple(fresh_unifications);
                         return Err(UnificationFailure::Distinct);
                     }
                 },
@@ -123,7 +123,7 @@ impl Unifier {
                                 fresh_unifications += 1;
                             }
                             MapType::Cyclic => {
-                                self.pop_some(fresh_unifications);
+                                self.pop_multiple(fresh_unifications);
                                 return Err(UnificationFailure::Cyclic);
                             }
                         }
@@ -285,16 +285,15 @@ impl Unifier {
     /// need to restart the search.
     ///
     /// Returns a unit error if no unification is possible.
-    pub fn unify_complements(
+    pub fn unify_complements_custom(
         &mut self,
-        fs: &FormulaSet<Relation>,
-        disjunct_idx: usize,
+        disjunct: &LiteralSet<Relation>,
         mut nl_idx: usize,
         mut pl_idx: usize,
     ) -> Result<(usize, usize, usize), ()> {
         // Splits the set into positive and negative literals, then examines all possible complements.
 
-        let (n, p) = fs.set_at_index(disjunct_idx).negative_positive_split();
+        let (n, p) = disjunct.negative_positive_split();
 
         while nl_idx < n.len() {
             while pl_idx < p.len() {
@@ -331,6 +330,13 @@ impl Unifier {
         Err(())
     }
 
+    pub fn unify_complements(
+        &mut self,
+        disjunct: &LiteralSet<Relation>,
+    ) -> Result<(usize, usize, usize), ()> {
+        self.unify_complements_custom(disjunct, 0, 0)
+    }
+
     // Quite inefficient, as the same unification may be explored multiple (multiple) times.
     #[allow(clippy::single_match)]
     fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> bool {
@@ -356,7 +362,11 @@ impl Unifier {
             } else {
                 // Work through every negative-positive pair
 
-                match self.unify_complements(fs, disjunct_index, nl_index, pl_index) {
+                match self.unify_complements_custom(
+                    fs.set_at_index(disjunct_index),
+                    nl_index,
+                    pl_index,
+                ) {
                     Ok((n_idx, p_idx, fresh_count)) => {
                         stack.push((n_idx, p_idx, fresh_count));
                         nl_index = 0;
@@ -369,7 +379,7 @@ impl Unifier {
                             disjunct_index -= 1;
                             pl_index = p_idx + 1;
                             nl_index = n_idx;
-                            self.pop_some(fresh_count);
+                            self.pop_multiple(fresh_count);
                         }
 
                         None => return false,

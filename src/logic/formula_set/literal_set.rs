@@ -153,6 +153,10 @@ impl<A: Atomic> LiteralSet<A> {
         self.setify();
     }
 
+    pub fn insert(&mut self, literal: Literal<A>) {
+        self.extend(std::iter::once(literal));
+    }
+
     pub fn negative_literals_mut(&mut self) -> impl Iterator<Item = &mut Literal<A>> {
         self.n.iter_mut()
     }
