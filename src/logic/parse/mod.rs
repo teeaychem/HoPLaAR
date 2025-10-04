@@ -88,10 +88,10 @@ fn lex(expr: &str) -> TokenVec {
             '{' => Token::ParenL(Paren::Inky),
             '}' => Token::ParenR(Paren::Inky),
 
-            '~' => Token::Not,
+            '¬' | '~' => Token::Not,
 
-            '|' => Token::Or,
-            '&' => Token::And,
+            '∨' | '|' | '+' => Token::Or,
+            '∧' | '&' => Token::And,
 
             '/' => match chars.next() {
                 Some('\\') => Token::And,
@@ -102,6 +102,10 @@ fn lex(expr: &str) -> TokenVec {
                 Some('/') => Token::Or,
                 _ => panic!(),
             },
+
+            '→' => Token::Imp,
+
+            '↔' => Token::Iff,
 
             '=' => match chars.next() {
                 Some('>') => Token::Imp,
@@ -122,6 +126,10 @@ fn lex(expr: &str) -> TokenVec {
                 },
                 _ => panic!(),
             },
+
+            '∀' => Token::Quantifier(Quantifier::ForAll),
+
+            '∃' => Token::Quantifier(Quantifier::Exists),
 
             ',' => Token::Comma,
             '.' => Token::Stop,
