@@ -2,88 +2,88 @@ use std::collections::VecDeque;
 
 use crate::logic::{
     Formula, Literal, OpBinary,
-    first_order::{FirstOrderFormula, Relation, Term, syntax::Substitution, unification::Unifier},
+    first_order::{
+        FirstOrderFormula, Relation, Term, syntax::Substitution, terms::Var, unification::Unifier,
+    },
     formula_set::LiteralSet,
 };
 
-#[derive(Debug)]
-pub enum TableauResult {
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TableauOk {
     Refuted(usize),
     NoRefutation,
     InstantiationLimit,
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TableauErr {
+    Form,
+}
+
 impl Unifier {
-    pub fn tableau(&mut self, fms: FirstOrderFormula, level: usize) -> Result<TableauResult, ()> {
+    /// An iterative varaint of tableau from the book.
+    ///
+    /// Continutations are replaced by a stack of custom continuation structs.
+    /// When brancing a continutation is created, and when a branch completes a continuation is taken from the stack.
+    pub fn tableau(
+        &mut self,
+        fms: FirstOrderFormula,
+        instantiation_limit: Option<usize>,
+    ) -> Result<TableauOk, TableauErr> {
         let mut formula_q: VecDeque<FirstOrderFormula> = VecDeque::default();
         let mut disjunct: LiteralSet<Relation> = LiteralSet::default();
 
-        let mut branch_refuted: bool = false;
-        let mut k = 1;
+        let mut check_disjunct: bool = false;
+        let mut variant_index = 1;
 
         #[derive(Debug)]
         struct Continuation {
-            q: VecDeque<FirstOrderFormula>,
-            s: LiteralSet<Relation>,
-            instantiations: usize,
-            trail_length: usize,
+            queue: VecDeque<FirstOrderFormula>,
+            disjunct: LiteralSet<Relation>,
+            variant_index: usize, // Ensure the instantiation count is only wrt. a branch.
+            trail_length: usize,  // Used to remove unifications from an explored branch.
         }
 
         let mut stack: Vec<Continuation> = Vec::default();
         stack.push(Continuation {
-            q: VecDeque::from([fms]),
-            s: LiteralSet::default(),
-            instantiations: 1,
+            queue: VecDeque::from([fms]),
+            disjunct: LiteralSet::default(),
+            variant_index: 1,
             trail_length: 0,
         });
 
-        use Formula::*;
-
         'disjunct_loop: while let Some(todo) = stack.pop() {
-            formula_q = todo.q;
-            disjunct = todo.s;
-            k = todo.instantiations;
+            formula_q = todo.queue;
+            disjunct = todo.disjunct;
+            variant_index = todo.variant_index;
 
             let obsolete_unifications = self.trail.len() - todo.trail_length;
             self.pop_multiple(obsolete_unifications);
 
-            branch_refuted = false;
+            check_disjunct = false;
 
             'branch_loop: while let Some(head) = formula_q.pop_front() {
                 //
                 match head {
-                    True => todo!("true"),
-                    False => todo!("false"),
+                    Formula::True | Formula::False => return Err(TableauErr::Form),
 
-                    Atom(relation) => {
+                    Formula::Atom(relation) => {
                         disjunct.insert(Literal::from(relation, true));
-                        match self.unify_complements(&disjunct) {
-                            Ok((_, _, unifications)) => {
-                                branch_refuted = true;
-                                break 'branch_loop;
-                            }
-                            Err(_) => continue,
-                        }
+                        check_disjunct = true;
                     }
 
-                    Unary { op, expr } => {
+                    Formula::Unary { op, expr } => {
                         //
                         match *expr {
-                            Atom(relation) => {
+                            Formula::Atom(relation) => {
                                 disjunct.insert(Literal::from(relation, false));
-                                match self.unify_complements(&disjunct) {
-                                    Ok((_, _, unifications)) => {
-                                        branch_refuted = true;
-                                        break 'branch_loop;
-                                    }
-                                    Err(_) => continue,
-                                }
+                                check_disjunct = true;
                             }
-                            _ => panic!("Complex negation"),
+                            _ => return Err(TableauErr::Form),
                         }
                     }
 
-                    Binary { op, lhs, rhs } => {
+                    Formula::Binary { op, lhs, rhs } => {
                         //
                         match op {
                             OpBinary::And => {
@@ -92,65 +92,70 @@ impl Unifier {
                             }
                             OpBinary::Or => {
                                 let mut tbc = Continuation {
-                                    q: formula_q.clone(),
-                                    s: disjunct.clone(),
-                                    instantiations: k,
+                                    queue: formula_q.clone(),
+                                    disjunct: disjunct.clone(),
+                                    variant_index,
                                     trail_length: self.trail.len(),
                                 };
-                                tbc.q.push_front(*rhs);
+                                tbc.queue.push_front(*rhs);
                                 stack.push(tbc);
 
                                 formula_q.push_front(*lhs);
                             }
-                            OpBinary::Imp | OpBinary::Iff => todo!("NNF with implication"),
+                            OpBinary::Imp | OpBinary::Iff => return Err(TableauErr::Form),
                         }
                     }
 
-                    Quantified { q, var, fm } => {
-                        use crate::logic::Quantifier::*;
+                    Formula::Quantified { q, var, fm } => {
+                        use crate::logic::Quantifier;
                         //
                         match q {
-                            ForAll => {
-                                if k == level {
-                                    return Ok(TableauResult::InstantiationLimit);
+                            Quantifier::ForAll => {
+                                if instantiation_limit.is_some_and(|l| variant_index == l) {
+                                    return Ok(TableauOk::InstantiationLimit);
                                 }
-                                let c = Term::Var(&format!("{}_{}", var, k));
 
-                                let mut s = Substitution::default();
-                                s.add_interrupt(&var, Some(c));
+                                let fresh_var = Var {
+                                    id: var.id.to_owned(),
+                                    variant: variant_index.try_into().unwrap(),
+                                };
 
-                                let fms = fm.clone().term_substitution(&mut s);
-                                formula_q.push_front(fms);
+                                let mut v_substitution =
+                                    Substitution::from_interrupt(&var, Some(Term::V(fresh_var)));
+
+                                let sfm = fm.clone().term_substitution(&mut v_substitution);
+                                formula_q.push_front(sfm);
 
                                 formula_q.push_back(FirstOrderFormula::Quantified(q, var, *fm));
-                                k += 1;
+                                variant_index += 1;
                             }
 
-                            Exists => panic!("Existential in NNF"),
+                            Quantifier::Exists => return Err(TableauErr::Form),
                         }
+                    }
+                }
+
+                if check_disjunct {
+                    match self.unify_complements(&disjunct) {
+                        Ok((_, _, _)) => continue 'disjunct_loop,
+                        Err(_) => continue 'branch_loop,
                     }
                 }
             }
 
-            match branch_refuted {
-                true => {
-                    println!("Refuted {disjunct}");
-                    continue 'disjunct_loop;
-                }
-                false => return Ok(TableauResult::NoRefutation),
-            }
+            return Ok(TableauOk::NoRefutation);
         }
 
-        Ok(TableauResult::Refuted(k))
+        Ok(TableauOk::Refuted(variant_index))
     }
 }
 
-fn tableaux(fm: FirstOrderFormula) -> Result<TableauResult, ()> {
+fn tableaux(fm: FirstOrderFormula) -> Result<TableauOk, TableauErr> {
     let sfm = fm.generalize().negate().skolemize_basic();
 
     let mut u = Unifier::default();
 
-    u.tableau(sfm, 10)
+    u.tableau(sfm, Some(10))
 }
 
 #[cfg(test)]
@@ -160,22 +165,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn debug() {
-        // let fm = FirstOrderFormula::from(P38);
+    fn p18() {
+        let result = tableaux(FirstOrderFormula::from(P18));
+        assert!(matches!(result, Ok(TableauOk::Refuted(_))));
+    }
 
-        // let fm = FirstOrderFormula::from("(P(a) & P(b)) | (~P(a) & ~P(b))");
-        // let result = tableaux_refute(fm);
-        // println!("Result: {result:?}");
-
-        // let fm = FirstOrderFormula::from("exists x. (P(x) | ~P(x))");
-        // let result = tableaux_refute(fm);
-        // println!("Result: {result:?}");
-
-        let fm = FirstOrderFormula::from(P38);
-        // let fm = FirstOrderFormula::from(
-        //     "forall x. ((P(x) & forall y. (Q(y) | ~Q(y))) | (~P(x) & forall y. (Q(y) | ~Q(y))))",
-        // );
-        let result = tableaux(fm);
-        println!("Result: {result:?}");
+    #[test]
+    fn p38() {
+        let result = tableaux(FirstOrderFormula::from(P38));
+        assert!(matches!(result, Ok(TableauOk::Refuted(_))));
     }
 }

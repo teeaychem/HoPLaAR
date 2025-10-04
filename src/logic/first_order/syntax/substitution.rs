@@ -36,6 +36,13 @@ impl Substitution {
         }
     }
 
+    pub fn from_interrupt(var: &Var, v: Option<Term>) -> Self {
+        Self {
+            function: Box::new(|t: Term| -> Term { t }),
+            interrupt: HashMap::from([(var.to_owned(), v)]),
+        }
+    }
+
     /// Adds an interrupt to the substitution and returns the existing interrupt.
     pub fn add_interrupt(&mut self, var: &Var, v: Option<Term>) -> Option<Option<Term>> {
         self.interrupt.insert(var.clone(), v)
