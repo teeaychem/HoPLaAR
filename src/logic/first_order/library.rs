@@ -4,9 +4,9 @@ pub mod pelletier {
     pub use {monadic_predicate::*, propositional::*};
 
     pub mod propositional {
-        pub const P1: &str = "(p → q) ↔ (q → ¬p)";
+        pub const P1: &str = "(p → q) ↔ (¬q → ¬p)";
 
-        pub const P2: &str = "¬p ↔ p";
+        pub const P2: &str = "¬¬p ↔ p";
 
         pub const P3: &str = "¬(p → q) → (q → p)";
 

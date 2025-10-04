@@ -162,19 +162,45 @@ impl FirstOrderFormula {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::first_order::{FirstOrderFormula, library::pelletier::*};
-
     use super::*;
+
+    #[macro_export]
+    macro_rules! test_pelletier {
+        (  $x:ident ) => {{
+            use $crate::logic::first_order::{FirstOrderFormula, library::pelletier};
+            let result = FirstOrderFormula::from(pelletier::$x).tableaux(None);
+            assert!(matches!(result, Ok(TableauOk::Refuted(_))));
+        }};
+    }
+
+    #[test]
+    fn pelletier_propositional() {
+        test_pelletier!(P1);
+        test_pelletier!(P2);
+        test_pelletier!(P3);
+        test_pelletier!(P4);
+        test_pelletier!(P5);
+        test_pelletier!(P6);
+        test_pelletier!(P7);
+        test_pelletier!(P8);
+        test_pelletier!(P9);
+        test_pelletier!(P10);
+        test_pelletier!(P11);
+        test_pelletier!(P12);
+        test_pelletier!(P13);
+        test_pelletier!(P14);
+        test_pelletier!(P15);
+        test_pelletier!(P16);
+        test_pelletier!(P17);
+    }
 
     #[test]
     fn p18() {
-        let result = FirstOrderFormula::from(P18).tableaux(None);
-        assert!(matches!(result, Ok(TableauOk::Refuted(_))));
+        test_pelletier!(P18)
     }
 
     #[test]
     fn p38() {
-        let result = FirstOrderFormula::from(P38).tableaux(None);
-        assert!(matches!(result, Ok(TableauOk::Refuted(_))));
+        test_pelletier!(P38)
     }
 }
