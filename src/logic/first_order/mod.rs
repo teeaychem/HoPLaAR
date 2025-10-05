@@ -80,6 +80,34 @@ impl FirstOrderFormula {
     }
 }
 
+impl FirstOrderFormula {
+    fn split_on_helper(mut self, split_op: super::OpBinary, dest: &mut Vec<FirstOrderFormula>) {
+        match self {
+            Formula::Binary {
+                op,
+                ref mut lhs,
+                ref mut rhs,
+            } => {
+                //
+                match op == split_op {
+                    true => {
+                        std::mem::take(lhs).split_on_helper(split_op, dest);
+                        std::mem::take(rhs).split_on_helper(split_op, dest);
+                    }
+                    false => dest.push(self),
+                }
+            }
+            _ => dest.push(self),
+        }
+    }
+
+    pub fn split_on(self, split_op: super::OpBinary) -> Vec<FirstOrderFormula> {
+        let mut dest: Vec<FirstOrderFormula> = Vec::default();
+        self.split_on_helper(split_op, &mut dest);
+        dest
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
