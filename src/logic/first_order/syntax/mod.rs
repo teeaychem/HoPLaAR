@@ -155,16 +155,15 @@ impl FirstOrderFormula {
                     Quantifier::ForAll => Formula::ForAll(var, fm.skolem(taken)),
                     Quantifier::Exists => {
                         //
+
                         let mut fvs = fm.free_variables();
                         fvs.remove(&var);
 
-                        let id = match fvs.is_empty() {
-                            true => format!("c_{var}"),
-                            false => format!("f_{var}"),
-                        };
-
                         let fresh_function = Fun {
-                            id,
+                            id: match fvs.is_empty() {
+                                true => format!("c_{var}"),
+                                false => format!("f_{var}"),
+                            },
                             variant: 0,
                             args: fvs.into_iter().map(Term::V).collect(),
                         };
@@ -172,8 +171,9 @@ impl FirstOrderFormula {
                         let fresh_f = fresh_function.fresh_variant(taken.iter());
                         taken.insert(fresh_f.clone());
 
-                        let mut substitution = Substitution::default();
-                        substitution.add_interrupt(&var, Some(Term::F(fresh_f)));
+                        let mut substitution =
+                            Substitution::from_interrupt(&var, Some(Term::F(fresh_f)));
+
                         let fm = fm.term_substitution(&mut substitution);
                         fm.skolem(taken)
                     }
