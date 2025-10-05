@@ -18,6 +18,7 @@ pub enum TableauOk {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TableauErr {
     Form,
+    VariantsExhausted,
 }
 
 impl Unifier {
@@ -117,7 +118,10 @@ impl Unifier {
 
                                 let fresh_var = Var {
                                     id: var.id.to_owned(),
-                                    variant: variant_index.try_into().unwrap(),
+                                    variant: match variant_index.try_into() {
+                                        Ok(n) => n,
+                                        Err(_) => return Err(TableauErr::VariantsExhausted),
+                                    },
                                 };
 
                                 let mut v_substitution =
@@ -161,20 +165,14 @@ impl FirstOrderFormula {
 
     pub fn split_tableaux(self, instantiation_limit: Option<usize>) -> bool {
         let sfm = self.generalize().negate().skolemize_basic().simple_dnf();
+        println!("{sfm}");
         let split = sfm.split_on(OpBinary::Or);
-        split.into_iter().all(|d| {
+        split.into_iter().all(|disjunct| {
             matches!(
-                Unifier::default().tableau(d, None),
+                Unifier::default().tableau(disjunct, None),
                 Ok(TableauOk::Refuted(_))
             )
         })
-
-        // for (i, disjunct) in split.into_iter().enumerate() {
-        //     let result = Unifier::default().tableau(disjunct, None);
-
-        // }
-
-        // todo!()
     }
 }
 
@@ -257,5 +255,32 @@ mod tests {
     fn p34_split() {
         use crate::logic::first_order::{FirstOrderFormula, library::pelletier};
         assert!(FirstOrderFormula::from(pelletier::P34).split_tableaux(None));
+    }
+
+    #[test]
+    fn ewd1062_split() {
+        let ewd1062 = "[∀x. R(x,x) ∧ ∀x. ∀y. ∀z.(R(x,y) ∧ R(y,z) → R(x,z)) ∧ ∀x. ∀y. (R(f(x),y) ↔ R(x,g(y)))] → [∀x.∀y.(R(x,y) → R(f(x),f(y))) ∧ ∀x.∀y.(R(x,y) → R(g(x),g(y)))]";
+        let fm = FirstOrderFormula::from(ewd1062);
+        assert!(fm.split_tableaux(None));
+    }
+
+    #[test]
+    fn satisfiable() {
+        use crate::logic::first_order::{FirstOrderFormula, library::satisfiable::*};
+
+        assert!(!matches!(
+            FirstOrderFormula::from(AxPxQx).tableaux(None),
+            Ok(TableauOk::Refuted(_))
+        ));
+
+        assert!(!matches!(
+            FirstOrderFormula::from(AxAyPxQy).tableaux(None),
+            Ok(TableauOk::Refuted(_))
+        ));
+
+        assert!(!matches!(
+            FirstOrderFormula::from(AxEyPxQx).tableaux(None),
+            Ok(TableauOk::Refuted(_))
+        ));
     }
 }
