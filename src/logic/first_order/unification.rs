@@ -4,7 +4,7 @@ use crate::logic::{
         FirstOrderFormula, Relation, Term,
         terms::{Fun, Var},
     },
-    formula_set::{FormulaSet, LiteralSet, Mode},
+    formula_set::{FormulaSet, LiteralSet},
 };
 
 pub type EqsSlice = [(Term, Term)];
@@ -339,7 +339,7 @@ impl Unifier {
 
     // Quite inefficient, as the same unification may be explored multiple (multiple) times.
     #[allow(clippy::single_match)]
-    fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> bool {
+    pub fn unify_refute(&mut self, fs: &FormulaSet<Relation>) -> bool {
         // A stack to emulate a recursive search.
         // Stores:
         // - The negative literal index.
@@ -406,43 +406,6 @@ impl std::fmt::Display for Unifier {
 }
 
 // etc.
-
-impl FirstOrderFormula {
-    pub fn prawitz(&self, limit: Option<usize>) -> (bool, usize) {
-        let base_clone = self.clone();
-        let generalized = base_clone.generalize();
-        let negated = generalized.negate();
-        let skolemized = negated.skolemize();
-        let mut base = skolemized.simple_dnf().to_set_direct(Mode::DNF);
-
-        let mut unifier = Unifier::default();
-
-        let limit = limit.unwrap_or(usize::MAX);
-
-        let v_increment = std::cmp::max(
-            1,
-            base.variable_set()
-                .iter()
-                .map(|v| v.variant)
-                .max()
-                .unwrap_or_default(),
-        );
-
-        let increment_var = |var: &mut Var| var.variant += v_increment;
-
-        let mut fm = base.clone();
-
-        for attempt in 0..limit {
-            if unifier.unify_refute(&fm) {
-                return (true, attempt);
-            }
-            base.on_variables(increment_var);
-            fm = fm.dnf_conjoin(base.clone());
-        }
-
-        (false, limit)
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -572,68 +535,5 @@ mod tests {
 
         println!("{result:?}");
         println!("Unified complements: {u}");
-    }
-}
-
-#[cfg(test)]
-mod formula_tests {
-
-    use crate::logic::first_order::{FirstOrderFormula, library};
-
-    #[test]
-    fn p18() {
-        let f = FirstOrderFormula::from(library::pelletier::P18);
-        let (result, _) = f.prawitz(None);
-        assert!(result)
-    }
-
-    #[test]
-    fn p19() {
-        let f = FirstOrderFormula::from(library::pelletier::P19);
-        let (result, _) = f.prawitz(Some(4));
-        assert!(result);
-    }
-
-    #[test]
-    fn p20() {
-        let f = FirstOrderFormula::from(library::pelletier::P20);
-        let (result, _) = f.prawitz(None);
-        assert!(result)
-    }
-
-    #[test]
-    fn p24() {
-        let f = FirstOrderFormula::from(library::pelletier::P24);
-        let (result, _) = f.prawitz(Some(2));
-        assert!(result)
-    }
-
-    #[ignore = "???"]
-    #[test]
-    fn p45() {
-        let fm = FirstOrderFormula::from(library::pelletier::P45);
-        let (result, _) = fm.prawitz(Some(10));
-        assert!(result);
-    }
-
-    #[test]
-    fn sat_1() {
-        let fm = FirstOrderFormula::from(library::satisfiable::AxPxQx);
-        let (result, _) = fm.prawitz(Some(5));
-        assert!(!result);
-    }
-
-    #[test]
-    fn sat_2() {
-        let fm = FirstOrderFormula::from(library::satisfiable::AxAyPxQy);
-        let (result, _) = fm.prawitz(Some(5));
-        assert!(!result);
-    }
-
-    #[test]
-    fn sat_3() {
-        let fm = FirstOrderFormula::from(library::satisfiable::AxEyPxQx);
-        let (result, _) = fm.prawitz(Some(5));
-        assert!(!result);
     }
 }

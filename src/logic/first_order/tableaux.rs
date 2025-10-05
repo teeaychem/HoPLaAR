@@ -5,8 +5,45 @@ use crate::logic::{
     first_order::{
         FirstOrderFormula, Relation, Term, syntax::Substitution, terms::Var, unification::Unifier,
     },
-    formula_set::LiteralSet,
+    formula_set::{LiteralSet, Mode},
 };
+
+impl FirstOrderFormula {
+    pub fn prawitz(&self, limit: Option<usize>) -> (bool, usize) {
+        let base_clone = self.clone();
+        let generalized = base_clone.generalize();
+        let negated = generalized.negate();
+        let skolemized = negated.skolemize();
+        let mut base = skolemized.simple_dnf().to_set_direct(Mode::DNF);
+
+        let mut unifier = Unifier::default();
+
+        let limit = limit.unwrap_or(usize::MAX);
+
+        let v_increment = std::cmp::max(
+            1,
+            base.variable_set()
+                .iter()
+                .map(|v| v.variant)
+                .max()
+                .unwrap_or_default(),
+        );
+
+        let increment_var = |var: &mut Var| var.variant += v_increment;
+
+        let mut fm = base.clone();
+
+        for attempt in 0..limit {
+            if unifier.unify_refute(&fm) {
+                return (true, attempt);
+            }
+            base.on_variables(increment_var);
+            fm = fm.dnf_conjoin(base.clone());
+        }
+
+        (false, limit)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TableauOk {
@@ -177,7 +214,70 @@ impl FirstOrderFormula {
 }
 
 #[cfg(test)]
-mod tests {
+mod prawitz_tests {
+
+    use crate::logic::first_order::{FirstOrderFormula, library};
+
+    #[test]
+    fn p18() {
+        let f = FirstOrderFormula::from(library::pelletier::P18);
+        let (result, _) = f.prawitz(None);
+        assert!(result)
+    }
+
+    #[test]
+    fn p19() {
+        let f = FirstOrderFormula::from(library::pelletier::P19);
+        let (result, _) = f.prawitz(Some(4));
+        assert!(result);
+    }
+
+    #[test]
+    fn p20() {
+        let f = FirstOrderFormula::from(library::pelletier::P20);
+        let (result, _) = f.prawitz(None);
+        assert!(result)
+    }
+
+    #[test]
+    fn p24() {
+        let f = FirstOrderFormula::from(library::pelletier::P24);
+        let (result, _) = f.prawitz(Some(2));
+        assert!(result)
+    }
+
+    #[ignore = "???"]
+    #[test]
+    fn p45() {
+        let fm = FirstOrderFormula::from(library::pelletier::P45);
+        let (result, _) = fm.prawitz(Some(10));
+        assert!(result);
+    }
+
+    #[test]
+    fn sat_1() {
+        let fm = FirstOrderFormula::from(library::satisfiable::AxPxQx);
+        let (result, _) = fm.prawitz(Some(5));
+        assert!(!result);
+    }
+
+    #[test]
+    fn sat_2() {
+        let fm = FirstOrderFormula::from(library::satisfiable::AxAyPxQy);
+        let (result, _) = fm.prawitz(Some(5));
+        assert!(!result);
+    }
+
+    #[test]
+    fn sat_3() {
+        let fm = FirstOrderFormula::from(library::satisfiable::AxEyPxQx);
+        let (result, _) = fm.prawitz(Some(5));
+        assert!(!result);
+    }
+}
+
+#[cfg(test)]
+mod tableau_tests {
     use super::*;
 
     #[macro_export]
