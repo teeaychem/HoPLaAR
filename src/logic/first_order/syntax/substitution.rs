@@ -16,7 +16,7 @@ pub struct Substitution {
     /// Specifically, if an key for `v` is present in `interrupt` then cases based on the value:
     /// - None, then no substitution takes place, even if given by `substitution`.
     /// - Some(alternative), then alternative is used in place of any directive from `substitution`.
-    interrupt: HashMap<Var, Option<Term>>,
+    pub interrupt: HashMap<Var, Option<Term>>,
 }
 
 impl std::default::Default for Substitution {
@@ -56,12 +56,16 @@ impl Substitution {
     /// Applies the substitution, ignoring any interrupts.
     pub fn apply_function(&self, key: Term) -> Term {
         match key {
-            Term::F(Fun { id, args, .. }) => {
-                let x: Vec<Term> = args
+            Term::F(Fun { id, args, variant }) => {
+                let arg_s: Vec<Term> = args
                     .into_iter()
                     .map(|arg| self.apply_function(arg))
                     .collect();
-                Term::Fun(&id, &x)
+                Term::F(Fun {
+                    id,
+                    variant,
+                    args: arg_s,
+                })
             }
 
             Term::V(_) => (self.function)(key),
@@ -71,9 +75,13 @@ impl Substitution {
     /// Applies the substitution, adhering to any interrupts.
     pub fn apply(&self, key: Term) -> Term {
         match key {
-            Term::F(Fun { id, args, .. }) => {
-                let x: Vec<Term> = args.into_iter().map(|arg| self.apply(arg)).collect();
-                Term::Fun(&id, &x)
+            Term::F(Fun { id, args, variant }) => {
+                let args_s: Vec<Term> = args.into_iter().map(|arg| self.apply(arg)).collect();
+                Term::F(Fun {
+                    id,
+                    variant,
+                    args: args_s,
+                })
             }
 
             Term::V(ref var) => match self.interrupt.get(var) {
