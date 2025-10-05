@@ -77,7 +77,7 @@ pub mod pelletier {
 
         pub const P33: &str = "∀x.(P(a) ∧ (P(x) → P(b)) → P(c)) ↔ ∀x.(¬P(a) ∨ (P(x) ∨ P(c)) ∧ (¬P(a) ∨ (¬P(b) ∨ P(c))))";
 
-        pub const P34: &str = "[∃x.∀y.(P(x) ↔ P(y)) ↔ (∃x.Q(x) ↔ ∀y.P(y))] ↔ [∃x.∀y.(Q(x) ↔ Q(y)) ↔ ∃x.P(x) ↔ ∀y.P(y)]";
+        pub const P34: &str = "[∃x.∀y.(P(x) ↔ P(y)) ↔ (∃x.Q(x) ↔ ∀y.P(y))] ↔ [∃x.∀y.(Q(x) ↔ Q(y)) ↔ (∃x.P(x) ↔ ∀y.Q(y))]";
     }
 
     pub mod full_predicate {
@@ -88,8 +88,7 @@ pub mod pelletier {
 
         pub const P37: &str = "∀z.∃w.∀x.∃y.[(P(x,z) → P(y,w)) ∧ P(y,z) ∧ (P(y,w) → ∃u.(Q(u,w)))] ∧ ∀x ∀z.(¬P(x,z) → ∃y.Q(y,z)) ∧ [∃x.∃y.Q(x,y) → ∀x.R(x,x)] → ∀x.∃y.R(x,y)";
 
-        pub const P38: &str = "
-∀x.(P(a) ∧ (P(x) → ∃y.(P(y) ∧ R(x,y))) → ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))) ↔ ∀x.((¬P(a) ∨ P(x) ∨ ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))) ∧ (¬P(a) ∨ ¬∃y.(P(y) ∧ R(x,y)) ∨ ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))))";
+        pub const P38: &str = "∀x.(P(a) ∧ (P(x) → ∃y.(P(y) ∧ R(x,y))) → ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))) ↔ ∀x.((¬P(a) ∨ P(x) ∨ ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))) ∧ (¬P(a) ∨ ¬∃y.(P(y) ∧ R(x,y)) ∨ ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))))";
 
         pub const P39: &str = "¬∃x.∀y.(F(y,x) ↔ ¬F(y,y))";
 
