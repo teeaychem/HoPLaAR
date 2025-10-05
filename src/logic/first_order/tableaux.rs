@@ -213,6 +213,13 @@ mod tests {
     }
 
     #[test]
+    fn pelletier_full_predicate() {
+        test_pelletier!(P35);
+        test_pelletier!(P36);
+        test_pelletier!(P37);
+    }
+
+    #[test]
     fn p18() {
         test_pelletier!(P18)
     }
