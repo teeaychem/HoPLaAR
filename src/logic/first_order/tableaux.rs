@@ -195,6 +195,24 @@ mod tests {
     }
 
     #[test]
+    fn pelletier_monadic_predicate() {
+        test_pelletier!(P20);
+        test_pelletier!(P21);
+        test_pelletier!(P22);
+        test_pelletier!(P23);
+        test_pelletier!(P24);
+        test_pelletier!(P25);
+        test_pelletier!(P26);
+        test_pelletier!(P27);
+        // test_pelletier!(P28);
+        test_pelletier!(P29);
+        test_pelletier!(P30);
+        test_pelletier!(P31);
+        test_pelletier!(P32);
+        test_pelletier!(P33);
+    }
+
+    #[test]
     fn p18() {
         test_pelletier!(P18)
     }
