@@ -64,7 +64,7 @@ impl<A: Atomic> Formula<A> {
         match &mut self {
             Binary { op: And, lhs, rhs } => {
                 // Take ownership of the side pointers.
-                // If not distibution happens, these are to be replaced.
+                // If no distibution happens, these are to be replaced.
                 let mut outer_lhs = std::mem::take(lhs);
                 let mut outer_rhs = std::mem::take(rhs);
 
@@ -95,19 +95,19 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    pub fn raw_dnf(mut self) -> Self {
+    pub fn simple_dnf(mut self) -> Self {
         use {Formula::*, OpBinary::*};
 
         match &mut self {
             Binary { op: And, lhs, rhs } => {
-                let lhs = std::mem::take(lhs).raw_dnf();
-                let rhs = std::mem::take(rhs).raw_dnf();
+                let lhs = std::mem::take(lhs).simple_dnf();
+                let rhs = std::mem::take(rhs).simple_dnf();
                 Formula::And(lhs, rhs).distribute()
             }
 
             Binary { op: Or, lhs, rhs } => {
-                let lhs = std::mem::take(lhs).raw_dnf();
-                let rhs = std::mem::take(rhs).raw_dnf();
+                let lhs = std::mem::take(lhs).simple_dnf();
+                let rhs = std::mem::take(rhs).simple_dnf();
                 Formula::Or(lhs, rhs)
             }
 
@@ -176,6 +176,6 @@ mod tests {
     fn raw_dnf() {
         let expr = parse_propositional("(p | q & r) & (~p | ~r)");
         let expected = parse_propositional("(p & ~p | (q & r) & ~p) | p & ~r | (q & r) & ~r");
-        assert!(Formula::Iff(expr.raw_dnf(), expected).is_tautology());
+        assert!(Formula::Iff(expr.simple_dnf(), expected).is_tautology());
     }
 }

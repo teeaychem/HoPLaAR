@@ -413,7 +413,7 @@ impl FirstOrderFormula {
         let generalized = base_clone.generalize();
         let negated = generalized.negate();
         let skolemized = negated.skolemize();
-        let mut base = skolemized.raw_dnf().to_set_direct(Mode::DNF);
+        let mut base = skolemized.simple_dnf().to_set_direct(Mode::DNF);
 
         let mut unifier = Unifier::default();
 
@@ -560,7 +560,7 @@ mod tests {
     fn udebug() {
         // let mut fm = FirstOrderFormula::from("exists x. (P(x) & ~P(x))");
         let mut fm = FirstOrderFormula::from("forall x. (P(x) | ~P(x))");
-        fm = fm.generalize().negate().skolemize().raw_dnf();
+        fm = fm.generalize().negate().skolemize().simple_dnf();
 
         println!("{fm}");
 
