@@ -158,6 +158,24 @@ impl FirstOrderFormula {
 
         u.tableau(sfm, instantiation_limit)
     }
+
+    pub fn split_tableaux(self, instantiation_limit: Option<usize>) -> bool {
+        let sfm = self.generalize().negate().skolemize_basic().simple_dnf();
+        let split = sfm.split_on(OpBinary::Or);
+        split.into_iter().all(|d| {
+            matches!(
+                Unifier::default().tableau(d, None),
+                Ok(TableauOk::Refuted(_))
+            )
+        })
+
+        // for (i, disjunct) in split.into_iter().enumerate() {
+        //     let result = Unifier::default().tableau(disjunct, None);
+
+        // }
+
+        // todo!()
+    }
 }
 
 #[cfg(test)]
@@ -210,7 +228,7 @@ mod tests {
         test_pelletier!(P31);
         test_pelletier!(P32);
         test_pelletier!(P33);
-        // test_pelletier!(P34);
+        test_pelletier!(P34);
     }
 
     #[test]
@@ -236,10 +254,8 @@ mod tests {
     }
 
     #[test]
-    fn p46() {
+    fn p34_split() {
         use crate::logic::first_order::{FirstOrderFormula, library::pelletier};
-        let result = FirstOrderFormula::from(pelletier::P46).tableaux(None);
-        println!("{result:?}");
-        assert!(matches!(result, Ok(TableauOk::Refuted(_))));
+        assert!(FirstOrderFormula::from(pelletier::P34).split_tableaux(None));
     }
 }

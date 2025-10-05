@@ -10,13 +10,12 @@ use crate::logic::{
 
 /// Generalisation
 impl FirstOrderFormula {
-    pub fn generalize(self) -> FirstOrderFormula {
+    pub fn generalize(mut self) -> FirstOrderFormula {
         let fv = self.free_variables();
-        let mut formula = self;
         for var in fv {
-            formula = Formula::Quantified(Quantifier::ForAll, var, formula);
+            self = Formula::Quantified(Quantifier::ForAll, var, self);
         }
-        formula
+        self
     }
 
     pub fn specialize(self) -> FirstOrderFormula {
