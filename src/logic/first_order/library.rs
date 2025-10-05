@@ -57,26 +57,25 @@ pub mod pelletier {
 → ∃x.(P(x) ∧ R(x))";
 
         pub const P25: &str = "
-∃x.P(x) ∧ ∀x.(F(x) → (~G(x) ∧ R(x))) ∧ ∀x.(P(x) → (G(x) ∧ F(x))) ∧ [∀x.(P(x) → Q(x)) ∨ ∃x.(P(x) ∧ R(x))] → ∃x.(Q(x) ∧ P(x))
-";
+∃x.P(x) ∧ ∀x.(F(x) → (¬G(x) ∧ R(x))) ∧ ∀x.(P(x) → (G(x) ∧ F(x))) ∧ [∀x.(P(x) → Q(x)) ∨ ∃x.(P(x) ∧ R(x))] → ∃x.(Q(x) ∧ P(x))";
 
         pub const P26: &str = "[∃x.P(x) ↔ ∃x.Q(x)] ∧ ∀x.∀y.(P(x) ∧ Q(y) → (R(x) ↔ S(y))) → [∀x.(P(x) → R(x)) ↔ ∀x.(Q(x) → S(x))]";
 
-        pub const P27: &str = "∃x.(F(x) ∧ ~G(x)) ∧ ∀x.(F(x) → H(x)) ∧ ∀x.(J(x) ∧ I(x) → F(x)) ∧ ∃x.(H(x) ∧ ~G(x)) → ∀x.(I(x) → ~H(x)) → ∀x.(J(x) → ~I(x))";
+        pub const P27: &str = "∃x.(F(x) ∧ ¬G(x)) ∧ ∀x.(F(x) → H(x)) ∧ ∀x.(J(x) ∧ I(x) → F(x)) ∧ ∃x.(H(x) ∧ ¬G(x)) → ∀x.(I(x) → ¬H(x)) → ∀x.(J(x) → ¬I(x))";
 
         pub const P28: &str = "[[∀x.P(x) → ∀x.Q(x)] ∧ [∀x.(Q(x) ∨ R(x)) → ∃x.(Q(x) ∧ S(x))] ∧ [∃x.S(x) → ∀x.(F(x) → G(x))]] → ∀x.((P(x) ∧ F(x)) → G(x))";
 
         pub const P29: &str = "∃x.F(x) ∧ ∃x.G(x) → [∀x.(F(x) → H(x)) ∧ ∀x.(G(x) → J(x))] ↔ ∀x.∀y.(F(x) ∧ G(y) → H(x) ∧ J(y))";
 
         pub const P30: &str =
-            "∀x.(F(x) ∨ G(x) → ~H(x)) ∧ ∀x.((G(x) → ~I(x)) → F(x) ∧ H(x)) → ∀x.I(x)";
+            "∀x.(F(x) ∨ G(x) → ¬H(x)) ∧ ∀x.((G(x) → ¬I(x)) → F(x) ∧ H(x)) → ∀x.I(x)";
 
         pub const P31: &str =
-            "~∃x.(F(x) ∧ (G(x) ∨ H(x))) ∧ ∃x.(I(x) ∧ F(x)) ∧ ∀x.(~H(x) → J(x)) → ∃x.(I(x) ∧ J(x))";
+            "¬∃x.(F(x) ∧ (G(x) ∨ H(x))) ∧ ∃x.(I(x) ∧ F(x)) ∧ ∀x.(¬H(x) → J(x)) → ∃x.(I(x) ∧ J(x))";
 
         pub const P32: &str = "[[∀x.(F(x) ∧ (G(x) ∨ H(x)) → I(x))] ∧ ∀x.(I(x) ∧ F(x) → J(x)) ∧ ∀x.(K(x) → H(x))] → ∀x.(F(x) ∧ K(x) → J(x))";
 
-        pub const P33: &str = "∀x.(P(a) ∧ (P(x) → P(b)) → P(c)) ↔ ∀x.(~P(a) ∨ (P(x) ∨ P(c)) ∧ (~P(a) ∨ (~P(b) ∨ P(c))))";
+        pub const P33: &str = "∀x.(P(a) ∧ (P(x) → P(b)) → P(c)) ↔ ∀x.(¬P(a) ∨ (P(x) ∨ P(c)) ∧ (¬P(a) ∨ (¬P(b) ∨ P(c))))";
 
         pub const P34: &str = "[∃x.∀y.(P(x) ↔ P(y)) ↔ (∃x.Q(x) ↔ ∀y.P(y))] ↔ [∃x.∀y.(Q(x) ↔ Q(y)) ↔ ∃x.P(x) ↔ ∀y.P(y)]";
     }
@@ -87,13 +86,43 @@ pub mod pelletier {
 
         pub const P36: &str = "[∀x.∃y.F(x,y) ∧ ∀x.∃y.G(x,y) ∧ ∀x.∀y.(F(x,y) ∨ G(x,y) → ∀z.(F(y,z) ∨ G(y,z) → H(x,z)))] → ∀x.∃y.H(x,y)";
 
-        pub const P37: &str = "∀z.∃w.∀x.∃y.[(P(x,z) → P(y,w)) ∧ P(y,z) ∧ (P(y,w) → ∃u.(Q(u,w)))] ∧ ∀x ∀z.(~P(x,z) → ∃y.Q(y,z)) ∧ [∃x.∃y.Q(x,y) → ∀x.R(x,x)] → ∀x.∃y.R(x,y)";
+        pub const P37: &str = "∀z.∃w.∀x.∃y.[(P(x,z) → P(y,w)) ∧ P(y,z) ∧ (P(y,w) → ∃u.(Q(u,w)))] ∧ ∀x ∀z.(¬P(x,z) → ∃y.Q(y,z)) ∧ [∃x.∃y.Q(x,y) → ∀x.R(x,x)] → ∀x.∃y.R(x,y)";
 
         pub const P38: &str = "
-∀x.(P(a) ∧ (P(x) → ∃y.(P(y) ∧ R(x,y))) → ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))) ↔ ∀x.((¬P(a) ∨ P(x) ∨ ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))) ∧ (¬P(a) ∨ ¬∃y.(P(y) ∧ R(x,y)) ∨ ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))))
-";
+∀x.(P(a) ∧ (P(x) → ∃y.(P(y) ∧ R(x,y))) → ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))) ↔ ∀x.((¬P(a) ∨ P(x) ∨ ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))) ∧ (¬P(a) ∨ ¬∃y.(P(y) ∧ R(x,y)) ∨ ∃z.∃w.(P(z) ∧ R(x,w) ∧ R(w,z))))";
+
+        pub const P39: &str = "¬∃x.∀y.(F(y,x) ↔ ¬F(y,y))";
+
+        pub const P40: &str = "∃y.∀x.(F(x,y) ↔ F(x,x)) → ¬∀x.∃y.∀z.(F(x,y) ↔ ¬F(z,x))";
+
+        pub const P41: &str = "∀z.∃y.∀x.(F(x,y) ↔ F(x,z) ∧ ¬F(x,x)) → ¬∃z.∀x.F(x,z)";
+
+        pub const P42: &str = "¬∃y.∀x.(F(x,y) ↔ ¬∃z.(F(x,z) ∧ F(z,x)))";
+
+        pub const P43: &str = "∀x.∀y.(Q(x,y) ↔ ∀z.(F(z,x) ↔ F(z,y))) → ∀x.∀y.(Q(x,y) ↔ Q(y,x))";
+
+        pub const P44: &str = "∀x.[F(x) → ∃y.(G(y) ∧ H(x,y)) ∧ ∃y.(G(y) ∧ ¬H(x,y))] ∧ ∃x.[J(x) ∧ ∀y.[G(y) → H(x,y)]] → ∃x.(J(x) ∧ ¬F(x))";
 
         pub const P45: &str = "[∀x.(F(x) ∧ ∀y.[G(y) ∧ H(x, y) → J(x, y)] → ∀y.(G(y) ∧ H(x,y) → K(y))) ∧ ¬∃y.(L(y) ∧ K(y)) ∧ ∃x.[F(x) ∧ ∀y.(H(x,y) → L(y)) ∧ ∀y.(G(y) ∧ H(x,y) → J(x,y))]] → ∃x.(F(x) ∧ ¬∃y.(G(y) ∧ H(x,y)))";
+
+        pub const P46: &str = "∀x.(F(x) ∧ ∀y.[F(y) ∧ H(y,x) → G(y)] → G(x)) ∧ ∃x.(F(x) ∧ ¬G(x) ∧ ∀y.(F(y) ∧ ¬G(y) → J(x,y))) ∧ ∀x.∀y.(F(x) ∧ F(y) ∧ H(x,y) → ¬J(x,y)) → ∀x.(F(x) → G(x))";
+
+        pub const P47: &str = "
+[  ∀x.(P_1(x) → P_0(x)) ∧ ∃x.P_1(x)
+ ∧ ∀x.(P_2(x) → P_0(x)) ∧ ∃x.P_2(x)
+ ∧ ∀x.(P_3(x) → P_0(x)) ∧ ∃x.P_3(x)
+ ∧ ∀x.(P_4(x) → P_0(x)) ∧ ∃x.P_4(x)
+ ∧ ∀x.(P_5(x) → P_0(x)) ∧ ∃x.P_5(x)
+ ∧ ∃x.Q_1(x) ∧ ∀x.(Q_1(x) → Q_0(x))
+ ∧ ∀x.(P_0(x) → [∀y.(Q_0(y) → R(x,y)) ∨ ∀y.((P_0(y) ∧ S(y,x) ∧ ∃z.(Q_0(z) ∧ R(y,z))) → R(x,y))])
+ ∧ ∀x. ∀y.((P_3(x) ∧ P_2(y)) → S(x,y))
+ ∧ ∀x. ∀y.((P_2(x) ∧ P_1(y)) → S(x,y))
+ ∧ ∀x. ∀y.[(P_1(x) ∧ (P_2(y) ∨ Q_1(y))) → ~R(x,y)]
+ ∧ ∀x. ∀y.((P_3(x) ∧ P_4(y)) → R(x,y))
+ ∧ ∀x. ∀y.((P_3(x) ∧ P_5(y)) → ~R(x,y))
+ ∧ ∀x.((P_4(x) ∨ P_5(x)) → ∃y.(Q_0(y) ∧ R(x,y)))
+] → ∃x. ∃y. (P_0(x) ∧ P_0(y) ∧ ∃z.(Q_1(z) ∧ R(y,z) ∧ R(x,y)))
+";
     }
 }
 

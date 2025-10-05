@@ -210,6 +210,7 @@ mod tests {
         test_pelletier!(P31);
         test_pelletier!(P32);
         test_pelletier!(P33);
+        // test_pelletier!(P34);
     }
 
     #[test]
@@ -217,6 +218,16 @@ mod tests {
         test_pelletier!(P35);
         test_pelletier!(P36);
         test_pelletier!(P37);
+        test_pelletier!(P38);
+        test_pelletier!(P39);
+        test_pelletier!(P40);
+        test_pelletier!(P41);
+        test_pelletier!(P42);
+        test_pelletier!(P43);
+        test_pelletier!(P44);
+        test_pelletier!(P45);
+        test_pelletier!(P46);
+        test_pelletier!(P47);
     }
 
     #[test]
@@ -225,7 +236,10 @@ mod tests {
     }
 
     #[test]
-    fn p38() {
-        test_pelletier!(P38)
+    fn p46() {
+        use crate::logic::first_order::{FirstOrderFormula, library::pelletier};
+        let result = FirstOrderFormula::from(pelletier::P46).tableaux(None);
+        println!("{result:?}");
+        assert!(matches!(result, Ok(TableauOk::Refuted(_))));
     }
 }
