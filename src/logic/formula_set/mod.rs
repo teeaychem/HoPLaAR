@@ -59,6 +59,17 @@ impl<A: Atomic> Formula<A> {
     }
 }
 
+#[allow(non_snake_case)]
+impl<A: Atomic> FormulaSet<A> {
+    pub fn CNF(fml: Formula<A>) -> Self {
+        fml.into_cnf_set_local()
+    }
+
+    pub fn DNF(fml: Formula<A>) -> Self {
+        fml.into_dnf_set_local()
+    }
+}
+
 impl<A: Atomic> FormulaSet<A> {
     pub fn setify_outer(&mut self) {
         self.sets.sort_unstable();
