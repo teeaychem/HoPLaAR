@@ -40,7 +40,7 @@ impl<'a, A: Atomic> Iterator for AtomIteratorDFS<'a, A> {
                 Some(atom)
             }
 
-            Some(Formula::Unary { expr, .. }) => {
+            Some(Formula::Unary { fml: expr, .. }) => {
                 self.expr = Some(expr);
                 self.next()
             }
@@ -51,7 +51,7 @@ impl<'a, A: Atomic> Iterator for AtomIteratorDFS<'a, A> {
                 self.next()
             }
 
-            Some(Formula::Quantified { fm, .. }) => {
+            Some(Formula::Quantified { fml: fm, .. }) => {
                 self.expr = Some(fm);
                 self.next()
             }
@@ -81,7 +81,7 @@ impl<'a, A: Atomic> Iterator for AtomIteratorBFS<'a, A> {
                 Some(atom)
             }
 
-            Some(Formula::Unary { expr, .. }) => match &**expr {
+            Some(Formula::Unary { fml: expr, .. }) => match &**expr {
                 Formula::Atom(atom) => {
                     self.expr = self.stack.pop_front();
                     Some(atom)
@@ -111,7 +111,7 @@ impl<'a, A: Atomic> Iterator for AtomIteratorBFS<'a, A> {
                 }
             },
 
-            Some(Formula::Quantified { fm, .. }) => {
+            Some(Formula::Quantified { fml: fm, .. }) => {
                 self.expr = Some(fm);
                 self.next()
             }

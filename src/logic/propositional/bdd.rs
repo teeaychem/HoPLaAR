@@ -192,7 +192,7 @@ impl BDDGraph {
 
             Formula::Atom(atom) => self.bdd_make_node(atom.clone(), 1, -1),
 
-            Formula::Unary { op, expr } => {
+            Formula::Unary { op, fml: expr } => {
                 let expr_node = self.bdd_make(expr);
 
                 match op {

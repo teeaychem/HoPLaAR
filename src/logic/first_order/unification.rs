@@ -228,7 +228,7 @@ impl Unifier {
         match (l, r) {
             (Atom(l), Atom(r)) => self.unify_relations(l, r),
 
-            (Unary { op: Not, expr: l_e }, Unary { op: Not, expr: r_e }) => {
+            (Unary { op: Not, fml: l_e }, Unary { op: Not, fml: r_e }) => {
                 self.unify_literals(l_e, r_e)
             }
 

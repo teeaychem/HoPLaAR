@@ -21,7 +21,9 @@ impl FirstOrderFormula {
     pub fn specialize(self) -> FirstOrderFormula {
         use Quantifier::*;
         match self {
-            Formula::Quantified { q: ForAll, fm, .. } => fm.specialize(),
+            Formula::Quantified {
+                q: ForAll, fml: fm, ..
+            } => fm.specialize(),
             _ => self,
         }
     }
@@ -46,8 +48,8 @@ impl FirstOrderFormula {
                 match (op, lhs.clone(), rhs.clone()) {
                     (
                         And,
-                        Quantified { q: ForAll, var: x, fm: p },
-                        Quantified { q: ForAll, var: y, fm: q },
+                        Quantified { q: ForAll, var: x, fml: p },
+                        Quantified { q: ForAll, var: y, fml: q },
                     ) => {
                         let z = x.fresh_variant(fv.iter());
 
@@ -63,8 +65,8 @@ impl FirstOrderFormula {
 
                     (
                         Or,
-                        Quantified { q: Exists, var: x, fm: p },
-                        Quantified { q: Exists, var: y, fm: q },
+                        Quantified { q: Exists, var: x, fml: p },
+                        Quantified { q: Exists, var: y, fml: q },
                     ) => {
                         let z = x.fresh_variant(fv.iter());
                         substitution.add_interrupt(&x, Some(Term::V(z.clone())));
@@ -79,7 +81,7 @@ impl FirstOrderFormula {
 
                     // Any binary with only a single quantified side allows pulling the quantifier to the front.
                     // Still, these are split into cases to preserve the order of sides.
-                    (_, Quantified { q, var, fm }, unquantified) => {
+                    (_, Quantified { q, var, fml: fm }, unquantified) => {
                         let z = var.fresh_variant(fv.iter());
                         substitution.add_interrupt(&var, Some(Term::V(z.clone())));
                         let fresh_fm = fm.term_substitution(&mut substitution);
@@ -87,7 +89,7 @@ impl FirstOrderFormula {
                         Formula::Quantified(q, z, Formula::Binary(op, fresh_fm, unquantified).pull_quantifiers())
                     }
 
-                    (_, unquantified, Quantified { q, var, fm }) => {
+                    (_, unquantified, Quantified { q, var, fml: fm }) => {
                         let z = var.fresh_variant(fv.iter());
                         substitution.add_interrupt(&var, Some(Term::V(z.clone())));
                         let fresh_fm = fm.term_substitution(&mut substitution);
@@ -118,7 +120,7 @@ impl FirstOrderFormula {
                 }
                 OpBinary::Imp | OpBinary::Iff => self,
             },
-            Formula::Quantified { q, var, fm } => Formula::Quantified(q, var, fm.prenex()),
+            Formula::Quantified { q, var, fml: fm } => Formula::Quantified(q, var, fm.prenex()),
         }
     }
 
@@ -148,7 +150,7 @@ impl FirstOrderFormula {
                     OpBinary::Imp | OpBinary::Iff => self,
                 }
             }
-            Formula::Quantified { q, var, fm } => {
+            Formula::Quantified { q, var, fml: fm } => {
                 //
                 match q {
                     Quantifier::ForAll => Formula::ForAll(var, fm.skolem(taken)),

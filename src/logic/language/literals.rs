@@ -98,7 +98,7 @@ impl<A: Atomic> Formula<A> {
         match self {
             Formula::Atom { .. } => true,
 
-            Formula::Unary { op, expr } => {
+            Formula::Unary { op, fml: expr } => {
                 op == &OpUnary::Not && matches!(expr.as_ref(), Formula::Atom { .. })
             }
 
@@ -112,7 +112,7 @@ impl<A: Atomic> Formula<A> {
 
     pub fn is_negative_literal(&self) -> bool {
         match &self {
-            Formula::Unary { op, expr } => op == &OpUnary::Not && expr.is_positive_literal(),
+            Formula::Unary { op, fml: expr } => op == &OpUnary::Not && expr.is_positive_literal(),
 
             _ => false,
         }

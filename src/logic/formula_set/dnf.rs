@@ -13,7 +13,7 @@ impl<A: Atomic> Formula<A> {
 
             Formula::Atom(atom) => fs.add_set(LiteralSet::from(Literal::from(atom, true))),
 
-            Formula::Unary { op, expr } => match op {
+            Formula::Unary { op, fml: expr } => match op {
                 OpUnary::Not => {
                     if let Formula::Atom(atom) = *expr {
                         fs.add_set(LiteralSet::from(Literal::from(atom, false)));

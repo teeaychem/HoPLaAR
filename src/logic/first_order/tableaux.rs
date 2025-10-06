@@ -110,7 +110,7 @@ impl Unifier {
                         check_disjunct = true;
                     }
 
-                    Formula::Unary { op, expr } => {
+                    Formula::Unary { op, fml: expr } => {
                         //
                         match *expr {
                             Formula::Atom(relation) => {
@@ -144,7 +144,7 @@ impl Unifier {
                         }
                     }
 
-                    Formula::Quantified { q, var, fm } => {
+                    Formula::Quantified { q, var, fml: fm } => {
                         use crate::logic::Quantifier;
                         //
                         match q {

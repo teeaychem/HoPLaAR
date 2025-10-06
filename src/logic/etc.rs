@@ -21,14 +21,14 @@ fn free_variables<A: Atomic>(formula: &Formula<A>) -> HashSet<A::Variable> {
 
             free
         }
-        Formula::Unary { expr, .. } => free_variables(expr),
+        Formula::Unary { fml: expr, .. } => free_variables(expr),
 
         Formula::Binary { lhs, rhs, .. } => free_variables(lhs)
             .into_iter()
             .chain(free_variables(rhs))
             .collect(),
 
-        Formula::Quantified { var, fm, .. } => {
+        Formula::Quantified { var, fml: fm, .. } => {
             let mut free = free_variables(fm);
             free.remove(var);
             free

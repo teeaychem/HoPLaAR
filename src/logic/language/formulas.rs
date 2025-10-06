@@ -9,7 +9,7 @@ pub enum Formula<A: Atomic> {
 
     Unary {
         op: OpUnary,
-        expr: Box<Formula<A>>,
+        fml: Box<Formula<A>>,
     },
 
     Binary {
@@ -21,7 +21,7 @@ pub enum Formula<A: Atomic> {
     Quantified {
         q: Quantifier,
         var: A::Variable,
-        fm: Box<Formula<A>>,
+        fml: Box<Formula<A>>,
     },
 }
 
@@ -34,10 +34,10 @@ impl<A: Atomic> Default for Formula<A> {
 
 #[allow(non_snake_case)]
 impl<A: Atomic> Formula<A> {
-    pub fn Unary(op: OpUnary, expr: Formula<A>) -> Self {
+    pub fn Unary(op: OpUnary, fml: Formula<A>) -> Self {
         Self::Unary {
             op,
-            expr: Box::new(expr),
+            fml: Box::new(fml),
         }
     }
 
@@ -49,19 +49,19 @@ impl<A: Atomic> Formula<A> {
         }
     }
 
-    pub fn Quantified(q: Quantifier, var: A::Variable, expr: Formula<A>) -> Self {
+    pub fn Quantified(q: Quantifier, var: A::Variable, fml: Formula<A>) -> Self {
         Self::Quantified {
             q,
             var,
-            fm: Box::new(expr),
+            fml: Box::new(fml),
         }
     }
 }
 
 #[allow(non_snake_case)]
 impl<A: Atomic> Formula<A> {
-    pub fn Not(expr: Formula<A>) -> Self {
-        Self::Unary(OpUnary::Not, expr)
+    pub fn Not(fml: Formula<A>) -> Self {
+        Self::Unary(OpUnary::Not, fml)
     }
 
     pub fn And(lhs: Formula<A>, rhs: Formula<A>) -> Self {
@@ -84,12 +84,12 @@ impl<A: Atomic> Formula<A> {
         Self::Atom(atomic)
     }
 
-    pub fn Exists(var: A::Variable, expr: Formula<A>) -> Self {
-        Self::Quantified(Quantifier::Exists, var, expr)
+    pub fn Exists(var: A::Variable, fml: Formula<A>) -> Self {
+        Self::Quantified(Quantifier::Exists, var, fml)
     }
 
-    pub fn ForAll(var: A::Variable, expr: Formula<A>) -> Self {
-        Self::Quantified(Quantifier::ForAll, var, expr)
+    pub fn ForAll(var: A::Variable, fml: Formula<A>) -> Self {
+        Self::Quantified(Quantifier::ForAll, var, fml)
     }
 }
 
@@ -133,20 +133,20 @@ impl<A: Atomic> Formula<A> {
 
             Formula::Atom(atom) => atom.fmt_ansi(f, ansi),
 
-            Formula::Unary { op, expr } => match expr.as_ref() {
+            Formula::Unary { op, fml } => match fml.as_ref() {
                 Formula::True
                 | Formula::False
                 | Formula::Atom { .. }
                 | Formula::Unary { .. }
                 | Formula::Quantified { .. } => {
                     write!(f, "{op}")?;
-                    expr.fmt_ansi(f, ansi)
+                    fml.fmt_ansi(f, ansi)
                 }
 
                 Formula::Binary { .. } => {
                     write!(f, "{op}")?;
                     write!(f, "(")?;
-                    expr.fmt_ansi(f, ansi)?;
+                    fml.fmt_ansi(f, ansi)?;
                     write!(f, ")")
                 }
             },
@@ -209,7 +209,7 @@ impl<A: Atomic> Formula<A> {
                 }
             },
 
-            Formula::Quantified { q, var, fm } => {
+            Formula::Quantified { q, var, fml: fm } => {
                 write!(f, "{q}")?;
                 var.fmt_ansi(f, ansi)?;
                 write!(f, "(")?;

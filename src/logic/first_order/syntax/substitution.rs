@@ -106,7 +106,9 @@ impl FirstOrderFormula {
                 Formula::Atom(fresh)
             }
 
-            Formula::Unary { op, expr } => Formula::Unary(op, expr.term_substitution(substitution)),
+            Formula::Unary { op, fml: expr } => {
+                Formula::Unary(op, expr.term_substitution(substitution))
+            }
 
             Formula::Binary { op, lhs, rhs } => Formula::Binary(
                 op,
@@ -114,7 +116,7 @@ impl FirstOrderFormula {
                 rhs.term_substitution(substitution),
             ),
 
-            Formula::Quantified { q, var, fm } => {
+            Formula::Quantified { q, var, fml: fm } => {
                 let mut fv = fm.free_variables();
                 fv.remove(&var);
 

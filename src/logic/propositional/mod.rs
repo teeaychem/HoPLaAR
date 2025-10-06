@@ -27,7 +27,7 @@ pub fn eval(formula: &PropFormula, valuation: &Valuation) -> bool {
 
         Formula::Atom(atom) => valuation.get(atom),
 
-        Formula::Unary { op, expr } => match op {
+        Formula::Unary { op, fml: expr } => match op {
             OpUnary::Not => !eval(expr, valuation),
         },
 
@@ -151,7 +151,7 @@ impl TryFrom<FirstOrderFormula> for PropFormula {
 
             FirstOrderFormula::Atom(relation) => Ok(PropFormula::Atom(Prop::from(relation))),
 
-            FirstOrderFormula::Unary { op, expr } => {
+            FirstOrderFormula::Unary { op, fml: expr } => {
                 Ok(PropFormula::Unary(op, PropFormula::try_from(*expr)?))
             }
 

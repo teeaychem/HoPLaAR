@@ -40,7 +40,7 @@ pub fn eval_first_order<E: Element, M: Model<E>>(
 
         Formula::Atom(atom) => eval_relation(atom, M, v),
 
-        Formula::Unary { op, expr } => match op {
+        Formula::Unary { op, fml: expr } => match op {
             OpUnary::Not => !eval_first_order(expr, M, v),
         },
 
@@ -51,7 +51,7 @@ pub fn eval_first_order<E: Element, M: Model<E>>(
             OpBinary::Iff => lhs.eval(M, v) == rhs.eval(M, v),
         },
 
-        Formula::Quantified { q, var, fm } => {
+        Formula::Quantified { q, var, fml: fm } => {
             let shadowed_value = v.get(var).cloned();
             let mut value = match q {
                 Quantifier::ForAll => true,

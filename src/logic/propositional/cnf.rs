@@ -28,7 +28,7 @@ impl PropFormula {
         match self {
             True | False | Atom { .. } => self.clone(),
 
-            Unary { op, expr } => {
+            Unary { op, fml: expr } => {
                 let expr = expr.cnf_build_binary_dict(dict);
                 PropFormula::Unary(*op, expr)
             }

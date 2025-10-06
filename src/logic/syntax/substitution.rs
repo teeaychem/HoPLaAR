@@ -10,12 +10,12 @@ impl<A: Atomic> Formula<A> {
         // To do this, self must be mutable, along with all borrows.
 
         match &mut self {
-            Unary { op, expr } => match op {
+            Unary { op, fml: expr } => match op {
                 Not => match expr.as_mut() {
                     True => False,
                     False => True,
 
-                    Unary { op, expr } => match op {
+                    Unary { op, fml: expr } => match op {
                         Not => take(expr),
                     },
 
@@ -51,7 +51,7 @@ impl<A: Atomic> Formula<A> {
                 },
             },
 
-            Quantified { var, fm, .. } => {
+            Quantified { var, fml: fm, .. } => {
                 if fm.free_variables().iter().any(|v| v == var) {
                     return self;
                 }
@@ -65,12 +65,12 @@ impl<A: Atomic> Formula<A> {
 
     pub fn simplify(self) -> Self {
         match self {
-            Formula::Unary { op, expr } => Formula::Unary(op, expr.simplify()).simplify_once(),
+            Formula::Unary { op, fml: expr } => Formula::Unary(op, expr.simplify()).simplify_once(),
             Formula::Binary { op, lhs, rhs } => {
                 Formula::Binary(op, lhs.simplify(), rhs.simplify()).simplify_once()
             }
 
-            Formula::Quantified { q, var, fm } => {
+            Formula::Quantified { q, var, fml: fm } => {
                 Formula::Quantified(q, var, fm.simplify()).simplify_once()
             }
 

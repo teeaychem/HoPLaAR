@@ -12,7 +12,9 @@ impl<A: Atomic> Formula<A> {
 
             Formula::Atom { .. } => f(self),
 
-            Formula::Unary { op, expr } => Formula::Unary(*op, std::mem::take(expr).on_atoms(f)),
+            Formula::Unary { op, fml: expr } => {
+                Formula::Unary(*op, std::mem::take(expr).on_atoms(f))
+            }
 
             Formula::Binary { op, lhs, rhs } => Formula::Binary(
                 *op,
@@ -20,7 +22,7 @@ impl<A: Atomic> Formula<A> {
                 std::mem::take(rhs).on_atoms(f),
             ),
 
-            Formula::Quantified { q, var, fm } => {
+            Formula::Quantified { q, var, fml: fm } => {
                 Formula::Quantified(*q, var.to_owned(), std::mem::take(fm).on_atoms(f))
             }
         }
@@ -40,7 +42,7 @@ impl<A: Atomic> Formula<A> {
                     self
                 }
             }
-            Formula::Unary { op, expr } => {
+            Formula::Unary { op, fml: expr } => {
                 Formula::Unary(*op, std::mem::take(expr).substitute(atom, fm))
             }
             Formula::Binary { op, lhs, rhs } => Formula::Binary(
@@ -48,7 +50,7 @@ impl<A: Atomic> Formula<A> {
                 std::mem::take(lhs).substitute(atom, fm),
                 std::mem::take(rhs).substitute(atom, fm),
             ),
-            Formula::Quantified { q, var, fm } => {
+            Formula::Quantified { q, var, fml: fm } => {
                 Formula::Quantified(*q, var.to_owned(), std::mem::take(fm).substitute(atom, fm))
             }
         }

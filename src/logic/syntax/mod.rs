@@ -11,7 +11,7 @@ impl<A: Atomic> Formula<A> {
 
             Formula::Atom { .. } => self,
 
-            Formula::Unary { op, expr } => match op {
+            Formula::Unary { op, fml: expr } => match op {
                 OpUnary::Not => Formula::Not(expr.dual()),
             },
 
@@ -22,7 +22,7 @@ impl<A: Atomic> Formula<A> {
                 OpBinary::Iff => panic!("Dual of Iff"),
             },
 
-            Formula::Quantified { q, var, fm } => match q {
+            Formula::Quantified { q, var, fml: fm } => match q {
                 Quantifier::ForAll => Formula::Exists(var, fm.dual()),
                 Quantifier::Exists => Formula::ForAll(var, fm.dual()),
             },
@@ -48,7 +48,7 @@ impl<A: Atomic> std::ops::Not for Formula<A> {
 
             Formula::Atom { .. } => Formula::Not(self),
 
-            Formula::Unary { op: Not, expr } => *expr,
+            Formula::Unary { op: Not, fml: expr } => *expr,
 
             Formula::Binary { .. } => Formula::Not(self),
 
