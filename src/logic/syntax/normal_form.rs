@@ -5,10 +5,10 @@ impl<A: Atomic> Formula<A> {
         use {Formula::*, OpBinary::*, OpUnary::*};
 
         match &mut self {
-            Unary { op, expr } => match op {
-                Not => match expr.as_mut() {
-                    Unary { op, expr } => match op {
-                        Not => std::mem::take(expr).negation_normal_form_basic(),
+            Unary { op, fml } => match op {
+                Not => match fml.as_mut() {
+                    Unary { op, fml } => match op {
+                        Not => std::mem::take(fml).negation_normal_form_basic(),
                     },
 
                     Binary { op, lhs, rhs } => {
@@ -20,14 +20,17 @@ impl<A: Atomic> Formula<A> {
                                 lhs.negate().negation_normal_form_basic(),
                                 rhs.negate().negation_normal_form_basic(),
                             ),
+
                             Or => Formula::And(
                                 lhs.negate().negation_normal_form_basic(),
                                 rhs.negate().negation_normal_form_basic(),
                             ),
+
                             Imp => Formula::And(
                                 lhs.negation_normal_form_basic(),
                                 rhs.negate().negation_normal_form_basic(),
                             ),
+
                             Iff => {
                                 let a = Formula::And(
                                     lhs.clone().negation_normal_form_basic(),
@@ -42,12 +45,12 @@ impl<A: Atomic> Formula<A> {
                         }
                     }
 
-                    Quantified { q, var, fm } => {
-                        let expr = std::mem::take(fm);
+                    Quantified { q, var, fml: fm } => {
+                        let fml = std::mem::take(fm);
                         Formula::Quantified(
                             q.dual(),
                             var.clone(),
-                            expr.negate().negation_normal_form_basic(),
+                            fml.negate().negation_normal_form_basic(),
                         )
                     }
 
@@ -58,36 +61,42 @@ impl<A: Atomic> Formula<A> {
             Binary { op, lhs, rhs } => {
                 let lhs = std::mem::take(lhs);
                 let rhs = std::mem::take(rhs);
+
                 match op {
                     And => Formula::And(
                         lhs.negation_normal_form_basic(),
                         rhs.negation_normal_form_basic(),
                     ),
+
                     Or => Formula::Or(
                         lhs.negation_normal_form_basic(),
                         rhs.negation_normal_form_basic(),
                     ),
+
                     Imp => Formula::Or(
                         lhs.negate().negation_normal_form_basic(),
                         rhs.negation_normal_form_basic(),
                     ),
+
                     Iff => {
-                        let a = Formula::And(
-                            lhs.clone().negation_normal_form_basic(),
+                        let a = Formula::Or(
+                            lhs.clone().negate().negation_normal_form_basic(),
                             rhs.clone().negation_normal_form_basic(),
                         );
-                        let b = Formula::And(
-                            lhs.negate().negation_normal_form_basic(),
+
+                        let b = Formula::Or(
+                            lhs.negation_normal_form_basic(),
                             rhs.negate().negation_normal_form_basic(),
                         );
-                        Formula::Or(a, b)
+
+                        Formula::And(a, b)
                     }
                 }
             }
 
-            Quantified { q, var, fm } => {
-                let expr = std::mem::take(fm);
-                Formula::Quantified(*q, var.clone(), expr.negation_normal_form_basic())
+            Quantified { q, var, fml: fm } => {
+                let fml = std::mem::take(fm);
+                Formula::Quantified(*q, var.clone(), fml.negation_normal_form_basic())
             }
 
             _ => self,
@@ -104,10 +113,10 @@ impl<A: Atomic> Formula<A> {
         use {Formula::*, OpBinary::*, OpUnary::*};
 
         match &mut self {
-            Unary { op, expr } => match op {
-                Not => match expr.as_mut() {
-                    Unary { op, expr } => match op {
-                        Not => std::mem::take(expr).nenf_basic(),
+            Unary { op, fml } => match op {
+                Not => match fml.as_mut() {
+                    Unary { op, fml } => match op {
+                        Not => std::mem::take(fml).nenf_basic(),
                     },
 
                     Binary { op, lhs, rhs } => {
@@ -122,9 +131,9 @@ impl<A: Atomic> Formula<A> {
                         }
                     }
 
-                    Quantified { q, var, fm } => {
-                        let expr = std::mem::take(fm);
-                        Formula::Quantified(q.dual(), var.clone(), expr.negate().nenf_basic())
+                    Quantified { q, var, fml: fm } => {
+                        let fml = std::mem::take(fm);
+                        Formula::Quantified(q.dual(), var.clone(), fml.negate().nenf_basic())
                     }
 
                     _ => self,
@@ -141,9 +150,9 @@ impl<A: Atomic> Formula<A> {
                 }
             }
 
-            Quantified { q, var, fm } => {
-                let expr = std::mem::take(fm);
-                Formula::Quantified(*q, var.clone(), expr.negation_normal_form_basic())
+            Quantified { q, var, fml: fm } => {
+                let fml = std::mem::take(fm);
+                Formula::Quantified(*q, var.clone(), fml.negation_normal_form_basic())
             }
 
             _ => self,
@@ -161,32 +170,30 @@ mod tests {
 
     #[test]
     fn nnf_simple() {
-        let expr = parse_propositional("(p <=> q) <=> ~(r ==> s)");
-        let expr_nnf = expr.clone().negation_normal_form();
+        let fml = parse_propositional("(p ↔ q) ↔ ¬(r → s)");
+        let fml_nnf = fml.clone().negation_normal_form();
 
-        assert!(Formula::Iff(expr, expr_nnf).is_tautology())
+        assert!(Formula::Iff(fml, fml_nnf).is_tautology())
     }
 
     #[test]
     fn nnf_quantifier() {
-        let expr = FirstOrderFormula::from(
-            "forall x. P(x) => (exists y. Q(y) <=> exists z. (P(z) & Q(z)))",
-        );
+        let fml = FirstOrderFormula::from("∀x.P(x) → (∃y.Q(y) ↔ ∃z.(P(z) & Q(z)))");
 
         let expected = FirstOrderFormula::from(
-            "exists x. ~P(x) | exists y. Q(y) & exists z. (P(z) & Q(z)) | forall y. ~Q(y) & forall z. (~P(z) | ~Q(z))",
+            "∃x.¬P(x) ∨ ((∀y.¬Q(y) ∨ ∃z.(P(z) ∧ Q(z))) ∧ (∃y.Q(y) ∨ ∀z.(¬P(z) ∨ ¬Q(z))))",
         );
 
-        let nnf = expr.negation_normal_form();
+        let nnf = fml.negation_normal_form();
 
         assert_eq!(nnf, expected);
     }
 
     #[test]
     fn nenf_simple() {
-        let expr = parse_propositional("(p <=> q) <=> ~(r ==> s)");
-        let expr_nenf = expr.clone().nenf();
+        let fml = parse_propositional("(p ↔ q) ↔ ¬(r → s)");
+        let fml_nenf = fml.clone().nenf();
 
-        assert!(Formula::Iff(expr, expr_nenf).is_tautology())
+        assert!(Formula::Iff(fml, fml_nenf).is_tautology())
     }
 }
