@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+mod relations;
+
 use crate::logic::{
     Atomic, Formula, Literal, OpBinary,
     first_order::{Relation, Term, terms::Var},
