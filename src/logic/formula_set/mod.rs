@@ -114,6 +114,10 @@ impl<A: Atomic> FormulaSet<A> {
         &self.sets
     }
 
+    pub fn sets_mut(&mut self) -> &mut Vec<LiteralSet<A>> {
+        &mut self.sets
+    }
+
     pub fn set_at_index(&self, index: usize) -> &LiteralSet<A> {
         &self.sets[index]
     }

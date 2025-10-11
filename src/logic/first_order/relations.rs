@@ -2,6 +2,7 @@ use crate::logic::{
     Atomic,
     first_order::{
         Element, Model, Term, TermId, Valuation,
+        syntax::Substitution,
         terms::{Fun, Var},
     },
 };
@@ -55,6 +56,15 @@ impl Relation {
             }
         }
         s
+    }
+}
+
+impl Relation {
+    pub fn apply_substition(&mut self, substitution: &mut Substitution) {
+        self.terms = std::mem::take(&mut self.terms)
+            .into_iter()
+            .map(|t| substitution.apply(t))
+            .collect();
     }
 }
 
