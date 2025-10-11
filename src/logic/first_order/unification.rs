@@ -226,7 +226,7 @@ impl Unifier {
     ) -> Result<usize, UnificationFailure> {
         use {Formula::*, OpUnary::*};
         match (l, r) {
-            (Atom(l), Atom(r)) => self.unify_relations(l, r),
+            (Atom(l), Atom(r)) => self.relations_unify(l, r),
 
             (Unary { op: Not, fml: l_e }, Unary { op: Not, fml: r_e }) => {
                 self.unify_literals(l_e, r_e)
@@ -239,7 +239,7 @@ impl Unifier {
     }
 
     /// Extends `self` with a unification of relations `l` and `r`, if possible.
-    pub fn unify_relations(
+    pub fn relations_unify(
         &mut self,
         l: &Relation,
         r: &Relation,
@@ -254,6 +254,16 @@ impl Unifier {
             }
 
             false => Err(UnificationFailure::Distinct),
+        }
+    }
+
+    fn relation_unifiable(&mut self, l: &Relation, r: &Relation) -> bool {
+        match self.relations_unify(l, r) {
+            Ok(n) => {
+                self.pop_multiple(n);
+                true
+            }
+            Err(_) => false,
         }
     }
 }
@@ -309,7 +319,7 @@ impl Unifier {
                         return Ok((n.len(), p.len(), 0));
                     } else {
                         // The literals are not complementary, so attempt unification.
-                        match self.unify_relations(n[nl_idx].atom(), p[pl_idx].atom()) {
+                        match self.relations_unify(n[nl_idx].atom(), p[pl_idx].atom()) {
                             Ok(0) | Err(_) => {} // As no unifier was found, continue the refutation search.
                             Ok(fresh) => {
                                 // The unifier has been expanded.
