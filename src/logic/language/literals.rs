@@ -3,10 +3,10 @@ use crate::logic::{Atomic, Formula, OpUnary};
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Literal<A> {
     /// An atom, which typically implemenets the Atomic trait.
-    atom: A,
+    pub atom: A,
 
     /// The value (or polarity) of the literal.
-    value: bool,
+    pub value: bool,
 }
 
 impl<A: Atomic> Literal<A> {
