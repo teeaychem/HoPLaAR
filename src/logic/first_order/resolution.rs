@@ -12,7 +12,7 @@ impl LiteralSet<Relation> {
 
         for a in literals.negative_literals() {
             for b in literals.negative_literals() {
-                if u.relations_unify(a.atom(), b.atom()).is_ok() {
+                if u.relations_unify(&a.atom, &b.atom).is_ok() {
                     return true;
                 }
             }
@@ -20,7 +20,7 @@ impl LiteralSet<Relation> {
 
         for a in literals.positive_literals() {
             for b in literals.positive_literals() {
-                if u.relations_unify(a.atom(), b.atom()).is_ok() {
+                if u.relations_unify(&a.atom, &b.atom).is_ok() {
                     return true;
                 }
             }
@@ -59,13 +59,13 @@ impl Unifier {
 
         for a in literals.negative_literals() {
             for b in literals.negative_literals() {
-                unifications += self.relations_unify(a.atom(), b.atom())?;
+                unifications += self.relations_unify(&a.atom, &b.atom)?;
             }
         }
 
         for a in literals.positive_literals() {
             for b in literals.positive_literals() {
-                unifications += self.relations_unify(a.atom(), b.atom())?;
+                unifications += self.relations_unify(&a.atom, &b.atom)?;
             }
         }
 

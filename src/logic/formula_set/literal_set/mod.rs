@@ -48,13 +48,13 @@ impl<A: Atomic> LiteralSet<A> {
         }
 
         for (s, o) in s_n.iter().zip(o_n[..s_n.len()].iter()) {
-            if o.atom() != s.atom() {
+            if o.atom != s.atom {
                 return false;
             }
         }
 
         for (s, o) in s_p.iter().zip(o_p[..s_p.len()].iter()) {
-            if o.atom() != s.atom() {
+            if o.atom != s.atom {
                 return false;
             }
         }
@@ -75,7 +75,7 @@ impl<A: Atomic> LiteralSet<A> {
         let mut n_index = 0;
 
         while p_index < p.len() && n_index < n.len() {
-            match p[p_index].atom().cmp(n[n_index].atom()) {
+            match p[p_index].atom.cmp(&n[n_index].atom) {
                 Ordering::Less => p_index += 1,
                 Ordering::Equal => {
                     return Some((n_index, p_index));
@@ -95,13 +95,13 @@ impl<A: Atomic> LiteralSet<A> {
         let (n, p) = self.negative_positive_split();
 
         for e in n {
-            if e.atom() == atom {
+            if e.atom == *atom {
                 return Some(false);
             }
         }
 
         for e in p {
-            if e.atom() == atom {
+            if e.atom == *atom {
                 return Some(true);
             }
         }
@@ -111,13 +111,13 @@ impl<A: Atomic> LiteralSet<A> {
 
     pub fn remove_atom(&mut self, atom: &A) -> Option<Literal<A>> {
         for index in 0..self.n.len() {
-            if self.n[index].atom() == atom {
+            if self.n[index].atom == *atom {
                 return Some(self.n.swap_remove(index));
             }
         }
 
         for index in 0..self.p.len() {
-            if self.p[index].atom() == atom {
+            if self.p[index].atom == *atom {
                 return Some(self.p.swap_remove(index));
             }
         }
@@ -146,7 +146,7 @@ impl<A: Atomic> LiteralSet<A> {
 
     pub fn extend<I: IntoIterator<Item = Literal<A>>>(&mut self, iter: I) {
         for literal in iter {
-            match literal.value() {
+            match literal.value {
                 false => self.n.push(literal),
                 true => self.p.push(literal),
             }
@@ -177,8 +177,8 @@ impl<A: Atomic> LiteralSet<A> {
         remove_complementary: bool,
     ) -> LiteralQuery {
         for index in 0..self.n.len() {
-            if self.n[index].atom() == literal.atom() {
-                if self.n[index].value() == literal.value() {
+            if self.n[index].atom == literal.atom {
+                if self.n[index].value == literal.value {
                     return LiteralQuery::Matching;
                 } else {
                     if remove_complementary {
@@ -191,8 +191,8 @@ impl<A: Atomic> LiteralSet<A> {
         }
 
         for index in 0..self.p.len() {
-            if self.p[index].atom() == literal.atom() {
-                if self.p[index].value() == literal.value() {
+            if self.p[index].atom == literal.atom {
+                if self.p[index].value == literal.value {
                     return LiteralQuery::Matching;
                 } else {
                     if remove_complementary {
@@ -218,7 +218,7 @@ impl LiteralSet<Relation> {
     /// Extend `collection` with the variables of `self`.
     pub fn extend_collection_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
         for literal in self.n.iter().chain(self.p.iter()) {
-            for term in &literal.atom().terms {
+            for term in &literal.atom.terms {
                 match term {
                     Term::F(fun) => {
                         for arg in &fun.args {
@@ -261,7 +261,7 @@ impl<A: Atomic, LiteralIter: Iterator<Item = Literal<A>>> From<LiteralIter> for 
         let mut p = Vec::default();
 
         for literal in value {
-            match literal.value() {
+            match literal.value {
                 true => p.push(literal),
                 false => n.push(literal),
             }
@@ -275,7 +275,7 @@ impl<A: Atomic, LiteralIter: Iterator<Item = Literal<A>>> From<LiteralIter> for 
 
 impl<A: Atomic> From<Literal<A>> for LiteralSet<A> {
     fn from(value: Literal<A>) -> Self {
-        match value.value() {
+        match value.value {
             true => Self {
                 n: vec![],
                 p: vec![value],

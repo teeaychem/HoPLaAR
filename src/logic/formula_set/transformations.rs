@@ -98,7 +98,7 @@ impl<A: Atomic> FormulaSet<A> {
         while set_index < set_limit {
             'literal_loop: for literal in self.sets[set_index].literals() {
                 for atom in &atom_ids {
-                    if atom == literal.atom() {
+                    if *atom == literal.atom {
                         set_limit -= 1;
                         remove = true;
                         break 'literal_loop;
@@ -132,7 +132,7 @@ impl<A: Atomic> FormulaSet<A> {
 
         'set_loop: while set_index < set_limit {
             if let Some(literal) = self.sets[set_index].remove_atom(atom) {
-                match literal.value() {
+                match literal.value {
                     true => positive.add_set(self.sets.swap_remove(set_index)),
                     false => negative.add_set(self.sets.swap_remove(set_index)),
                 }

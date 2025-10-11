@@ -40,7 +40,7 @@ impl Valuation {
 
 impl Valuation {
     pub fn get(&self, prop: &Prop) -> bool {
-        self.assignment[self.map[prop]].value()
+        self.assignment[self.map[prop]].value
     }
 
     pub fn size(&self) -> usize {
@@ -82,9 +82,9 @@ impl Valuation {
             None => PropFormula::True,
 
             Some(literal) => {
-                let atom = PropFormula::Atom(literal.atom().clone());
+                let atom = PropFormula::Atom(literal.atom.clone());
 
-                let literal = match literal.value() {
+                let literal = match literal.value {
                     true => atom,
                     false => PropFormula::Not(atom),
                 };
@@ -93,8 +93,8 @@ impl Valuation {
 
                 #[allow(clippy::while_let_on_iterator)]
                 while let Some(literal) = assignment.next() {
-                    let atom = PropFormula::Atom(literal.atom().clone());
-                    let literal = match literal.value() {
+                    let atom = PropFormula::Atom(literal.atom.clone());
+                    let literal = match literal.value {
                         true => atom,
                         false => PropFormula::Not(atom),
                     };
@@ -129,7 +129,7 @@ impl Valuation {
     pub fn next_permutation_mut(&mut self) {
         for (idx, literal) in self.assignment.iter_mut().enumerate() {
             if !self.fixed[idx] {
-                match literal.value() {
+                match literal.value {
                     true => literal.set_value(false),
                     false => {
                         literal.set_value(true);
@@ -219,7 +219,7 @@ impl std::fmt::Display for Valuation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for literal in &self.assignment {
             // Consistent spacing of literals.
-            let _ = match literal.value() {
+            let _ = match literal.value {
                 true => write!(f, " {literal} "),
                 false => write!(f, "{literal} "),
             };

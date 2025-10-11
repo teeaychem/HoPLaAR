@@ -14,19 +14,9 @@ impl<A: Atomic> Literal<A> {
         Literal { atom, value }
     }
 
-    /// The atom of `self`.
-    pub fn atom(&self) -> &A {
-        &self.atom
-    }
-
     /// The (atom) id of `self`.
     pub fn id(&self) -> &str {
         self.atom.id()
-    }
-
-    /// The value of `self`.
-    pub fn value(&self) -> bool {
-        self.value
     }
 }
 

@@ -165,11 +165,11 @@ impl<A: Atomic> FormulaSet<A> {
         let mut map = OccurrenceMap::<A>::default();
 
         for n in self.sets.iter().flat_map(|s| s.negative_literals()) {
-            map.entry(n.atom().clone()).or_default().0 += 1;
+            map.entry(n.atom.clone()).or_default().0 += 1;
         }
 
         for p in self.sets.iter().flat_map(|s| s.positive_literals()) {
-            map.entry(p.atom().clone()).or_default().1 += 1;
+            map.entry(p.atom.clone()).or_default().1 += 1;
         }
 
         map

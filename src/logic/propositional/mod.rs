@@ -79,7 +79,7 @@ impl PropFormula {
 
         for _ in 0..valuation.permutation_count() {
             for literal in valuation.assignment() {
-                let _ = write!(table, "{:width$}", literal.value(), width = spacing);
+                let _ = write!(table, "{:width$}", literal.value, width = spacing);
             }
             let _ = writeln!(
                 table,
