@@ -3,7 +3,7 @@ mod dnf;
 mod literal_set;
 use std::collections::{HashMap, HashSet};
 
-pub use literal_set::LiteralSet;
+pub use literal_set::{Clause, LiteralSet};
 
 mod propositional;
 mod transformations;

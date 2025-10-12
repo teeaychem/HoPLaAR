@@ -257,7 +257,7 @@ impl Unifier {
         }
     }
 
-    fn relation_unifiable(&mut self, l: &Relation, r: &Relation) -> bool {
+    pub fn relations_unifiable(&mut self, l: &Relation, r: &Relation) -> bool {
         match self.relations_unify(l, r) {
             Ok(n) => {
                 self.pop_multiple(n);

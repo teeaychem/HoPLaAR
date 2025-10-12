@@ -14,6 +14,8 @@ pub struct LiteralSet<A: Atomic> {
     pub index: usize,
 }
 
+pub type Clause<A> = LiteralSet<A>;
+
 impl<A: Atomic> LiteralSet<A> {
     pub fn len(&self) -> usize {
         self.n.len() + self.p.len()
@@ -37,6 +39,13 @@ impl<A: Atomic> LiteralSet<A> {
 
     pub fn literals(&self) -> impl Iterator<Item = &Literal<A>> {
         self.negative_literals().chain(self.positive_literals())
+    }
+
+    pub fn literals_of_polarity(&self, polarity: bool) -> impl Iterator<Item = &Literal<A>> {
+        match polarity {
+            true => self.p.iter(),
+            false => self.n.iter(),
+        }
     }
 
     pub fn is_subset_of(&self, other: &LiteralSet<A>) -> bool {

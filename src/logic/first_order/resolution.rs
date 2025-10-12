@@ -1,13 +1,14 @@
 use crate::logic::{
+    Literal,
     first_order::{
         Relation,
         unification::{UnificationFailure, Unifier},
     },
-    formula_set::LiteralSet,
+    formula_set::Clause,
 };
 
-impl LiteralSet<Relation> {
-    pub fn unifiable(&mut self, literals: LiteralSet<Relation>) -> bool {
+impl Clause<Relation> {
+    pub fn unifiable(&mut self, literals: Clause<Relation>) -> bool {
         let mut u = Unifier::default();
 
         for a in literals.negative_literals() {
@@ -29,22 +30,39 @@ impl LiteralSet<Relation> {
         false
     }
 
-    pub fn resolve_with(&mut self, other: &mut LiteralSet<Relation>) {
+    pub fn resolve_on(
+        &mut self,
+        other: &mut Clause<Relation>,
+        literal: Literal<Relation>,
+        resolvents: &mut [Clause<Relation>],
+    ) {
         let clause_a = {
-            let mut s = self.clone();
-            s.prefix_variables("x".to_owned());
-            s
+            let mut clause = self.clone();
+            clause.prefix_variables("x".to_owned());
+            clause
         };
 
         let clause_b = {
-            let mut s = other.clone();
-            s.prefix_variables("y".to_owned());
-            s
+            let mut clause = other.clone();
+            clause.prefix_variables("y".to_owned());
+            clause
         };
 
-        let mut resolutions: Vec<LiteralSet<Relation>> = Vec::default();
+        let mut u = Unifier::default();
 
-        for literal in clause_a.literals() {}
+        let ps2: Vec<_> = clause_b
+            .literals_of_polarity(!literal.value)
+            .filter(|l| u.relations_unifiable(&literal.atom, &l.atom))
+            .collect();
+
+        if ps2.is_empty() {
+            return;
+        }
+
+        let ps1: Vec<_> = clause_a
+            .literals_of_polarity(literal.value)
+            .filter(|l| l.atom != literal.atom && u.relations_unifiable(&literal.atom, &l.atom))
+            .collect();
 
         todo!()
     }
@@ -53,7 +71,7 @@ impl LiteralSet<Relation> {
 impl Unifier {
     pub fn most_general_unifier(
         &mut self,
-        literals: LiteralSet<Relation>,
+        literals: Clause<Relation>,
     ) -> Result<usize, UnificationFailure> {
         let mut unifications = 0;
 
