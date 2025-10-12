@@ -77,9 +77,8 @@ impl<A: Atomic> Formula<A> {
                     OpBinary::Or => {
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
-                                let product = LiteralSet::from(
-                                    l_set.literals().chain(r_set.literals()).cloned(),
-                                );
+                                let product =
+                                    LiteralSet::from(l_set.literals().chain(r_set.literals()));
 
                                 fs.add_set(product);
                             }

@@ -308,10 +308,10 @@ impl Unifier {
         while nl_idx < n.len() {
             while pl_idx < p.len() {
                 // If the relations are the same, investigate...
-                if n[nl_idx].id() == p[pl_idx].id() {
+                if n[nl_idx].id == p[pl_idx].id {
                     // To check if the relations are in conflict, apply the current unifier.
-                    let nlu = self.apply_to_relation(&n[nl_idx].atom);
-                    let plu = self.apply_to_relation(&p[pl_idx].atom);
+                    let nlu = self.apply_to_relation(&n[nl_idx]);
+                    let plu = self.apply_to_relation(&p[pl_idx]);
 
                     if nlu == plu {
                         // The literals are complementary given the current unification.
@@ -319,7 +319,7 @@ impl Unifier {
                         return Ok((n.len(), p.len(), 0));
                     } else {
                         // The literals are not complementary, so attempt unification.
-                        match self.relations_unify(&n[nl_idx].atom, &p[pl_idx].atom) {
+                        match self.relations_unify(&n[nl_idx], &p[pl_idx]) {
                             Ok(0) | Err(_) => {} // As no unifier was found, continue the refutation search.
                             Ok(fresh) => {
                                 // The unifier has been expanded.

@@ -31,9 +31,8 @@ impl<A: Atomic> Formula<A> {
                     OpBinary::And => {
                         for l_set in &lhs.sets {
                             for r_set in &rhs.sets {
-                                let product = LiteralSet::from(
-                                    l_set.literals().chain(r_set.literals()).cloned(),
-                                );
+                                let product =
+                                    LiteralSet::from(l_set.literals().chain(r_set.literals()));
                                 fs.add_set(product);
                             }
                         }
@@ -122,13 +121,13 @@ impl<A: Atomic> FormulaSet<A> {
             for other_literal_set in &other.sets {
                 let mut merge = LiteralSet {
                     n: self_literal_set
-                        .negative_literals()
-                        .chain(other_literal_set.negative_literals())
+                        .negative_atoms()
+                        .chain(other_literal_set.negative_atoms())
                         .cloned()
                         .collect(),
                     p: self_literal_set
-                        .positive_literals()
-                        .chain(other_literal_set.positive_literals())
+                        .positive_atoms()
+                        .chain(other_literal_set.positive_atoms())
                         .cloned()
                         .collect(),
                     index: 0,

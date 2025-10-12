@@ -164,12 +164,12 @@ impl<A: Atomic> FormulaSet<A> {
     pub fn occurrence_map(&self) -> OccurrenceMap<A> {
         let mut map = OccurrenceMap::<A>::default();
 
-        for n in self.sets.iter().flat_map(|s| s.negative_literals()) {
-            map.entry(n.atom.clone()).or_default().0 += 1;
+        for n in self.sets.iter().flat_map(|s| s.negative_atoms()) {
+            map.entry(n.clone()).or_default().0 += 1;
         }
 
-        for p in self.sets.iter().flat_map(|s| s.positive_literals()) {
-            map.entry(p.atom.clone()).or_default().1 += 1;
+        for p in self.sets.iter().flat_map(|s| s.positive_atoms()) {
+            map.entry(p.clone()).or_default().1 += 1;
         }
 
         map
@@ -191,8 +191,8 @@ impl FormulaSet<Relation> {
 
     pub fn on_variables<F: Fn(&mut Var)>(&mut self, op: F) {
         for set in &mut self.sets {
-            for literal in set.literals_mut() {
-                for term in &mut literal.atom_mut().terms {
+            for literal in set.atoms_mut() {
+                for term in &mut literal.terms {
                     for var in term.vars_mut_depth() {
                         op(var)
                     }
@@ -282,14 +282,14 @@ mod tests {
             !fm.sets
                 .iter()
                 .filter(|s| s.index == 1)
-                .any(|l| l.literals().any(|l| l == &e))
+                .any(|l| l.atoms().any(|l| l == &e.atom))
         );
 
         assert!(
             fm.sets
                 .iter()
                 .filter(|s| s.index > 1)
-                .any(|l| l.literals().any(|l| l == &e))
+                .any(|l| l.atoms().any(|l| l == &e.atom))
         );
     }
 }

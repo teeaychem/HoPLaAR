@@ -6,11 +6,11 @@ use crate::logic::{
 
 impl LiteralSet<Relation> {
     pub fn apply_subsitution(&mut self, substitution: &mut Substitution) {
-        for Literal { atom: relation, .. } in &mut self.n {
+        for relation in &mut self.n {
             relation.apply_substition(substitution);
         }
 
-        for Literal { atom: relation, .. } in &mut self.p {
+        for relation in &mut self.p {
             relation.apply_substition(substitution);
         }
     }

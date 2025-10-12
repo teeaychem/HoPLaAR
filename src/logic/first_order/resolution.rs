@@ -11,17 +11,17 @@ impl Clause<Relation> {
     pub fn unifiable(&mut self, literals: Clause<Relation>) -> bool {
         let mut u = Unifier::default();
 
-        for a in literals.negative_literals() {
-            for b in literals.negative_literals() {
-                if u.relations_unify(&a.atom, &b.atom).is_ok() {
+        for a in literals.negative_atoms() {
+            for b in literals.negative_atoms() {
+                if u.relations_unify(&a, &b).is_ok() {
                     return true;
                 }
             }
         }
 
-        for a in literals.positive_literals() {
-            for b in literals.positive_literals() {
-                if u.relations_unify(&a.atom, &b.atom).is_ok() {
+        for a in literals.positive_atoms() {
+            for b in literals.positive_atoms() {
+                if u.relations_unify(&a, &b).is_ok() {
                     return true;
                 }
             }
@@ -51,8 +51,8 @@ impl Clause<Relation> {
         let mut u = Unifier::default();
 
         let ps2: Vec<_> = clause_b
-            .literals_of_polarity(!literal.value)
-            .filter(|l| u.relations_unifiable(&literal.atom, &l.atom))
+            .atoms_of_polarity(!literal.value)
+            .filter(|l| u.relations_unifiable(&literal.atom, &l))
             .collect();
 
         if ps2.is_empty() {
@@ -60,8 +60,8 @@ impl Clause<Relation> {
         }
 
         let ps1: Vec<_> = clause_a
-            .literals_of_polarity(literal.value)
-            .filter(|l| l.atom != literal.atom && u.relations_unifiable(&literal.atom, &l.atom))
+            .atoms_of_polarity(literal.value)
+            .filter(|l| **l != literal.atom && u.relations_unifiable(&literal.atom, &l))
             .collect();
 
         todo!()
@@ -75,15 +75,15 @@ impl Unifier {
     ) -> Result<usize, UnificationFailure> {
         let mut unifications = 0;
 
-        for a in literals.negative_literals() {
-            for b in literals.negative_literals() {
-                unifications += self.relations_unify(&a.atom, &b.atom)?;
+        for a in literals.negative_atoms() {
+            for b in literals.negative_atoms() {
+                unifications += self.relations_unify(&a, &b)?;
             }
         }
 
-        for a in literals.positive_literals() {
-            for b in literals.positive_literals() {
-                unifications += self.relations_unify(&a.atom, &b.atom)?;
+        for a in literals.positive_atoms() {
+            for b in literals.positive_atoms() {
+                unifications += self.relations_unify(&a, &b)?;
             }
         }
 

@@ -9,8 +9,8 @@ use crate::logic::{
 
 #[derive(Clone, Debug)]
 pub struct LiteralSet<A: Atomic> {
-    pub n: Vec<Literal<A>>,
-    pub p: Vec<Literal<A>>,
+    pub n: Vec<A>,
+    pub p: Vec<A>,
     pub index: usize,
 }
 
@@ -25,23 +25,32 @@ impl<A: Atomic> LiteralSet<A> {
         self.n.is_empty() && self.p.is_empty()
     }
 
-    pub fn negative_positive_split(&self) -> (&[Literal<A>], &[Literal<A>]) {
+    pub fn negative_positive_split(&self) -> (&[A], &[A]) {
         (&self.n, &self.p)
     }
 
-    pub fn negative_literals(&self) -> impl Iterator<Item = &Literal<A>> {
+    pub fn negative_atoms(&self) -> impl Iterator<Item = &A> {
         self.n.iter()
     }
 
-    pub fn positive_literals(&self) -> impl Iterator<Item = &Literal<A>> {
+    pub fn positive_atoms(&self) -> impl Iterator<Item = &A> {
         self.p.iter()
     }
 
-    pub fn literals(&self) -> impl Iterator<Item = &Literal<A>> {
-        self.negative_literals().chain(self.positive_literals())
+    pub fn atoms(&self) -> impl Iterator<Item = &A> {
+        self.negative_atoms().chain(self.positive_atoms())
     }
 
-    pub fn literals_of_polarity(&self, polarity: bool) -> impl Iterator<Item = &Literal<A>> {
+    pub fn literals(&self) -> impl Iterator<Item = Literal<A>> {
+        self.negative_atoms()
+            .map(|a| Literal::from(a.clone(), false))
+            .chain(
+                self.positive_atoms()
+                    .map(|a| Literal::from(a.clone(), true)),
+            )
+    }
+
+    pub fn atoms_of_polarity(&self, polarity: bool) -> impl Iterator<Item = &A> {
         match polarity {
             true => self.p.iter(),
             false => self.n.iter(),
@@ -57,13 +66,13 @@ impl<A: Atomic> LiteralSet<A> {
         }
 
         for (s, o) in s_n.iter().zip(o_n[..s_n.len()].iter()) {
-            if o.atom != s.atom {
+            if o != s {
                 return false;
             }
         }
 
         for (s, o) in s_p.iter().zip(o_p[..s_p.len()].iter()) {
-            if o.atom != s.atom {
+            if o != s {
                 return false;
             }
         }
@@ -84,7 +93,7 @@ impl<A: Atomic> LiteralSet<A> {
         let mut n_index = 0;
 
         while p_index < p.len() && n_index < n.len() {
-            match p[p_index].atom.cmp(&n[n_index].atom) {
+            match p[p_index].cmp(&n[n_index]) {
                 Ordering::Less => p_index += 1,
                 Ordering::Equal => {
                     return Some((n_index, p_index));
@@ -104,13 +113,13 @@ impl<A: Atomic> LiteralSet<A> {
         let (n, p) = self.negative_positive_split();
 
         for e in n {
-            if e.atom == *atom {
+            if e == atom {
                 return Some(false);
             }
         }
 
         for e in p {
-            if e.atom == *atom {
+            if e == atom {
                 return Some(true);
             }
         }
@@ -120,14 +129,14 @@ impl<A: Atomic> LiteralSet<A> {
 
     pub fn remove_atom(&mut self, atom: &A) -> Option<Literal<A>> {
         for index in 0..self.n.len() {
-            if self.n[index].atom == *atom {
-                return Some(self.n.swap_remove(index));
+            if self.n[index] == *atom {
+                return Some(Literal::from(self.n.swap_remove(index), false));
             }
         }
 
         for index in 0..self.p.len() {
-            if self.p[index].atom == *atom {
-                return Some(self.p.swap_remove(index));
+            if self.p[index] == *atom {
+                return Some(Literal::from(self.p.swap_remove(index), true));
             }
         }
 
@@ -156,8 +165,8 @@ impl<A: Atomic> LiteralSet<A> {
     pub fn extend<I: IntoIterator<Item = Literal<A>>>(&mut self, iter: I) {
         for literal in iter {
             match literal.value {
-                false => self.n.push(literal),
-                true => self.p.push(literal),
+                false => self.n.push(literal.atom),
+                true => self.p.push(literal.atom),
             }
         }
 
@@ -168,15 +177,15 @@ impl<A: Atomic> LiteralSet<A> {
         self.extend(std::iter::once(literal));
     }
 
-    pub fn negative_literals_mut(&mut self) -> impl Iterator<Item = &mut Literal<A>> {
-        self.n.iter_mut()
-    }
+    // pub fn negative_literals_mut(&mut self) -> impl Iterator<Item = &mut Literal<A>> {
+    //     self.n.iter_mut()
+    // }
 
-    pub fn positive_literals_mut(&mut self) -> impl Iterator<Item = &mut Literal<A>> {
-        self.p.iter_mut()
-    }
+    // pub fn positive_literals_mut(&mut self) -> impl Iterator<Item = &mut Literal<A>> {
+    //     self.p.iter_mut()
+    // }
 
-    pub fn literals_mut(&mut self) -> impl Iterator<Item = &mut Literal<A>> {
+    pub fn atoms_mut(&mut self) -> impl Iterator<Item = &mut A> {
         self.n.iter_mut().chain(self.p.iter_mut())
     }
 
@@ -186,8 +195,8 @@ impl<A: Atomic> LiteralSet<A> {
         remove_complementary: bool,
     ) -> LiteralQuery {
         for index in 0..self.n.len() {
-            if self.n[index].atom == literal.atom {
-                if self.n[index].value == literal.value {
+            if self.n[index] == literal.atom {
+                if !literal.value {
                     return LiteralQuery::Matching;
                 } else {
                     if remove_complementary {
@@ -200,8 +209,8 @@ impl<A: Atomic> LiteralSet<A> {
         }
 
         for index in 0..self.p.len() {
-            if self.p[index].atom == literal.atom {
-                if self.p[index].value == literal.value {
+            if self.p[index] == literal.atom {
+                if literal.value {
                     return LiteralQuery::Matching;
                 } else {
                     if remove_complementary {
@@ -219,7 +228,10 @@ impl<A: Atomic> LiteralSet<A> {
 
 impl<A: Atomic> LiteralSet<A> {
     pub fn into_literals(self) -> impl Iterator<Item = Literal<A>> {
-        self.n.into_iter().chain(self.p)
+        self.n
+            .into_iter()
+            .map(|a| Literal::from(a.clone(), false))
+            .chain(self.p.into_iter().map(|a| Literal::from(a.clone(), true)))
     }
 }
 
@@ -227,7 +239,7 @@ impl LiteralSet<Relation> {
     /// Extend `collection` with the variables of `self`.
     pub fn extend_collection_with_variables<C: Extend<Var>>(&self, collection: &mut C) {
         for literal in self.n.iter().chain(self.p.iter()) {
-            for term in &literal.atom.terms {
+            for term in &literal.terms {
                 match term {
                     Term::F(fun) => {
                         for arg in &fun.args {
@@ -271,8 +283,8 @@ impl<A: Atomic, LiteralIter: Iterator<Item = Literal<A>>> From<LiteralIter> for 
 
         for literal in value {
             match literal.value {
-                true => p.push(literal),
-                false => n.push(literal),
+                true => p.push(literal.atom),
+                false => n.push(literal.atom),
             }
         }
 
@@ -287,11 +299,11 @@ impl<A: Atomic> From<Literal<A>> for LiteralSet<A> {
         match value.value {
             true => Self {
                 n: vec![],
-                p: vec![value],
+                p: vec![value.atom],
                 index: 0,
             },
             false => Self {
-                n: vec![value],
+                n: vec![value.atom],
                 p: vec![],
                 index: 0,
             },
